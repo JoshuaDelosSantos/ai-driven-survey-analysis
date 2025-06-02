@@ -1,0 +1,23 @@
+# Database connectivity
+psycopg2-binary
+
+# ORM (optional—if you prefer raw SQL, you can omit this)
+SQLAlchemy
+
+# Vector‐column support for SQLAlchemy + PostgreSQL
+pgvector
+
+# Data ingestion & manipulation (e.g., reading Excel)
+pandas
+openpyxl
+numpy
+scipy
+
+# Environment variables
+python-dotenv
+
+# OpenAI API (embeddings, chat completion)
+openai
+
+# Hugging Face Transformers (e.g., RoBERTa for sentiment)
+transformers
