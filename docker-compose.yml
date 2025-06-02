@@ -1,24 +1,16 @@
-
 services:
   db:
-    image: postgres:15
-    container_name: survey_db
+    image: pgvector/pgvector:pg16
+    container_name: ai-analysis-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: surveys
+      POSTGRES_DB: csi-db
     volumes:
       - db_data:/var/lib/postgresql/data
-    command: > 
-      bash -c "
-        set -e;
-        apt-get update && \
-        apt-get install -y postgresql-server-dev-15 build-essential && \
-        pgxn install vector && \
-        mkdir -p /docker-entrypoint-initdb.d && \
-        echo \"CREATE EXTENSION IF NOT EXISTS vector;\" > /docker-entrypoint-initdb.d/pgvector.sql && \
-        exec docker-entrypoint.sh postgres
-      "
     ports:
       - '5432:5432'
+
+volumes:
+  db_data:
