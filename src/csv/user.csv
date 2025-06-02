@@ -1,0 +1,51 @@
+user_id,user_level,agency
+1,Level 4,Department of Home Affairs
+2,Exec Level 1,Department of Defence
+3,Level 2,Australian Bureau of Statistics (ABS)
+4,Level 5,Department of Education
+5,Level 1,Department of Foreign Affairs and Trade (DFAT)
+6,Exec Level 2,The Treasury
+7,Level 3,Australian Taxation Office (ATO)
+8,Level 6,Services Australia
+9,Level 1,Department of Prime Minister and Cabinet (PM&C)
+10,Level 4,Department of Health and Aged Care
+11,Exec Level 1,National Disability Insurance Agency (NDIA)
+12,Level 2,"Department of Agriculture, Fisheries and Forestry"
+13,Level 5,Attorney-General's Department
+14,Level 3,"Department of Industry, Science and Resources"
+15,Exec Level 2,Australian Public Service Commission (APSC)
+16,Level 6,Department of Home Affairs
+17,Level 1,Department of Defence
+18,Level 4,Australian Bureau of Statistics (ABS)
+19,Exec Level 1,Department of Education
+20,Level 2,Department of Foreign Affairs and Trade (DFAT)
+21,Level 5,The Treasury
+22,Level 3,Australian Taxation Office (ATO)
+23,Exec Level 2,Services Australia
+24,Level 6,Department of Prime Minister and Cabinet (PM&C)
+25,Level 1,Department of Health and Aged Care
+26,Level 4,National Disability Insurance Agency (NDIA)
+27,Exec Level 1,"Department of Agriculture, Fisheries and Forestry"
+28,Level 2,Attorney-General's Department
+29,Level 5,"Department of Industry, Science and Resources"
+30,Level 3,Australian Public Service Commission (APSC)
+31,Exec Level 2,Department of Home Affairs
+32,Level 6,Department of Defence
+33,Level 1,Australian Bureau of Statistics (ABS)
+34,Level 4,Department of Education
+35,Exec Level 1,Department of Foreign Affairs and Trade (DFAT)
+36,Level 2,The Treasury
+37,Level 5,Australian Taxation Office (ATO)
+38,Level 3,Services Australia
+39,Exec Level 2,Department of Prime Minister and Cabinet (PM&C)
+40,Level 6,Department of Health and Aged Care
+41,Level 1,National Disability Insurance Agency (NDIA)
+42,Level 4,"Department of Agriculture, Fisheries and Forestry"
+43,Exec Level 1,Attorney-General's Department
+44,Level 2,"Department of Industry, Science and Resources"
+45,Level 5,Australian Public Service Commission (APSC)
+46,Level 3,Department of Home Affairs
+47,Exec Level 2,Department of Defence
+48,Level 6,Australian Bureau of Statistics (ABS)
+49,Level 1,Department of Education
+50,Level 4,Department of Foreign Affairs and Trade (DFAT)
