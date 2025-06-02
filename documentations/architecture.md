@@ -117,7 +117,7 @@
 Purpose: 
 - Provides reusable functions to connect to and interact with your PostgreSQL database.
 Key Functions:
-- get_db_connection(): Reads credentials (e.g., from config/db_config.ini) and establishes a connection to PostgreSQL. Returns a connection object.
+- get_db_connection(): Reads credentials and establishes a connection to PostgreSQL. Returns a connection object.
 - close_db_connection(connection, cursor=None): Closes the database connection and cursor.
 - fetch_data(query, params=None, connection=None): Executes a SELECT query and returns the results (e.g., as a list of tuples or dictionaries).
 - execute_query(query, params=None, connection=None): Executes INSERT, UPDATE, or DELETE queries.
