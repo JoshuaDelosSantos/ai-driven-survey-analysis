@@ -3,10 +3,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: ai-analysis-db
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: csi-db
+    env_file: .env
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
