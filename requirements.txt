@@ -1,28 +1,30 @@
-# Database connectivity
-psycopg2-binary
-
-# ORM (optional—if you prefer raw SQL, you can omit this)
-SQLAlchemy
-
-# Vector‐column support for SQLAlchemy + PostgreSQL
-pgvector
-
-# Data ingestion & manipulation (e.g., reading Excel)
-pandas
-openpyxl
-numpy
-scipy
-
-# Environment variables
-python-dotenv
-
-# OpenAI API (embeddings, chat completion)
-openai
-
-# Hugging Face Transformers (e.g., RoBERTa for sentiment)
-transformers
-
-# Machine learning frameworks
-torch
-torchvision
-torchaudio
+certifi==2025.4.26
+charset-normalizer==3.4.2
+dotenv==0.9.9
+filelock==3.18.0
+fsspec==2025.5.1
+hf-xet==1.1.2
+huggingface-hub==0.32.4
+idna==3.10
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+mpmath==1.3.0
+networkx==3.5
+numpy==2.2.6
+packaging==25.0
+psycopg2-binary==2.9.10
+python-dotenv==1.1.0
+PyYAML==6.0.2
+regex==2024.11.6
+requests==2.32.3
+safetensors==0.5.3
+scipy==1.15.3
+setuptools==80.9.0
+sympy==1.14.0
+tokenizers==0.21.1
+torch==2.7.0
+tqdm==4.67.1
+transformers==4.52.4
+typing_extensions==4.14.0
+urllib3==2.4.0
+wheel==0.45.1
