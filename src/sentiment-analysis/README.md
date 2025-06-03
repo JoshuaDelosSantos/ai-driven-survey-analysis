@@ -22,9 +22,9 @@ The sentiment analysis pipeline follows a modular design with distinct component
 2. **text_preprocessor.py**
    - Purpose: Prepares text data for the sentiment model
    - Responsibilities:
-     - Normalizes whitespace and formatting
+     - Normalises whitespace and formatting
      - Handles missing or invalid data
-     - Prepares text for tokenization
+     - Prepares text for tokenisation
 
 3. **sentiment_classifier.py**
    - Purpose: Performs the actual sentiment analysis using RoBERTa
@@ -42,11 +42,11 @@ The sentiment analysis pipeline follows a modular design with distinct component
      - Handles database transactions and error recovery
 
 5. **visualization.py**
-   - Purpose: Creates visualizations of sentiment analysis results
+   - Purpose: Creates visualisations of sentiment analysis results
    - Responsibilities:
      - Generates sentiment distribution charts
      - Produces content-based sentiment comparisons
-     - Exports visualization files
+     - Exports visualisation files
 
 6. **evaluate_feedback.py**
    - Purpose: Main orchestration script
@@ -81,7 +81,7 @@ Additionally, a tracking column is added to the `evaluation` table:
 
 ## Usage
 
-Run the sentiment analysis pipeline to analyze all unprocessed feedback:
+Run the sentiment analysis pipeline to analyse all unprocessed feedback:
 
 ```bash
 python evaluate_feedback.py
