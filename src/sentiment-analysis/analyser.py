@@ -7,7 +7,7 @@ Defines SentimentAnalyser:
 """
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from scipy.special import softmax
-from .config import MODEL_NAME, SCORE_COLUMNS
+from config import MODEL_NAME, SCORE_COLUMNS
 
 class SentimentAnalyser:
     def __init__(self):
