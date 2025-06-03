@@ -23,6 +23,7 @@ Functions:
 - fetch_data(): Execute SELECT queries and return results
 - execute_query(): Execute INSERT/UPDATE/DELETE queries
 - batch_insert_data(): Efficiently insert multiple rows
+- table_exists(): Check if a table exists in the database
 - test_database_operations(): Comprehensive test suite
 
 Usage Example:
@@ -244,6 +245,44 @@ def batch_insert_data(query, data_list, connection=None):
         if conn_created and connection:
             connection.close()
 
+
+def table_exists(table_name, connection=None):
+    """
+    Check if a table exists in the current database.
+    
+    Args:
+        table_name (str): Name of the table to check
+        connection (psycopg2.connection, optional): Database connection. If None, creates a new one
+        
+    Returns:
+        bool: True if table exists, False otherwise
+    """
+    conn_created = False
+    
+    try:
+        # Use provided connection or create a new one
+        if connection is None:
+            connection = get_db_connection()
+            conn_created = True
+        
+        check_query = """
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = %s
+        )
+        """
+        
+        result = fetch_data(check_query, (table_name,), connection=connection)
+        return result[0][0]  # Returns True/False
+        
+    except Exception as e:
+        print(f"[{datetime.now()}] ERROR: Failed to check table existence: {e}")
+        return False
+    finally:
+        # Close connection if we created it in this function
+        if conn_created and connection:
+            close_db_connection(connection)
 
 def test_database_operations():
     """
