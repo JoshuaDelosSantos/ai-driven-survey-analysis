@@ -1,0 +1,332 @@
+{
+  "users": {
+    "description": "Stores information about individual users/participants.",
+    "source_file": "User - Sheet1.csv",
+    "columns": [
+      {
+        "name": "user_id",
+        "dataType": "INTEGER",
+        "description": "Unique identifier for the user.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "user_level",
+        "dataType": "VARCHAR(255)",
+        "description": "Classification level of the user (e.g., 'Level 4', 'Exec Level 1').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "agency",
+        "dataType": "VARCHAR(255)",
+        "description": "The Australian Public Service agency the user belongs to.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      }
+    ]
+  },
+  "learning_content": {
+    "description": "Stores information about learning courses and content.",
+    "source_file": "Learning Content - Sheet1.csv",
+    "columns": [
+      {
+        "name": "surrogate_key",
+        "dataType": "INTEGER",
+        "description": "Unique identifier for the learning content item.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "name",
+        "dataType": "TEXT",
+        "description": "Name of the course or learning content.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "content_id",
+        "dataType": "INTEGER",
+        "description": "Original content identifier, if different from surrogate_key.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "content_type",
+        "dataType": "VARCHAR(255)",
+        "description": "Type of learning content (e.g., 'Course', 'Video', 'Live Learning').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "target_level",
+        "dataType": "VARCHAR(255)",
+        "description": "The intended APS audience level for the content (e.g., 'Level 3', 'All Levels').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "governing_bodies",
+        "dataType": "TEXT",
+        "description": "Governing body or authority for the content (e.g., 'APSC', 'APS Academy').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      }
+    ]
+  },
+  "attendance": {
+    "description": "Tracks user attendance and status for learning content.",
+    "source_file": "Attendance - Sheet1.csv",
+    "columns": [
+      {
+        "name": "attendance_id",
+        "dataType": "INTEGER",
+        "description": "Unique identifier for the attendance record.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "user_id",
+        "dataType": "INTEGER",
+        "description": "Identifier for the user attending.",
+        "isPrimaryKey": false,
+        "isForeignKey": true,
+        "foreignKeyReference": "users.user_id",
+        "isFreeText": false
+      },
+      {
+        "name": "learning_content_surrogate_key",
+        "dataType": "INTEGER",
+        "description": "Identifier for the learning content being attended.",
+        "isPrimaryKey": false,
+        "isForeignKey": true,
+        "foreignKeyReference": "learning_content.surrogate_key",
+        "isFreeText": false
+      },
+      {
+        "name": "date_effective",
+        "dataType": "DATE",
+        "description": "The effective date of the attendance status (e.g., enrollment date, completion date).",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "status",
+        "dataType": "VARCHAR(255)",
+        "description": "Enrollment status (e.g., 'Completed', 'Enrolled', 'Cancelled').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      }
+    ]
+  },
+  "evaluations": {
+    "description": "Stores responses from post-course evaluation surveys. Based on the refactored mock data generated.",
+    "source_file": "Evaluation - Sheet1.csv (or refactored_mock_post_course_evaluation_data.csv)",
+    "columns": [
+      {
+        "name": "response_id",
+        "dataType": "INTEGER",
+        "description": "Unique identifier for the evaluation response.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "user_id",
+        "dataType": "INTEGER",
+        "description": "Identifier for the user who submitted the evaluation.",
+        "isPrimaryKey": false,
+        "isForeignKey": true,
+        "foreignKeyReference": "users.user_id",
+        "isFreeText": false
+      },
+      {
+        "name": "learning_content_surrogate_key",
+        "dataType": "INTEGER",
+        "description": "Identifier for the course being evaluated.",
+        "isPrimaryKey": false,
+        "isForeignKey": true,
+        "foreignKeyReference": "learning_content.surrogate_key",
+        "isFreeText": false
+      },
+      {
+        "name": "course_end_date",
+        "dataType": "DATE",
+        "description": "Date the participant attended/completed the course.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "course_delivery_type",
+        "dataType": "VARCHAR(255)",
+        "description": "How the course was delivered (e.g., 'In-person', 'Virtual', 'Blended').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "agency",
+        "dataType": "VARCHAR(255)",
+        "description": "Participant's agency (denormalized, also available via users.user_id).",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "attendance_motivation",
+        "dataType": "TEXT",
+        "description": "Reasons for attending (multi-choice, semicolon-separated string). Options: 'To improve my performance...', 'To develop for a future role...', etc.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "positive_learning_experience",
+        "dataType": "INTEGER",
+        "description": "Likert scale (1-5) rating for positive learning experience.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "effective_use_of_time",
+        "dataType": "INTEGER",
+        "description": "Likert scale (1-5) rating for effective use of time.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "relevant_to_work",
+        "dataType": "INTEGER",
+        "description": "Likert scale (1-5) rating for relevance to work.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "did_experience_issue",
+        "dataType": "TEXT",
+        "description": "Issues experienced (multi-choice, semicolon-separated string, includes 'None of the above'). Options: 'Technical difficulties...', 'Learning resources poorly designed...', etc.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "did_experience_issue_detail",
+        "dataType": "TEXT",
+        "description": "Free-text details if an issue was reported.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "facilitator_skills",
+        "dataType": "TEXT",
+        "description": "Skills demonstrated by the facilitator (multi-choice, semicolon-separated string, includes 'None of the above'). Options: 'Displayed strong knowledge...', 'Communicated clearly...', etc.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "had_guest_speakers",
+        "dataType": "VARCHAR(50)",
+        "description": "Whether the course included guest speakers ('Yes'/'No').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "guest_contribution",
+        "dataType": "TEXT",
+        "description": "How guest speakers enhanced learning (multi-choice, semicolon-separated string, includes 'The contributions... did not enhance learning'). Conditional on 'had_guest_speakers'. Options: 'Strengthened understanding...', 'Enhanced relevance...', etc.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "knowledge_level_prior",
+        "dataType": "VARCHAR(255)",
+        "description": "Participant's self-assessed knowledge level before the course (e.g., 'Novice', 'Beginner', 'Expert').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "course_application",
+        "dataType": "TEXT",
+        "description": "Ways the course prepared participant to apply learning (multi-choice, semicolon-separated string, includes 'Other'). Options: 'Opportunity to practice...', 'Prompted reflection...', etc.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "course_application_other",
+        "dataType": "TEXT",
+        "description": "Free-text details if 'Other' selected for course_application.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "course_application_timeframe",
+        "dataType": "VARCHAR(255)",
+        "description": "When the participant plans to apply learning (e.g., 'Immediately', 'Within the next month', 'I am not sure').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "general_feedback",
+        "dataType": "TEXT",
+        "description": "Any other free-text feedback from the participant.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      }
+    ]
+  }
+}
