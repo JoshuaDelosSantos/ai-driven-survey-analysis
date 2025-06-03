@@ -7,7 +7,6 @@ logging about the table's existence status.
 
 Functions:
 - create_users_table(): Creates the users table with proper schema
-- table_exists(): Checks if the users table already exists
 
 Usage:
     python create_users_table.py
@@ -19,32 +18,6 @@ Dependencies:
 
 import db_connector
 from datetime import datetime
-
-def table_exists(table_name, connection):
-    """
-    Check if a table exists in the current database.
-    
-    Args:
-        table_name (str): Name of the table to check
-        connection: Database connection object
-        
-    Returns:
-        bool: True if table exists, False otherwise
-    """
-    check_query = """
-    SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = %s
-    )
-    """
-    
-    try:
-        result = db_connector.fetch_data(check_query, (table_name,), connection=connection)
-        return result[0][0]  # Returns True/False
-    except Exception as e:
-        print(f"[{datetime.now()}] Error checking table existence: {e}")
-        return False
 
 def create_users_table():
     """
@@ -61,7 +34,7 @@ def create_users_table():
         print(f"[{datetime.now()}] Database connection established")
         
         # Check if users table already exists
-        if table_exists('users', connection):
+        if db_connector.table_exists('users', connection):
             print(f"[{datetime.now()}] Users table already exists in the database")
             print(f"[{datetime.now()}] Skipping table creation")
             
@@ -98,7 +71,7 @@ def create_users_table():
         print(f"[{datetime.now()}] Users table created successfully")
         
         # Verify table creation and show structure
-        if table_exists('users', connection):
+        if db_connector.table_exists('users', connection):
             print(f"[{datetime.now()}] Table creation verified")
             
             structure_query = """
