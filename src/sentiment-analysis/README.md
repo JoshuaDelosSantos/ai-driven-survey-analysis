@@ -24,14 +24,14 @@ The sentiment-analysis module adopts a class-based structure to ensure maintaina
 
 4. **data_processor.py**
    - Defines `DataProcessor`:
-     - `__init__`: accepts instances of `DBOperations` and `SentimentAnalyzer`.
-     - `process_all()`: fetches evaluation rows, iterates over configured free-text fields, calls `analyze`, and persists results via `DBOperations`.
+     - `__init__`: accepts instances of `DBOperations` and `SentimentAnalyser`.
+     - `process_all()`: fetches evaluation rows, iterates over configured free-text fields, calls `analyse`, and persists results via `DBOperations`.
 
 5. **runner.py**
    - Script entry point:
      - Ensures sentiment table exists by invoking `src/db/create_sentiment_table.py`.
      - Parses any CLI arguments (optional).
-     - Instantiates `SentimentAnalyzer`, `DBOperations`, and `DataProcessor`.
+     - Instantiates `SentimentAnalyser`, `DBOperations`, and `DataProcessor`.
      - Calls `DataProcessor.process_all()` to execute the pipeline.
 
 ### Dependency: Table Creation Script
