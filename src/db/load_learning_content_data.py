@@ -13,6 +13,7 @@ Usage:
     python load_learning_content_data.py
 
 Dependencies:
+- os: File path operations
 - db_connector: Database operations
 - pandas: CSV data processing
 - datetime: Timestamp logging

@@ -1,4 +1,3 @@
-
 """
 User Data Loader for Sentiment Analysis Project
 
@@ -14,6 +13,7 @@ Usage:
 
 Dependencies:
 - pandas: CSV file processing
+- os: File path operations
 - db_connector: Database operations
 """
 
