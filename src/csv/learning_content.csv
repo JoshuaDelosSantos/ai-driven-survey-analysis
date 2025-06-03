@@ -1,0 +1,101 @@
+surrogate_key,name,content_id,content_type,target_level,governing_bodies
+1,Introduction to Policy Development,1,Course,Level 3,APSC
+2,Quick Guide: Data Analysis,2,Video,Level 4,Digital Transformation Agency
+3,Interactive Session: Effective Communication,3,Live Learning,All Levels,APS Academy
+4,Advanced Project Management,4,Course,Level 5,Portfolio Specific Governance Board
+5,Explainer: Cyber Security Fundamentals,1,Video,Level 2,Cyber Security Centre
+6,Workshop on Strategic Thinking,5,Course,Exec Level 1,Department of Finance
+7,Tutorial: Report Writing,6,Video,Level 3,Internal Audit Branch
+8,Webinar: Understanding APS Values,7,Live Learning,All Levels,APSC
+9,Masterclass in Financial Literacy,8,Course,Level 6,Comcare
+10,Case Study: Digital Transformation in Action,2,Live Learning,Level 4,Digital Transformation Agency
+11,Fundamentals of Public Speaking,9,Course,Level 2,APS Academy
+12,Deep Dive: Indigenous Cultural Awareness,10,Video,All Levels,Department of Prime Minister and Cabinet
+13,Live Q&A: Leadership Program Insights,11,Live Learning,Exec Level 2,APSC
+14,Effective Wellbeing Strategies,12,Course,Level 1,Comcare
+15,Interview with Expert: Modern Policy Challenges,1,Live Learning,Exec Level 1,Portfolio Specific Governance Board
+16,APS Guide to Data Management,13,Course,Level 4,Digital Transformation Agency
+17,Quick Guide: Project Management Basics,4,Video,Level 3,APS Academy
+18,Panel Discussion: Future of Work in APS,14,Live Learning,All Levels,Department of Finance
+19,Digital Skills: Advanced Excel,15,Course,Level 5,ATO Corporate Training
+20,Explainer: APS Code of Conduct,7,Video,Level 1,APSC
+21,Introduction to Change Management,16,Course,Level 4,Defence Learning Command
+22,Tutorial: Using Collaboration Tools,17,Video,Level 2,Digital Transformation Agency
+23,Bootcamp: Agile Methodologies,18,Live Learning,Level 5,Home Affairs Capability Development
+24,Advanced Data Visualisation,19,Course,Level 6,Australian Bureau of Statistics (ABS)
+25,Quick Guide: Understanding Budgets,8,Video,Level 3,Department of Finance
+26,Strategic Negotiation Skills,20,Course,Exec Level 1,APSC
+27,Explainer: Risk Management Framework,21,Video,Level 4,Internal Audit Branch
+28,Interactive Session: Ethical Decision Making,22,Live Learning,All Levels,APS Academy
+29,Fundamentals of Contract Management,23,Course,Level 5,Comcare
+30,Deep Dive: APS Reform Agenda,14,Video,Exec Level 2,Department of Prime Minister and Cabinet
+31,Introduction to Ministerial Briefings,24,Course,Level 3,Portfolio Specific Governance Board
+32,Tutorial: Effective Minute Taking,25,Video,Level 2,APSC
+33,Webinar: Mental Health in the Workplace,12,Live Learning,All Levels,Comcare
+34,Masterclass in Stakeholder Engagement,26,Course,Level 6,APS Academy
+35,Case Study: Successful Policy Implementation,27,Video,Level 4,Department of Finance
+36,Leadership Program: Building High-Performing Teams,11,Course,Exec Level 2,APSC
+37,Quick Guide: APS Performance Management,28,Video,Level 3,APS Academy
+38,Live Q&A: Navigating APS Career Pathways,29,Live Learning,All Levels,APSC
+39,Effective Presentation Skills,30,Course,Level 4,APS Academy
+40,Explainer: Introduction to AI in Government,31,Video,Level 5,Digital Transformation Agency
+41,Workshop on Critical Thinking & Problem Solving,32,Course,Level 6,Portfolio Specific Governance Board
+42,Tutorial: APS Information Management,13,Video,Level 3,Digital Transformation Agency
+43,Panel Discussion: Diversity and Inclusion in APS,33,Live Learning,All Levels,APSC
+44,Understanding Government Procurement,34,Course,Level 4,Department of Finance
+45,Deep Dive: The Role of the Senate,35,Video,Level 5,Department of Prime Minister and Cabinet
+46,Introduction to Regulatory Practice,36,Course,Level 3,Comcare
+47,Quick Guide: Writing for the Web,37,Video,Level 2,Digital Transformation Agency
+48,Interactive Session: Unconscious Bias,33,Live Learning,All Levels,APS Academy
+49,Advanced Ministerial Correspondence,24,Course,Level 5,Portfolio Specific Governance Board
+50,Explainer: APS Security Clearances,38,Video,Level 1,Defence Learning Command
+51,Fundamentals of Human-Centred Design,39,Course,Level 4,Digital Transformation Agency
+52,Tutorial: Using SharePoint Effectively,17,Live Learning,Level 2,ATO Corporate Training
+53,Webinar: APS Graduate Program Overview,40,Live Learning,Level 1,APSC
+54,Masterclass in Public Sector Innovation,41,Course,Exec Level 1,"Department of Industry, Science and Resources"
+55,Case Study: Inter-Agency Collaboration,42,Video,Level 5,Portfolio Specific Governance Board
+56,Strategic Foresight and Planning,5,Live Learning,Exec Level 2,Department of Prime Minister and Cabinet
+57,Quick Guide: Handling Difficult Conversations,43,Video,Level 3,APS Academy
+58,Live Q&A: APS Enterprise Agreement,44,Live Learning,All Levels,APSC
+59,Effective Time Management,45,Course,Level 2,Comcare
+60,Explainer: Machinery of Government Changes,46,Video,Level 6,Department of Prime Minister and Cabinet
+61,Introduction to Parliamentary Processes,35,Course,Level 4,APSC
+62,Tutorial: Data Storytelling,19,Video,Level 5,Australian Bureau of Statistics (ABS)
+63,Bootcamp: Service Design,39,Live Learning,Level 4,Digital Transformation Agency
+64,Advanced Negotiation for EL2s,20,Live Learning,Exec Level 1,APSC
+65,Quick Guide: APS Social Media Policy,47,Video,Level 3,Department of Prime Minister and Cabinet
+66,Understanding Legislative Instruments,48,Course,Level 5,Attorney-General's Department
+67,Explainer: Freedom of Information (FOI) Basics,49,Video,Level 2,APSC
+68,Interactive Session: Building Resilience,12,Course,All Levels,Comcare
+69,Fundamentals of Evaluation in APS,50,Course,Level 4,Department of Finance
+70,Deep Dive: Commonwealth Budget Process,8,Live Learning,Level 6,The Treasury
+71,Introduction to International Engagement,51,Course,Level 3,Department of Foreign Affairs and Trade (DFAT)
+72,Tutorial: Crafting Effective Briefing Notes,24,Video,Level 4,Portfolio Specific Governance Board
+73,Webinar: Working with Ministers' Offices,52,Live Learning,Exec Level 1,Department of Prime Minister and Cabinet
+74,Masterclass in Regulatory Stewardship,36,Course,Exec Level 2,Comcare
+75,Case Study: Crisis Communication in Government,53,Video,Level 5,APSC
+76,Leadership Program: Coaching and Mentoring,11,Video,Exec Level 1,APS Academy
+77,Quick Guide: APS Records Management,54,Video,Level 2,National Archives of Australia
+78,Live Q&A: Intellectual Property in Government,55,Live Learning,Level 4,IP Australia
+79,Effective Grant Management,56,Course,Level 5,Department of Finance
+80,Explainer: APS Integrity Framework,22,Video,All Levels,APSC
+81,Workshop on Data Ethics in Public Sector,31,Live Learning,Level 6,Digital Transformation Agency
+82,Tutorial: Advanced Search Techniques for Research,57,Video,Level 3,Parliamentary Library
+83,Panel Discussion: APS Role in National Security,58,Live Learning,Exec Level 2,Department of Home Affairs
+84,Understanding APS Workforce Strategy,59,Course,Exec Level 1,APSC
+85,Deep Dive: Applying Behavioural Insights,60,Video,Level 5,Behavioural Economics Team Australia (BETA)
+86,Introduction to Systems Thinking,61,Course,Level 4,APS Academy
+87,Quick Guide: APS Learning and Development Framework,40,Video,All Levels,APSC
+88,Interactive Session: Cross-Cultural Communication,51,Live Learning,Level 3,Department of Foreign Affairs and Trade (DFAT)
+89,Advanced Policy Implementation Challenges,27,Course,Exec Level 1,Portfolio Specific Governance Board
+90,Explainer: The Cabinet Handbook,46,Live Learning,Exec Level 2,Department of Prime Minister and Cabinet
+91,Fundamentals of Digital Accessibility,37,Course,Level 2,Digital Transformation Agency
+92,Tutorial: Managing Upwards Effectively,43,Course,Level 4,APS Academy
+93,Webinar: The Future of Digital Identity,62,Live Learning,Level 5,Digital Transformation Agency
+94,Masterclass in Leading Through Uncertainty,41,Live Learning,Exec Level 2,APSC
+95,Case Study: APS Response to Natural Disasters,63,Video,Level 6,National Emergency Management Agency
+96,Strategic Communication Planning,30,Live Learning,Exec Level 1,APSC
+97,Quick Guide: APS Gifts and Benefits Policy,47,Live Learning,All Levels,APSC
+98,Live Q&A: APS Redeployment and Mobility,44,Course,Level 3,APSC
+99,Effective Stakeholder Mapping and Analysis,26,Video,Level 5,APS Academy
+100,Explainer: APS Approach to Artificial Intelligence,31,Course,Exec Level 1,"Department of Industry, Science and Resources"
