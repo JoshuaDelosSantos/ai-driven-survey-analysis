@@ -29,9 +29,16 @@ The sentiment-analysis module adopts a class-based structure to ensure maintaina
 
 5. **runner.py**
    - Script entry point:
+     - Ensures sentiment table exists by invoking `src/db/create_sentiment_table.py`.
      - Parses any CLI arguments (optional).
-     - Instantiates `SentimentAnalyser`, `DBOperations`, and `DataProcessor`.
+     - Instantiates `SentimentAnalyzer`, `DBOperations`, and `DataProcessor`.
      - Calls `DataProcessor.process_all()` to execute the pipeline.
+
+### Dependency: Table Creation Script
+Before running the sentiment pipeline, ensure the sentiment table is created:
+```bash
+python src/db/create_sentiment_table.py
+```
 
 ### File Structure
 ```
