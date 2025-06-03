@@ -17,6 +17,7 @@ This directory contains standalone Python scripts for managing and manipulating 
   - `fetch_data(query, params=None, connection=None)` — run `SELECT` statements.
   - `execute_query(query, params=None, connection=None)` — run `INSERT`/`UPDATE`/`DELETE` with transaction support.
   - `batch_insert_data(query, data_list, connection=None)` — efficiently insert multiple rows.
+  - `table_exists(table_name, connection=None)` — check if a table exists in the database.
   - `test_database_operations()` — self-test: create, insert, fetch, and drop a sample table.
 
 - **create_users_table.py**  
@@ -25,7 +26,7 @@ This directory contains standalone Python scripts for managing and manipulating 
   - Otherwise, defines and creates the table with columns (`user_id`, `user_level`, `agency`, `created_at`).
 
 - **load_user_data.py**  
-  Loads user metadata from `src/csv/user.csv` into the `users` table:  
+  Loads user data from `src/csv/user.csv` into the `users` table:  
   1. Reads CSV via Pandas.  
   2. Validates required columns (`user_id`, `user_level`, `agency`).  
   3. Converts and batches rows into the database.
@@ -44,7 +45,7 @@ This directory contains standalone Python scripts for managing and manipulating 
 - **create_attendance_table.py**  
   Checks for and creates the `attendance` table:  
   - If the table exists, logs its schema.  
-  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).
+  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).  
   - Includes foreign key constraints to `users` and `learning_content` tables.
 
 - **load_attendance_data.py**  
