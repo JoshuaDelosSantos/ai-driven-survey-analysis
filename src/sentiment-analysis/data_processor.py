@@ -7,9 +7,9 @@ Defines DataProcessor:
  - calls SentimentAnalyser.analyse()
  - persists scores via DBOperations.write_sentiment()
 """
-from .config import EVALUATION_TABLE, FREE_TEXT_COLUMNS
-from .analyser import SentimentAnalyser
-from .db_operations import DBOperations
+from config import EVALUATION_TABLE, FREE_TEXT_COLUMNS
+from analyser import SentimentAnalyser
+from db_operations import DBOperations
 from db.db_connector import fetch_data
 
 class DataProcessor:
