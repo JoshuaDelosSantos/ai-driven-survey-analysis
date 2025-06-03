@@ -67,17 +67,10 @@ This directory contains standalone Python scripts for managing and manipulating 
   2. Validates required columns and checks for duplicate response_ids.
   3. Converts and batches rows into the database with joins to display related data.
 
-- **create_evaluation_table.py**  
-  Checks for and creates the `evaluation` table:  
-  - If the table exists, logs its schema.  
-  - Otherwise, defines and creates the table with columns (`response_id`, `user_id`, `learning_content_surrogate_key`, `course_end_date`, `course_delivery_type`, `agency`, `attendance_motivation`, `positive_learning_experience`, `effective_use_of_time`, `relevant_to_work`, `did_experience_issue`, `did_experience_issue_detail`, `facilitator_skills`, `had_guest_speakers`, `guest_contribution`, `knowledge_level_prior`, `course_application`, `course_application_other`, `course_application_timeframe`, `general_feedback`, `created_at`).  
-  - Includes foreign key constraints to `users` and `learning_content` tables.
-
-- **load_evaluation_data.py**  
-  Loads evaluation data from `src/csv/evaluation.csv` into the `evaluation` table:  
-  1. Reads CSV via Pandas.  
-  2. Validates required columns and checks for duplicate response_ids.  
-  3. Converts and batches rows into the database with joins to display related data.
+- **create_sentiment_table.py**  
+  Checks for and creates the `evaluation_sentiment` table:
+  - If the table exists, logs status and skips creation.
+  - Otherwise, creates `evaluation_sentiment` with columns (`response_id`, `column_name`, `neg`, `neu`, `pos`, `created_at`) and foreign key to `evaluation(response_id)`.
 
 ## Prerequisites
 
@@ -143,6 +136,11 @@ python create_evaluation_table.py          # idempotent: logs if table exists
 python load_evaluation_data.py             # reads src/csv/evaluation.csv and batch-inserts into evaluation
 ```
 
+### Create Sentiment Table
+```bash
+python create_sentiment_table.py           # idempotent: logs if table exists
+```
+
 ## Setup
 
 Run the following scripts in sequence to initialise tables and load CSV data:
@@ -155,6 +153,7 @@ python create_attendance_table.py          # create 'attendance' table
 python load_attendance_data.py             # load attendance data from CSV
 python create_evaluation_table.py          # create 'evaluation' table
 python load_evaluation_data.py             # load evaluation data from CSV
+python create_sentiment_table.py           # create 'evaluation_sentiment' table
 ```
 
 ## Best Practices
