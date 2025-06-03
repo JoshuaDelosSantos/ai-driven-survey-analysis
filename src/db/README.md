@@ -41,6 +41,18 @@ This directory contains standalone Python scripts for managing and manipulating 
   2. Validates required columns and checks for duplicate surrogate_keys.  
   3. Converts and batches rows into the database with comprehensive logging.
 
+- **create_attendance_table.py**  
+  Checks for and creates the `attendance` table:  
+  - If the table exists, logs its schema.  
+  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).
+  - Includes foreign key constraints to `users` and `learning_content` tables.
+
+- **load_attendance_data.py**  
+  Loads attendance data from `src/csv/attendance.csv` into the `attendance` table:  
+  1. Reads CSV via Pandas.  
+  2. Validates required columns and checks for duplicate attendance_ids.  
+  3. Converts and batches rows into the database with joins to display related data.
+
 ## Prerequisites
 
 1. **Environment Variables** — Create a `.env` file at project root with:
@@ -85,6 +97,16 @@ python create_learning_content_table.py    # idempotent: logs if table exists
 python load_learning_content_data.py       # reads src/csv/learning_content.csv and batch-inserts into learning_content
 ```
 
+### Create Attendance Table
+```bash
+python create_attendance_table.py          # idempotent: logs if table exists
+```
+
+### Load Attendance CSV Data
+```bash
+python load_attendance_data.py             # reads src/csv/attendance.csv and batch-inserts into attendance
+```
+
 ## Setup
 
 Run the following scripts in sequence to initialize tables and load CSV data:
@@ -93,6 +115,8 @@ python create_users_table.py      # create 'users' table
 python load_user_data.py          # load user data from CSV
 python create_learning_content_table.py    # create 'learning_content' table
 python load_learning_content_data.py       # load learning content data from CSV
+python create_attendance_table.py          # create 'attendance' table
+python load_attendance_data.py             # load attendance data from CSV
 ```
 
 ## Best Practices
