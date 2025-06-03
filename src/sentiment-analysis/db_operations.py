@@ -5,7 +5,7 @@ Defines DBOperations:
  - write_sentiment(response_id, column, scores): upserts sentiment scores into sentiment table
 """
 from db.db_connector import execute_query
-from .config import SENTIMENT_TABLE, SCORE_COLUMNS
+from config import SENTIMENT_TABLE, SCORE_COLUMNS
 
 class DBOperations:
     def __init__(self):
