@@ -1,7 +1,7 @@
 {
   "users": {
     "description": "Stores information about individual users/participants.",
-    "source_file": "User - Sheet1.csv",
+    "source_file": "user.csv",
     "columns": [
       {
         "name": "user_id",
@@ -34,7 +34,7 @@
   },
   "learning_content": {
     "description": "Stores information about learning courses and content.",
-    "source_file": "Learning Content - Sheet1.csv",
+    "source_file": "learning_content.csv",
     "columns": [
       {
         "name": "surrogate_key",
@@ -94,7 +94,7 @@
   },
   "attendance": {
     "description": "Tracks user attendance and status for learning content.",
-    "source_file": "Attendance - Sheet1.csv",
+    "source_file": "attendance.csv",
     "columns": [
       {
         "name": "attendance_id",
@@ -143,9 +143,9 @@
       }
     ]
   },
-  "evaluations": {
+  "evaluation": {
     "description": "Stores responses from post-course evaluation surveys. Based on the refactored mock data generated.",
-    "source_file": "Evaluation - Sheet1.csv (or refactored_mock_post_course_evaluation_data.csv)",
+    "source_file": "evaluation.csv",
     "columns": [
       {
         "name": "response_id",
