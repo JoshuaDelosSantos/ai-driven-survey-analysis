@@ -30,6 +30,17 @@ This directory contains standalone Python scripts for managing and manipulating 
   2. Validates required columns (`user_id`, `user_level`, `agency`).  
   3. Converts and batches rows into the database.
 
+- **create_learning_content_table.py**  
+  Checks for and creates the `learning_content` table:  
+  - If the table exists, logs its schema.  
+  - Otherwise, defines and creates the table with columns (`surrogate_key`, `name`, `content_id`, `content_type`, `target_level`, `governing_bodies`, `created_at`).
+
+- **load_learning_content_data.py**  
+  Loads learning content data from `src/csv/learning_content.csv` into the `learning_content` table:  
+  1. Reads CSV via Pandas.  
+  2. Validates required columns and checks for duplicate surrogate_keys.  
+  3. Converts and batches rows into the database with comprehensive logging.
+
 ## Prerequisites
 
 1. **Environment Variables** — Create a `.env` file at project root with:
@@ -62,6 +73,26 @@ python create_users_table.py      # idempotent: logs if table exists
 ### Load User CSV Data
 ```bash
 python load_user_data.py          # reads src/csv/user.csv and batch-inserts into users
+```
+
+### Create Learning Content Table
+```bash
+python create_learning_content_table.py    # idempotent: logs if table exists
+```
+
+### Load Learning Content CSV Data
+```bash
+python load_learning_content_data.py       # reads src/csv/learning_content.csv and batch-inserts into learning_content
+```
+
+## Setup
+
+Run the following scripts in sequence to initialize tables and load CSV data:
+```bash
+python create_users_table.py      # create 'users' table
+python load_user_data.py          # load user data from CSV
+python create_learning_content_table.py    # create 'learning_content' table
+python load_learning_content_data.py       # load learning content data from CSV
 ```
 
 ## Best Practices
