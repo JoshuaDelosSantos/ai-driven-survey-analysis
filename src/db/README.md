@@ -4,7 +4,7 @@ This directory contains standalone Python scripts for managing and manipulating 
 
 ## Overview
 
-- Centralizes all database-related operations in one place.
+- Centralises all database-related operations in one place.
 - Provides connection utilities, table creation, and data loading functions.
 - Designed to be invoked independently or as part of larger workflows.
 
@@ -145,7 +145,7 @@ python load_evaluation_data.py             # reads src/csv/evaluation.csv and ba
 
 ## Setup
 
-Run the following scripts in sequence to initialize tables and load CSV data:
+Run the following scripts in sequence to initialise tables and load CSV data:
 ```bash
 python create_users_table.py      # create 'users' table
 python load_user_data.py          # load user data from CSV
