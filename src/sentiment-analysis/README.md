@@ -12,7 +12,7 @@ The sentiment-analysis module adopts a class-based structure to ensure maintaina
 1. **config.py**
    - Centralises configuration constants (model name, database URI, table names, and free-text columns).
 
-2. **analyzer.py**
+2. **analyser.py**
    - Defines `SentimentAnalyser`:
      - `__init__`: loads the Hugging Face tokenizer and model.
      - `analyse(text: str) -> dict`: returns a sentiment scores dictionary `{neg, neu, pos}`.
@@ -36,7 +36,7 @@ The sentiment-analysis module adopts a class-based structure to ensure maintaina
 ### File Structure
 ```
 src/sentiment-analysis/
-├── analyzer.py
+├── analyser.py
 ├── config.py
 ├── data_processor.py
 ├── db_operations.py
