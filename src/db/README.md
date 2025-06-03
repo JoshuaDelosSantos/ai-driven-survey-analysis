@@ -8,6 +8,7 @@ This directory contains standalone Python scripts for managing and manipulating 
 - Provides connection utilities, table creation, and data loading functions.
 - Designed to be invoked independently or as part of larger workflows.
 
+
 ## Files
 
 - **db_connector.py**  
@@ -21,37 +22,61 @@ This directory contains standalone Python scripts for managing and manipulating 
   - `test_database_operations()` — self-test: create, insert, fetch, and drop a sample table.
 
 - **create_users_table.py**  
-  Checks for and creates the `users` table:  
-  - If the table exists, logs its schema.  
+  Checks for and creates the `users` table:
+  - If the table exists, logs its schema.
   - Otherwise, defines and creates the table with columns (`user_id`, `user_level`, `agency`, `created_at`).
 
 - **load_user_data.py**  
-  Loads user data from `src/csv/user.csv` into the `users` table:  
-  1. Reads CSV via Pandas.  
-  2. Validates required columns (`user_id`, `user_level`, `agency`).  
+  Loads user data from `src/csv/user.csv` into the `users` table:
+  1. Reads CSV via Pandas.
+  2. Validates required columns (`user_id`, `user_level`, `agency`).
   3. Converts and batches rows into the database.
 
 - **create_learning_content_table.py**  
-  Checks for and creates the `learning_content` table:  
-  - If the table exists, logs its schema.  
+  Checks for and creates the `learning_content` table:
+  - If the table exists, logs its schema.
   - Otherwise, defines and creates the table with columns (`surrogate_key`, `name`, `content_id`, `content_type`, `target_level`, `governing_bodies`, `created_at`).
 
 - **load_learning_content_data.py**  
-  Loads learning content data from `src/csv/learning_content.csv` into the `learning_content` table:  
-  1. Reads CSV via Pandas.  
-  2. Validates required columns and checks for duplicate surrogate_keys.  
+  Loads learning content data from `src/csv/learning_content.csv` into the `learning_content` table:
+  1. Reads CSV via Pandas.
+  2. Validates required columns and checks for duplicate surrogate_keys.
   3. Converts and batches rows into the database with comprehensive logging.
 
 - **create_attendance_table.py**  
-  Checks for and creates the `attendance` table:  
-  - If the table exists, logs its schema.  
-  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).  
+  Checks for and creates the `attendance` table:
+  - If the table exists, logs its schema.
+  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).
   - Includes foreign key constraints to `users` and `learning_content` tables.
 
 - **load_attendance_data.py**  
-  Loads attendance data from `src/csv/attendance.csv` into the `attendance` table:  
+  Loads attendance data from `src/csv/attendance.csv` into the `attendance` table:
+  1. Reads CSV via Pandas.
+  2. Validates required columns and checks for duplicate attendance_ids.
+  3. Converts and batches rows into the database with joins to display related data.
+
+- **create_evaluation_table.py**  
+  Checks for and creates the `evaluation` table:
+  - If the table exists, logs its schema.
+  - Otherwise, defines and creates the table with the columns defined in `data-dictionary.json`.
+  - Includes foreign key constraints to `users` and `learning_content` tables.
+
+- **load_evaluation_data.py**  
+  Loads evaluation data from `src/csv/evaluation.csv` into the `evaluation` table:
+  1. Reads CSV via Pandas.
+  2. Validates required columns and checks for duplicate response_ids.
+  3. Converts and batches rows into the database with joins to display related data.
+
+- **create_evaluation_table.py**  
+  Checks for and creates the `evaluation` table:  
+  - If the table exists, logs its schema.  
+  - Otherwise, defines and creates the table with columns (`response_id`, `user_id`, `learning_content_surrogate_key`, `course_end_date`, `course_delivery_type`, `agency`, `attendance_motivation`, `positive_learning_experience`, `effective_use_of_time`, `relevant_to_work`, `did_experience_issue`, `did_experience_issue_detail`, `facilitator_skills`, `had_guest_speakers`, `guest_contribution`, `knowledge_level_prior`, `course_application`, `course_application_other`, `course_application_timeframe`, `general_feedback`, `created_at`).  
+  - Includes foreign key constraints to `users` and `learning_content` tables.
+
+- **load_evaluation_data.py**  
+  Loads evaluation data from `src/csv/evaluation.csv` into the `evaluation` table:  
   1. Reads CSV via Pandas.  
-  2. Validates required columns and checks for duplicate attendance_ids.  
+  2. Validates required columns and checks for duplicate response_ids.  
   3. Converts and batches rows into the database with joins to display related data.
 
 ## Prerequisites
@@ -108,6 +133,16 @@ python create_attendance_table.py          # idempotent: logs if table exists
 python load_attendance_data.py             # reads src/csv/attendance.csv and batch-inserts into attendance
 ```
 
+### Create Evaluation Table
+```bash
+python create_evaluation_table.py          # idempotent: logs if table exists
+```
+
+### Load Evaluation CSV Data
+```bash
+python load_evaluation_data.py             # reads src/csv/evaluation.csv and batch-inserts into evaluation
+```
+
 ## Setup
 
 Run the following scripts in sequence to initialize tables and load CSV data:
@@ -118,6 +153,8 @@ python create_learning_content_table.py    # create 'learning_content' table
 python load_learning_content_data.py       # load learning content data from CSV
 python create_attendance_table.py          # create 'attendance' table
 python load_attendance_data.py             # load attendance data from CSV
+python create_evaluation_table.py          # create 'evaluation' table
+python load_evaluation_data.py             # load evaluation data from CSV
 ```
 
 ## Best Practices
