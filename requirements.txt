@@ -21,3 +21,8 @@ openai
 
 # Hugging Face Transformers (e.g., RoBERTa for sentiment)
 transformers
+
+# Machine learning frameworks
+torch
+torchvision
+torchaudio
