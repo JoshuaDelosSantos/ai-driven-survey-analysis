@@ -1,3 +1,4 @@
+# type: ignore
 """
 Mock responses for testing external dependencies.
 
@@ -20,7 +21,7 @@ MOCK_MODEL_RESPONSES = {
         'softmax_scores': {'neg': 0.3, 'neu': 0.4, 'pos': 0.3}
     },
     'edge_case_positive': {
-        'logits': [[[−3.0, -2.0, 3.0]]],  # Strong positive
+        'logits': [[[-3.0, -2.0, 3.0]]],  # Strong positive
         'softmax_scores': {'neg': 0.05, 'neu': 0.15, 'pos': 0.8}
     },
     'edge_case_negative': {
