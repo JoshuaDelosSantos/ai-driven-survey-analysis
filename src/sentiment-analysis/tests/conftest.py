@@ -76,3 +76,43 @@ def mock_config():
         'MODEL_NAME': 'cardiffnlp/twitter-roberta-base-sentiment',
         'SCORE_COLUMNS': ['neg', 'neu', 'pos']
     }
+
+
+@pytest.fixture
+def mock_execute_query():
+    """Mock execute_query function for database operations testing."""
+    return Mock(return_value=1)  # Default: 1 row affected
+
+
+@pytest.fixture
+def sample_sentiment_scores():
+    """Sample sentiment scores for testing database operations."""
+    return {
+        'valid_scores': {'neg': 0.1, 'neu': 0.2, 'pos': 0.7},
+        'edge_scores': {'neg': 0.0, 'neu': 0.0, 'pos': 1.0},
+        'missing_key': {'neg': 0.3, 'neu': 0.4},  # missing 'pos'
+        'extra_key': {'neg': 0.2, 'neu': 0.3, 'pos': 0.5, 'extra': 0.1},
+        'none_values': {'neg': None, 'neu': 0.5, 'pos': 0.5}
+    }
+
+
+@pytest.fixture
+def sample_db_data():
+    """Sample database data for testing."""
+    return {
+        'response_ids': [1, 42, 999, 123456],
+        'columns': ['general_feedback', 'course_application_other', 'did_experience_issue_detail'],
+        'invalid_columns': ['', 'invalid_col', None],
+        'invalid_response_ids': [0, -1, None, 'string_id']
+    }
+
+
+@pytest.fixture
+def expected_upsert_query():
+    """Expected SQL query structure for upsert operations."""
+    return {
+        'base_pattern': r'INSERT INTO .+ \(.+\) VALUES \(.+\) ON CONFLICT \(.+\) DO UPDATE SET .+',
+        'table_name': 'evaluation_sentiment',
+        'columns': ['response_id', 'column_name', 'neg', 'neu', 'pos'],
+        'conflict_columns': ['response_id', 'column_name']
+    }
