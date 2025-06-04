@@ -102,39 +102,38 @@ src/sentiment-analysis/
 
 ### Running Tests
 
+To run all tests, simply execute:
+
 ```bash
-# Install test dependencies
-pip install pytest pytest-mock pytest-cov
-
-# Run all tests
 pytest
-
-# Run specific test files
-pytest tests/test_analyser.py         # SentimentAnalyser tests only
-pytest tests/test_db_operations.py   # DBOperations tests only
-pytest tests/test_data_processor.py  # DataProcessor tests only
-
-# Run with coverage reporting
-pytest --cov=. --cov-report=html
-
-# Run tests with verbose output
-pytest -v
 ```
 
-### Test Configuration
-Create `pytest.ini` in the sentiment-analysis directory:
-```ini
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]  
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--cov=.",
-    "--cov-report=term-missing",
-    "--cov-fail-under=80"
-]
+This will automatically discover and run all test files in the `tests/` directory, as configured in the provided `pytest.ini` file. No additional arguments are needed for standard test runs.
+
+#### Additional Test Commands
+- Run a specific test file:
+  ```bash
+  pytest tests/test_analyser.py
+  pytest tests/test_db_operations.py
+  pytest tests/test_data_processor.py
+  ```
+- Run with coverage reporting:
+  ```bash
+  pytest --cov=. --cov-report=html
+  ```
+- Run tests with verbose output:
+  ```bash
+  pytest -v
+  ```
+
+#### Test Configuration
+A `pytest.ini` file is included in this directory and configures test discovery, coverage, and warnings. You do not need to create your own unless you wish to override these settings.
+
+#### Dependencies
+All required test dependencies (`pytest`, `pytest-mock`, `pytest-cov`, etc.) are included in `requirements.txt`. Install them with:
+
+```bash
+pip install -r requirements.txt
 ```
 
 ### Quality Gates
