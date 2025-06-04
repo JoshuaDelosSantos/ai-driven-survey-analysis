@@ -58,6 +58,78 @@ src/sentiment-analysis/
         └── mock_responses.py         # Mock API responses
 ```
 
+## Data Governance
+
+### Data Handling Overview
+The sentiment analysis module processes free-text survey data while implementing privacy-conscious data handling practices. This section outlines how data is transported, processed, and stored throughout the pipeline.
+
+### Data Flow Architecture
+
+#### 1. Data Source and Access
+- **Source**: Free-text fields from the evaluation table in the database
+- **Access Method**: Direct database queries via SQLAlchemy connections
+- **Scope**: Only configured free-text columns (defined in `config.py`) are processed
+- **Transport**: Data remains within the local database environment - no external API calls for text processing
+
+#### 2. In-Memory Processing
+- **Text Processing**: Individual text strings are loaded into memory for analysis
+- **Model Location**: Hugging Face RoBERTa model runs locally (no cloud/external processing)
+- **Batch Size**: Single record processing to minimize memory footprint
+- **Temporary Storage**: Text data exists in memory only during active processing
+
+#### 3. Result Storage
+- **Output**: Sentiment scores (numerical values: negative, neutral, positive)
+- **Destination**: Dedicated sentiment table in the same database
+- **Linkage**: Results linked to original records via `response_id` and `column` identifiers
+- **Original Text**: Raw text is NOT stored in sentiment results - only numerical scores
+
+### Privacy Considerations
+
+#### Data Minimization
+- **Processing Scope**: Only processes explicitly configured free-text fields
+- **Result Format**: Stores aggregated sentiment scores, not raw text content
+- **Retention**: Original survey text remains in source tables unchanged
+
+#### Local Processing
+- **No External Transmission**: All text analysis occurs locally using downloaded models
+- **Network Isolation**: No internet connectivity required during processing phase
+- **Third-party Dependencies**: Model downloaded once during setup, then runs offline
+
+#### Access Control
+- **Database Security**: Inherits database-level access controls and authentication
+- **Connection Management**: Uses secure connection parameters from configuration
+- **Credential Storage**: Database credentials managed through environment configuration
+
+#### Data Integrity
+- **Transactional Processing**: Database operations use transactions for consistency
+- **Error Isolation**: Failed processing of individual records doesn't affect others
+- **Audit Trail**: Processing status and results are logged for tracking
+
+### Compliance Features
+
+#### Data Portability
+- **Export Capability**: Sentiment results can be exported via standard database queries
+- **Format Independence**: Results stored in standard database format
+
+#### Right to Deletion
+- **Cascading Deletion**: Sentiment results can be removed by deleting associated response records
+- **Selective Removal**: Individual sentiment entries can be deleted via `response_id` and `column` combination
+
+#### Processing Transparency
+- **Algorithm Disclosure**: Uses publicly documented RoBERTa sentiment analysis model
+- **Score Interpretation**: Sentiment scores represent probability distributions across negative/neutral/positive categories
+- **Reproducibility**: Same input text will produce identical sentiment scores
+
+### Security Measures
+
+#### Data in Transit
+- **Internal Transport**: Database connections use configured security protocols
+- **Local Processing**: Text analysis occurs entirely within local compute environment
+
+#### Data at Rest
+- **Storage Security**: Sentiment results inherit database-level encryption and security
+- **Backup Inclusion**: Results included in standard database backup procedures
+
 ## Testing
 
 ### Testing Philosophy
