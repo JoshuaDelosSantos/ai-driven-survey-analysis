@@ -116,3 +116,61 @@ def expected_upsert_query():
         'columns': ['response_id', 'column_name', 'neg', 'neu', 'pos'],
         'conflict_columns': ['response_id', 'column_name']
     }
+
+
+@pytest.fixture
+def mock_data_processor_dependencies():
+    """Mock dependencies for DataProcessor testing."""
+    with patch('data_processor.fetch_data') as mock_fetch:
+        mock_db_ops = Mock()
+        mock_analyser = Mock()
+        
+        # Default mock data
+        mock_fetch.return_value = [
+            (1, 'Great course!', 'No issues', 'Highly recommend'),
+            (2, 'Poor experience', '', 'Could be better'),
+            (3, '', None, 'Average content'),
+        ]
+        
+        mock_analyser.analyse.return_value = {'neg': 0.1, 'neu': 0.2, 'pos': 0.7}
+        mock_db_ops.write_sentiment.return_value = 1
+        
+        return {
+            'mock_fetch': mock_fetch,
+            'mock_db_ops': mock_db_ops,
+            'mock_analyser': mock_analyser
+        }
+
+
+@pytest.fixture
+def sample_evaluation_data():
+    """Sample evaluation data for testing DataProcessor."""
+    return {
+        'normal_data': [
+            (1, 'Great course content', 'No technical issues', 'Would recommend to others'),
+            (2, 'Content was okay', 'Some login problems', 'Average experience overall'),
+            (3, 'Excellent material', 'No problems at all', 'Five stars from me'),
+        ],
+        'mixed_data': [
+            (1, 'Good course', '', 'Recommended'),  # Empty string
+            (2, None, 'No issues', None),  # None values
+            (3, '   ', 'Great!', '  \n  '),  # Whitespace only
+        ],
+        'empty_data': [],
+        'single_row': [
+            (42, 'Single evaluation entry', 'No issues reported', 'Good overall experience'),
+        ],
+        'large_dataset': [
+            (i, f'Feedback {i}', f'Issue details {i}', f'General comment {i}')
+            for i in range(1, 101)  # 100 rows
+        ]
+    }
+
+
+@pytest.fixture
+def expected_sql_queries():
+    """Expected SQL query patterns for DataProcessor."""
+    return {
+        'base_select': 'SELECT response_id, did_experience_issue_detail, course_application_other, general_feedback FROM evaluation',
+        'columns': ['response_id', 'did_experience_issue_detail', 'course_application_other', 'general_feedback']
+    }
