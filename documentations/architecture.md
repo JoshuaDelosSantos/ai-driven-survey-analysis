@@ -105,109 +105,59 @@
 - PostgreSQL for database client (VS Code extension)
 
 ## 3. Sentiment Analysis
-### Scripts:
-- db_connector.py         # Handles PostgreSQL connection and operations
-- data_loader.py          # Extracts data from PostgreSQL
-- text_preprocessor.py    # (Optional) Cleans text before tokenization
-- sentiment_analyzer.py   # Performs sentiment analysis with RoBERTa
-- results_saver.py        # Saves sentiment results to PostgreSQL
-- main_workflow.py        # Orchestrates the entire process
 
-#### 1. scripts/db_connector.py (Database Utility)
-Purpose: 
-- Provides reusable functions to connect to and interact with your PostgreSQL database.
-Key Functions:
-- get_db_connection(): Reads credentials and establishes a connection to PostgreSQL. Returns a connection object.
-- close_db_connection(connection, cursor=None): Closes the database connection and cursor.
-- fetch_data(query, params=None, connection=None): Executes a SELECT query and returns the results (e.g., as a list of tuples or dictionaries).
-- execute_query(query, params=None, connection=None): Executes INSERT, UPDATE, or DELETE queries.
-- batch_insert_data(query, data_list, connection=None): Efficiently inserts multiple rows of data.
+### Overview
+The `src/sentiment-analysis` module provides an end-to-end pipeline for analysing free-text survey responses using a locally hosted RoBERTa model. It comprises configurable components for loading data, performing sentiment analysis, and persisting results.
 
-#### 2. scripts/data_loader.py (Data Extraction)
-Purpose: 
-- Fetches the relevant free-text data from the evaluation table in PostgreSQL.
-Logic:
-- Imports functions from db_connector.py.
-- Establishes a database connection.
-- Constructs a SQL query to select:
-    - response_id (or your primary key for the evaluation table).
-    - The free-text columns you want to analyze (e.g., did_experience_issue_detail, course_application_other, general_feedback).
-    - Optionally, add a condition to select only rows where sentiment has not yet been analyzed (e.g., WHERE sentiment_analyzed_timestamp IS NULL).
-- Uses db_connector.fetch_data() to retrieve the data, preferably into a Pandas DataFrame for ease of handling.
-- Closes the database connection.
-- Returns the DataFrame.
-- Example Function: load_evaluation_texts_for_analysis()
+### Module Structure
+- **config.py**  
+  Centralises configuration: model name (`MODEL_NAME`), database URI (`DATABASE_URI`), target table name, and list of free-text columns.
+- **analyser.py**  
+  Defines `SentimentAnalyser`, which initialises the Hugging Face tokenizer and model and exposes `analyse(text: str) -> dict` to return probability scores for negative, neutral and positive sentiment.
+- **db_operations.py**  
+  Defines `DBOperations` for interacting with the database. Establishes a connection using credentials from `config.py` and provides `write_sentiment(response_id: int, column: str, scores: dict)` to upsert sentiment results into the sentiment table.
+- **data_processor.py**  
+  Defines `DataProcessor` which orchestrates fetching evaluation rows, iterating over configured free-text columns, invoking `SentimentAnalyser.analyse()`, and writing results via `DBOperations`.
+- **runner.py**  
+  Script entry point. Ensures the sentiment table exists (via `src/db/create_sentiment_table.py`), parses any CLI arguments, initialises the above components, and calls `DataProcessor.process_all()`.
 
-#### 3. scripts/text_preprocessor.py (Optional Text Cleaning)
-Purpose: 
-- Performs any necessary text cleaning before RoBERTa's tokenizer. Often, RoBERTa's tokenizer is robust, but you might want to include steps like:
-    - Normalizing whitespace.
-    - Removing or replacing specific custom artifacts not well-handled by the tokenizer.
-Note: 
-- Extensive preprocessing like stop-word removal or stemming is generally NOT recommended for transformer models like RoBERTa.
-Logic:
-- Takes a DataFrame with text columns as input.
-- Applies cleaning functions to the specified text columns.
-- Returns the DataFrame with cleaned text.
-- Example Function: clean_text_column(text_series)
+### Workflow
+1. **Initialise Environment**  
+   - Create the sentiment table:  
+     ```bash
+     python src/db/create_sentiment_table.py
+     ```  
+   - Install Python dependencies:  
+     ```bash
+     pip install -r requirements.txt
+     ```  
 
-#### 4. scripts/sentiment_analyzer.py (Sentiment Analysis Core)
-Purpose: 
-- Loads the RoBERTa model and tokenizer, and performs sentiment analysis on the input texts.
-Key Components & Logic:
-- Model & Tokenizer Loading:
-    - Imports RobertaTokenizer, RobertaForSequenceClassification from transformers (or pipeline for a higher-level abstraction).
-    - Specifies the RoBERTa model. A good starting point for general sentiment is "cardiffnlp/twitter-roberta-base-sentiment-latest" or "siebert/sentiment-roberta-large-english".
-    - Loads the pre-trained model and its corresponding tokenizer.
-Sentiment Prediction:
-- Takes a list of texts (or a DataFrame column) as input.
-Tokenization: 
-- Converts texts into token IDs that RoBERTa understands, handling padding and truncation. RoBERTa has a maximum sequence length (e.g., 512 tokens). Texts longer than this need a strategy (truncation, summarization, or chunking).
-Inference: 
-- Passes the tokenized input to the model for prediction. Process in batches for efficiency.
-Output Processing: 
-- Converts model outputs (logits) into human-readable sentiment labels (e.g., "Positive", "Negative", "Neutral") and confidence scores. The cardiffnlp model, for instance, outputs these directly.
-- Returns a list of dictionaries or a DataFrame containing the original identifier, the text column name, the predicted sentiment label, and the sentiment score.
-Example Functions:
-- load_roberta_sentiment_pipeline(model_name): Loads a Hugging Face sentiment analysis pipeline.
-- predict_sentiment(texts, pipeline): Uses the pipeline to predict sentiment for a batch of texts.
+2. **Run Sentiment Pipeline**  
+   ```bash
+   python src/sentiment-analysis/runner.py
+   ```  
 
-#### 5. scripts/results_saver.py (Storing Results)
-Purpose: 
-- Saves the sentiment analysis results back into PostgreSQL.
-Logic:
-- Imports functions from db_connector.py.
-- Establishes a database connection.
-- Takes the sentiment results (e.g., DataFrame with response_id, text_column_name, sentiment_label, sentiment_score) as input.
-Recommended Approach: 
-- Insert results into a new dedicated table, e.g., evaluation_sentiments.
-- evaluation_sentiments table schema example:
-    - sentiment_id (SERIAL PRIMARY KEY)
-    - evaluation_response_id (INTEGER, FOREIGN KEY to your evaluation table)
-    - text_column_evaluated (TEXT, e.g., 'general_feedback')
-    - sentiment_label (TEXT, e.g., 'Positive', 'Negative', 'Neutral')
-    - sentiment_score (FLOAT)
-    - analyzed_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
-Constructs the SQL INSERT query.
-Uses db_connector.batch_insert_data() for efficient insertion.
-Closes the database connection.
-Example Function: save_sentiment_results_to_db(sentiment_data)
+3. **Execution Steps**  
+   - **Sentiment Table Setup**: `runner.py` calls the table creation script to guarantee the target table exists.  
+   - **Component Initialisation**: Instances of `SentimentAnalyser`, `DBOperations`, and `DataProcessor` are created.  
+   - **Data Loading**: `DataProcessor` fetches rows from the evaluation table for all free-text columns defined in `config.py`.  
+   - **Sentiment Analysis**: For each row and column, `SentimentAnalyser.analyse()` produces a dict of probability scores.  
+   - **Result Persistence**: `DBOperations.write_sentiment()` upserts results (linked by `response_id` and `column`) into the sentiment table.  
+   - **Logging & Error Handling**: Each step is logged. Errors in individual records are caught and do not interrupt the pipeline.
 
-#### 6. scripts/main_workflow.py (Orchestrator)
-Purpose: 
-- Coordinates the execution of the entire workflow from data loading to saving results.
-Logic:
-- Imports necessary functions from all other scripts (data_loader, text_preprocessor (if used), sentiment_analyzer, results_saver).
-Configuration: 
-- Loads database and model configurations.
-Load Data: 
-- Calls data_loader.load_evaluation_texts_for_analysis().
-Iterate through Free-Text Columns: 
-- For each specified free-text column (e.g., did_experience_issue_detail, general_feedback):
-- Extract the relevant text series and their response_ids.
-- (Optional) Preprocess texts using text_preprocessor.
-- Perform sentiment analysis using sentiment_analyzer.predict_sentiment().
-- Structure the results with response_id and the name of the column analyzed.
-- Save the results for this column using results_saver.save_sentiment_results_to_db().
-Includes logging for each step (e.g., number of rows processed, time taken).
-Error handling (try-except blocks).
+### Free-Text Columns
+The target columns are defined in `config.py` under `FREE_TEXT_COLUMNS`, typically including:  
+- `did_experience_issue_detail`  
+- `course_application_other`  
+- `general_feedback`
+
+### Data Flow
+- **Source**: Free-text fields stored in the evaluation table.  
+- **Processing**: Local inference with Hugging Face RoBERTa.  
+- **Storage**: Sentiment scores stored in a dedicated sentiment table; raw text is not persisted.
+
+### Data Governance & Security
+- Analysis occurs entirely within the local environment.  
+- Only numerical sentiment scores are stored.  
+- Database connections use secure credentials from environment variables.  
+- Transactions ensure atomic writes and consistency.
