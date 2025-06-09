@@ -578,103 +578,265 @@ These fields are already processed by the sentiment analysis module and contain 
 
 ---
 
-### Phase 3: Intelligent Query Routing & Hybrid Integration
+### Phase 3: Hybrid Query Routing (LangGraph) & Answer Synthesis
 
 #### Objectives
-- Implement LangGraph-based query orchestration and routing
-- Create intelligent decision-making for query type classification
-- Build hybrid approaches combining Text-to-SQL and vector search
-- Establish comprehensive query processing pipeline
+- Implement **core LangGraph agent** as central intelligence for the architecture
+- Create robust query classification system to route between SQL, Vector Search, and Hybrid approaches
+- Build comprehensive answer synthesis using retrieved context from multiple sources
+- Integrate Phase 1 and Phase 2 tools into unified LangGraph workflow
+
+#### Core LangGraph Architecture
+The LangGraph agent implements a **classify → route → execute → synthesise** workflow:
+
+```python
+# State definition for LangGraph agent
+class RAGState(TypedDict):
+    query: str
+    query_type: Literal["sql", "vector", "hybrid"]
+    classification_confidence: float
+    sql_results: Optional[List[Dict]]
+    vector_results: Optional[List[Dict]]
+    context: str
+    final_answer: str
+    error_message: Optional[str]
+```
 
 #### Key Tasks
 
-**3.1 Query Classification System**
-- Develop query intent classification:
-  - Structured data queries (aggregations, filters, joins)
-  - Unstructured content queries (sentiment analysis, thematic search)
-  - Hybrid queries requiring both approaches
-  - Complex analytical queries needing multi-step processing
+**3.1 LangGraph Agent Development (CORE IMPLEMENTATION)**
+- Create `src/rag/core/agent.py` as the main LangGraph orchestrator:
+  - **`classify_query_node`**: Determine if query requires SQL, Vector Search, or Hybrid approach
+  - **`sql_tool_node`**: Execute Text-to-SQL using Phase 1 tools
+  - **`vector_search_tool_node`**: Execute semantic search using Phase 2 tools
+  - **`synthesis_node`**: Generate coherent answer using LLM with retrieved context
+  - **Conditional edges**: Route based on classification to appropriate tool nodes
+  - **Error handling nodes**: Graceful failure management and fallback strategies
 
-**3.2 LangGraph Router Implementation**
-- Create `src/rag/core/router.py` using LangGraph:
-  - Multi-agent workflow for query processing
-  - Conditional routing based on query classification
-  - State management for complex multi-step queries
-  - Error handling and fallback strategies
+**3.2 Query Classification Component**
+- Implement `src/rag/core/routing/query_classifier.py`:
+  - **LLM-based classification** using prompt engineering for query intent detection
+  - Classification categories:
+    - **SQL**: Aggregations, filters, joins, statistical queries ("How many users completed courses?")
+    - **Vector**: Semantic search, thematic analysis ("Find feedback about technical issues")
+    - **Hybrid**: Combined structured + unstructured queries ("Which courses with low completion rates have negative feedback?")
+  - **Confidence scoring** for classification reliability
+  - **Fallback logic** for uncertain classifications
 
-**3.3 Hybrid Query Processing**
-- Implement hybrid processing workflows:
-  - Structured data retrieval → context for semantic search
-  - Semantic search → filters for SQL queries
-  - Parallel processing with result fusion
-  - Cross-reference validation between structured and unstructured results
+**3.3 LangGraph State Management & Flow Control**
+- Define `RAGState` TypedDict for information passing between nodes
+- Implement state transitions and data flow management
+- Create conditional edge logic based on query classification
+- Handle state persistence for multi-step processing
+- Error state management and recovery workflows
 
-**3.4 Result Integration and Ranking**
-- Develop result fusion algorithms:
-  - Reciprocal Rank Fusion (RRF) for combining ranked lists
-  - Confidence scoring for different result types
-  - Relevance-based result ordering
-  - Duplicate detection across result types
+**3.4 Tool Integration into LangGraph Workflow**
+- **SQL Tool Integration**: Wrap Phase 1 Text-to-SQL functionality as LangGraph-compatible tool
+- **Vector Search Tool Integration**: Wrap Phase 2 vector search functionality as LangGraph-compatible tool
+- **Tool execution nodes** with proper error handling and result formatting
+- **Result standardisation** for consistent data structure across tools
 
-**3.5 Query Interface Enhancement**
-- Upgrade `src/rag/api/query_interface.py`:
-  - Support for complex multi-part queries
-  - Context preservation across query sessions
-  - Query refinement and clarification prompts
-  - Result explanation and source attribution
+**3.5 Answer Synthesis System**
+- Implement `src/rag/core/synthesis/answer_generator.py`:
+  - **Context aggregation** from SQL and/or vector search results
+  - **LLM-based synthesis** using structured prompts for coherent answer generation
+  - **Source attribution** and citation linking to original data
+  - **Answer formatting** with confidence indicators and supporting evidence
+  - **Multi-format outputs**: Summary, detailed, tabular presentation
 
-**3.6 Response Generation System**
-- Implement `src/rag/api/response_formatter.py`:
-  - LLM-based response synthesis using retrieved context
-  - Citation and source linking
-  - Different output formats (summary, detailed, tabular)
-  - Confidence indicators and uncertainty handling
+**3.6 Prompt Engineering for LangGraph Components**
+- **Query Classification Prompts**: Optimised prompts for accurate query type detection
+- **Answer Synthesis Prompts**: Templates for coherent response generation with proper source attribution
+- **Error Handling Prompts**: User-friendly error explanations and suggested query refinements
+- **Confidence Assessment Prompts**: LLM-based confidence scoring for query classification and answer quality
 
 #### Components to be Developed/Modified
 
 **New Components:**
-- LangGraph-based query router and orchestration
-- Hybrid query processing workflows
-- Result fusion and ranking algorithms
-- Enhanced query interface with session management
+- `src/rag/core/agent.py` - **Main LangGraph agent with classify → route → execute → synthesise workflow**
+- `src/rag/core/routing/query_classifier.py` - **LLM-based query classification component**
+- `src/rag/core/synthesis/answer_generator.py` - **Context aggregation and answer synthesis**
+- `src/rag/core/nodes/` - **Individual LangGraph node implementations**
+  - `classify_node.py` - Query classification node
+  - `sql_node.py` - SQL tool execution node
+  - `vector_node.py` - Vector search execution node
+  - `synthesis_node.py` - Answer generation node
+  - `error_handling_node.py` - Error management and fallback
+- `src/rag/core/state/rag_state.py` - **LangGraph state definition and management**
 
-**Modified Components:**
-- Integrate router with existing Text-to-SQL and vector search engines
-- Enhance terminal application with advanced query capabilities
-- Update configuration management for routing parameters
+**Tool Integration Wrappers:**
+- `src/rag/core/tools/langgraph_sql_tool.py` - **Phase 1 SQL tool wrapper for LangGraph**
+- `src/rag/core/tools/langgraph_vector_tool.py` - **Phase 2 vector search tool wrapper for LangGraph**
+
+**Enhanced Terminal Application:**
+- Update `src/rag/interfaces/terminal_app.py` - **Integration with LangGraph agent as primary entry point**
+- Modify `src/rag/runner.py` - **Route all queries through LangGraph agent**
+
+#### Terminal Application Integration (CRITICAL UPDATE)
+The terminal application must be updated to use the LangGraph agent as the **primary entry point**:
+
+```python
+# Updated terminal_app.py approach
+class TerminalApp:
+    def __init__(self):
+        self.langgraph_agent = compile_rag_agent()  # Main LangGraph agent
+    
+    def process_query(self, user_query: str):
+        # Route ALL queries through LangGraph agent
+        result = self.langgraph_agent.invoke({"query": user_query})
+        return result["final_answer"]
+```
+
+#### LangGraph Agent Architecture
+```python
+# Core agent structure in src/rag/core/agent.py
+def create_rag_agent() -> StateGraph:
+    workflow = StateGraph(RAGState)
+    
+    # Add nodes
+    workflow.add_node("classify_query", classify_query_node)
+    workflow.add_node("sql_tool", sql_tool_node)
+    workflow.add_node("vector_search_tool", vector_search_tool_node)
+    workflow.add_node("synthesis", synthesis_node)
+    workflow.add_node("error_handler", error_handling_node)
+    
+    # Conditional routing edges
+    workflow.add_conditional_edges(
+        "classify_query",
+        route_based_on_classification,
+        {
+            "sql": "sql_tool",
+            "vector": "vector_search_tool", 
+            "hybrid": ["sql_tool", "vector_search_tool"],
+            "error": "error_handler"
+        }
+    )
+    
+    # Synthesis edges
+    workflow.add_edge("sql_tool", "synthesis")
+    workflow.add_edge("vector_search_tool", "synthesis")
+    workflow.add_edge("synthesis", END)
+    
+    return workflow.compile()
+```
+
+#### Error Handling Strategy
+- **Classification uncertainty**: Fallback to hybrid approach when confidence < threshold
+- **Tool execution failures**: Graceful degradation and alternative tool usage
+- **LLM API failures**: Local fallback models and cached responses
+- **User-friendly error messages**: Explain failures and suggest query modifications
+
+#### Prompt Engineering Strategy
+
+**Query Classification Prompt Template:**
+```python
+CLASSIFICATION_PROMPT = """
+Analyze this query and classify it as SQL, VECTOR, or HYBRID:
+
+SQL: Queries about counts, statistics, aggregations, filtering structured data
+VECTOR: Queries about themes, sentiment, finding similar content
+HYBRID: Queries combining both structured analysis and content search
+
+Query: {query}
+
+Respond with classification and confidence (0-1):
+Classification: [SQL|VECTOR|HYBRID]
+Confidence: [0.0-1.0]
+Reasoning: [Brief explanation]
+"""
+```
+
+**Answer Synthesis Prompt Template:**
+```python
+SYNTHESIS_PROMPT = """
+Based on the retrieved information, provide a comprehensive answer to the user's query.
+
+Query: {query}
+SQL Results: {sql_results}
+Vector Search Results: {vector_results}
+
+Requirements:
+- Provide clear, accurate answer based on the data
+- Include specific numbers and evidence when available
+- Cite sources with response_id references
+- Acknowledge limitations if data is incomplete
+
+Answer:
+"""
+```
 
 #### Architecture Documentation Updates
-- Document LangGraph workflow architecture and decision trees
-- Add hybrid query processing flowcharts
-- Include result fusion algorithms and ranking strategies
-- Document query session management and context preservation
+- **Document LangGraph workflow architecture** with explicit node and edge definitions
+- **Add query classification decision trees** with confidence threshold mapping
+- **Include answer synthesis pipeline diagrams** showing context aggregation
+- **Document state management** and data flow between LangGraph nodes
+- **Create prompt engineering documentation** with template versioning
 
 #### Data Privacy/Governance Steps
-- Implement query audit logging with classification tracking
-- Create result provenance and source attribution
-- Establish query complexity limits and resource controls
-- Document cross-component data flow and privacy boundaries
+- **Query audit logging** with classification tracking and confidence scores
+- **Result provenance tracking** through LangGraph state management
+- **PII detection integration** in synthesis node before answer generation
+- **Access control enforcement** at agent level for query restrictions
+- **Error logging and monitoring** for security incident detection
 
-#### Testing/Validation
-- Unit tests for query classification and routing logic
-- Integration tests for hybrid query workflows
-- End-to-end tests for complex analytical queries
-- Performance tests for multi-step query processing
-- User acceptance testing with domain experts
+#### Testing/Validation Strategy
+- **Unit Tests**: Query classification accuracy, individual node functionality
+- **Integration Tests**: End-to-end LangGraph workflow with Phase 1 and Phase 2 tools
+- **LangGraph Flow Tests**: State transitions, conditional routing, error handling
+- **Terminal Application Tests**: Complete user journey through LangGraph agent
+- **Performance Tests**: Multi-step query processing latency and resource usage
+- **Prompt Engineering Tests**: Classification accuracy and answer quality assessment
 
-**Example Advanced Queries:**
+#### Modular Design for LangGraph Integration
+- **Tool-agnostic design**: LangGraph agent works with any SQL or vector search implementation
+- **Configurable routing thresholds**: Adjustable confidence levels for classification
+- **Extensible node architecture**: Easy addition of new processing nodes
+- **State schema versioning**: Backward compatibility for state structure changes
+- **Error handling hierarchy**: Multiple levels of fallback and recovery
+
+**Example LangGraph Query Processing:**
 ```bash
-> "Which courses with low satisfaction scores also have negative sentiment about workload?"
-> "Compare completion rates between agencies for courses with positive facilitator feedback"
-> "Find patterns in technical issues across different delivery types"
+# Terminal interaction routed through LangGraph agent
+> "Which courses with completion rates under 70% have negative feedback about workload?"
+
+[LangGraph Flow]
+1. classify_query_node → "HYBRID" (confidence: 0.9)
+2. Parallel execution:
+   - sql_tool_node → Query completion rates < 70%
+   - vector_search_tool_node → Find "workload" negative sentiment
+3. synthesis_node → Combine results with source attribution
+4. Return comprehensive answer with citations
+
+Response: "Based on the data, 3 courses meet your criteria:
+- Course X (65% completion, 15 negative workload mentions)  
+- Course Y (58% completion, 8 negative workload mentions)
+- Course Z (69% completion, 12 negative workload mentions)
+
+Sources: SQL analysis from attendance table, sentiment analysis from evaluation responses [response_id: 1234, 1567, 1890...]"
 ```
 
 #### Success Criteria
-- Query router correctly classifies 95%+ of test queries
-- Hybrid queries return comprehensive and accurate results
-- Response generation includes proper source attribution
-- Processing time remains under 10 seconds for complex queries
-- User satisfaction rating >4.0/5.0 for result relevance and clarity
+- **Query Classification**: 95%+ accuracy on predefined test query set
+- **LangGraph Integration**: Seamless routing between Phase 1 and Phase 2 tools
+- **Answer Synthesis**: Coherent responses with proper source attribution
+- **Terminal Integration**: All queries processed through LangGraph agent
+- **Error Handling**: Graceful degradation with <5% system failures
+- **Performance**: End-to-end query processing under 15 seconds for complex queries
+- **User Experience**: Natural language interaction with confidence indicators
+
+#### Implementation Priority
+1. **LangGraph Agent Core** (`agent.py` with basic workflow) - Foundation
+2. **Query Classification** (`query_classifier.py`) - Routing Intelligence  
+3. **Tool Integration Wrappers** (Phase 1 + Phase 2 tools) - Functionality
+4. **Answer Synthesis** (`answer_generator.py`) - User Experience
+5. **Terminal App Integration** (Updated `terminal_app.py`) - Complete MVP
+6. **Error Handling & Prompt Engineering** - Production Readiness
+
+#### Critical Dependencies
+- **Phase 1 Complete**: Text-to-SQL tool must be functional and testable
+- **Phase 2 Complete**: Vector search tool must be functional and testable  
+- **LangGraph Framework**: Installation and configuration in requirements.txt
+- **Prompt Templates**: Well-engineered prompts for classification and synthesis
 
 ---
 
