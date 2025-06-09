@@ -230,55 +230,99 @@ src/rag/
 
 ## 5. RAG Integration: Phased Implementation Plan
 
-### Phase 1: Foundation & Core Text-to-SQL MVP
+### Phase 1: Minimal Text-to-SQL MVP (Weeks 1-2)
 
 #### Objectives
-- Establish the foundational `src/rag` module structure
-- Implement secure Text-to-SQL functionality with schema understanding
-- Create database security framework with read-only access
-- Build terminal-based MVP for testing and validation
+- Create a **narrow, functional Text-to-SQL slice** answering basic questions about course evaluations and attendance
+- Establish mandatory database security with read-only PostgreSQL role
+- Build minimal terminal application using LangChain SQLDatabaseToolkit and LangGraph
+- Focus on **one specific query type**: "Show me attendance statistics by [filter]"
 
 #### Key Tasks
 
-**1.1 Module Foundation & Configuration**
-- Create `src/rag/config.py` with comprehensive configuration management
-- Implement environment-based settings for LLM providers, database connections, and security parameters
-- Establish logging configuration and error handling patterns
-- Create base directory structure and `__init__.py` files
+**1.1 Database Security Setup (NON-NEGOTIABLE)**
+- **Create dedicated read-only PostgreSQL role**: `rag_user_readonly`
+  ```sql
+  CREATE ROLE rag_user_readonly WITH LOGIN PASSWORD 'secure_password';
+  GRANT CONNECT ON DATABASE your_db TO rag_user_readonly;
+  GRANT USAGE ON SCHEMA public TO rag_user_readonly;
+  GRANT SELECT ON attendance, users, learning_content TO rag_user_readonly;
+  -- Explicitly NO INSERT, UPDATE, DELETE, CREATE permissions
+  ```
+- Document role permissions and security constraints
+- Test role restrictions to ensure no write access
 
-**1.2 Database Security Infrastructure**
-- Create read-only database role in PostgreSQL with restricted permissions
-- Implement `src/rag/utils/db_utils.py` with secure connection management
-- Develop SQL injection prevention mechanisms
-- Create database access auditing framework
+**1.2 Pydantic Configuration Management**
+- Create `src/rag/config/settings.py` using Pydantic:
+  ```python
+  from pydantic import BaseSettings
+  
+  class RAGSettings(BaseSettings):
+      database_url: str
+      llm_api_key: str  # OpenAI or chosen provider
+      llm_model_name: str = "gpt-3.5-turbo"
+      max_query_results: int = 100
+      
+      class Config:
+          env_file = ".env"
+  ```
+- Environment variable management for DATABASE_URL, LLM API keys
+- Typed configuration with validation
 
-**1.3 Schema Understanding System**
-- Implement `src/rag/core/text_to_sql/schema_manager.py`:
-  - Extract and cache table schemas, relationships, and column descriptions
-  - Generate embeddings for schema components (tables, columns, relationships)
-  - Store schema embeddings in dedicated pgvector table
-  - Create schema context generation for LLM prompts
+**1.3 Initial src/rag Module Structure**
+```
+src/rag/
+├── __init__.py
+├── config/
+│   ├── __init__.py
+│   └── settings.py              # Pydantic-based configuration
+├── core/
+│   ├── __init__.py
+│   └── sql_tool.py              # LangChain SQL tool wrapper
+├── interfaces/
+│   ├── __init__.py
+│   └── terminal_app.py          # Simple CLI interface
+├── tests/
+│   ├── __init__.py
+│   └── test_sql_tool.py         # Basic unit tests
+└── runner.py                    # Main entry point
+```
 
-**1.4 Text-to-SQL Core Engine**
-- Develop `src/rag/core/text_to_sql/sql_generator.py`:
-  - LangChain-based SQL generation using schema context
-  - Few-shot prompting with example Question-SQL pairs
-  - Support for complex queries with joins across user, learning_content, attendance, and evaluation tables
-  - Query complexity assessment and routing
+**1.4 Schema Provision for LLM (Manual MVP Approach)**
+- Create hardcoded schema context string for attendance/users/learning_content tables:
+  ```python
+  SCHEMA_CONTEXT = """
+  Tables:
+  - attendance: user_id, learning_content_surrogate_key, date_effective, status
+  - users: user_id, user_level, agency  
+  - learning_content: surrogate_key, name, content_type, target_level
+  
+  Relationships:
+  - attendance.user_id -> users.user_id
+  - attendance.learning_content_surrogate_key -> learning_content.surrogate_key
+  """
+  ```
+- Use LangChain's SQLDatabase utility for programmatic schema retrieval (prepare for Phase 2)
+- Document the need for automated schema extraction in future phases
 
-**1.5 SQL Validation & Security**
-- Implement `src/rag/core/text_to_sql/sql_validator.py`:
-  - Syntactic validation using SQL parsing
-  - Semantic validation against known schema
-  - Security checks (no DDL, no dangerous functions)
-  - Query result size limiting
-- Create `src/rag/core/text_to_sql/sql_executor.py` with safe execution environment
+**1.5 Minimal LangGraph Text-to-SQL Implementation**
+- Implement `src/rag/core/sql_tool.py` using LangChain SQLDatabaseToolkit:
+  - Use `QuerySQLDatabaseTool` for SQL execution
+  - Use `QuerySQLCheckerTool` for basic validation
+  - Wrap in a simple LangGraph node (single-node graph for MVP)
+- Create basic prompt template for attendance-related queries
+- Focus on simple aggregations: COUNT, GROUP BY, basic JOINs
 
 **1.6 Terminal MVP Application**
-- Build `src/rag/runner.py` as command-line interface
-- Implement basic query processing pipeline: input → SQL generation → validation → execution → formatting
-- Create response formatting for terminal display
-- Add query logging and performance metrics
+- Build `src/rag/interfaces/terminal_app.py`:
+  - Simple input loop for natural language queries
+  - Integration with LangGraph SQL workflow
+  - Basic error handling and result formatting
+- Create `src/rag/runner.py` as entry point
+- Target query types:
+  - "How many users completed courses in each agency?"
+  - "Show attendance status breakdown by user level"
+  - "Which courses have the highest enrollment?"
 
 #### Components to be Developed/Modified
 
