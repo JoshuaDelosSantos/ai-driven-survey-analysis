@@ -170,7 +170,7 @@ The target columns are defined in `config.py` under `FREE_TEXT_COLUMNS`, typical
 The `src/rag` module implements a sophisticated hybrid Retrieval-Augmented Generation system that combines Text-to-SQL capabilities with vector search over unstructured data. This system enables natural language queries across both structured relational data and free-text content, with intelligent routing to determine the optimal retrieval strategy.
 
 ### Architectural Foundation
-Based on **Architecture 2: Hybrid Approach – SQL Execution with Semantic Search over Serialised Data**, this module provides:
+Based on **Hybrid Approach – SQL Execution with Semantic Search over Serialised Data**, this module provides:
 
 - **Text-to-SQL Engine**: Converts natural language queries into secure, validated SQL for structured data retrieval
 - **Vector Search Engine**: Semantic search over embedded textual content using pgvector
@@ -373,103 +373,208 @@ python src/rag/runner.py
 
 ---
 
-### Phase 2: Vector Search & Content Embedding
+### Phase 2: Vector Search Implementation & Unstructured Data Ingestion
 
 #### Objectives
-- Implement semantic search capabilities over free-text content
-- Create comprehensive content ingestion and embedding pipeline
+- Implement semantic search capabilities over the three free-text evaluation fields
+- Create secure content ingestion pipeline with mandatory PII anonymisation
 - Integrate vector search with existing sentiment analysis data
-- Build hybrid retrieval combining structured and unstructured data
+- Build testable vector search tool for terminal application integration
+
+#### Target Data Sources
+Based on Learning Content Evaluation table schema, Phase 2 will process these specific free-text fields:
+- **`did_experience_issue_detail`**: Detailed issue descriptions (conditional on `did_experience_issue` selection)
+- **`course_application_other`**: Custom application descriptions (conditional on "Other" selection)
+- **`general_feedback`**: Open-ended course feedback and comments
+
+These fields are already processed by the sentiment analysis module and contain rich contextual information for semantic search.
 
 #### Key Tasks
 
-**2.1 Vector Infrastructure Setup**
-- Create dedicated pgvector tables for content embeddings:
-  - `rag_embeddings`: chunked content with metadata
-  - `rag_schema_embeddings`: schema component embeddings
-  - Indexes and metadata tables for embedding management
-- Implement `src/rag/data/embeddings_manager.py` for vector operations
+**2.1 Data Source Analysis & PII Detection Strategy**
+- Document the three target free-text fields and their data characteristics
+- Implement Australian-specific PII detection using Microsoft Presidio:
+  - Tax File Numbers (TFN), Medicare numbers, Australian addresses
+  - Names, email addresses, phone numbers
+  - APS-specific identifiers and sensitive references
+- Create `src/rag/core/privacy/pii_detector.py` with Australian privacy compliance
+- Establish PII anonymisation as **mandatory step before embedding generation**
 
-**2.2 Content Processing Pipeline**
-- Develop `src/rag/core/vector_search/chunk_processor.py`:
-  - Semantic chunking strategies for evaluation free-text responses
-  - Metadata preservation (response_id, column, sentiment scores, user_level, agency)
-  - Integration with existing sentiment analysis results
-  - Content deduplication and filtering
+**2.2 pgVector Infrastructure & Schema Design**
+- Create dedicated pgvector table with explicit schema:
+  ```sql
+  CREATE TABLE rag_embeddings (
+      embedding_id SERIAL PRIMARY KEY,
+      response_id INTEGER NOT NULL REFERENCES evaluation(response_id),
+      field_name VARCHAR(50) NOT NULL, -- 'did_experience_issue_detail', 'course_application_other', 'general_feedback'
+      chunk_text TEXT NOT NULL,        -- Anonymised text chunk
+      chunk_index INTEGER NOT NULL,    -- Chunk position within original text
+      embedding VECTOR(1536) NOT NULL, -- OpenAI ada-002 or equivalent
+      metadata JSONB,                  -- {user_level, agency, sentiment_scores, course_type}
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(response_id, field_name, chunk_index)
+  );
+  
+  CREATE INDEX ON rag_embeddings USING ivfflat (embedding vector_cosine_ops);
+  CREATE INDEX ON rag_embeddings (response_id);
+  CREATE INDEX ON rag_embeddings (field_name);
+  ```
+- Implement `src/rag/data/embeddings_manager.py` for vector operations and metadata management
 
-**2.3 Embedding Generation System**
+**2.3 Text Processing & Anonymisation Pipeline**
+- Develop `src/rag/core/vector_search/text_processor.py`:
+  - Extract the three target free-text fields from evaluation table
+  - Apply PII detection and anonymisation before chunking
+  - Implement sentence-level chunking (appropriate for evaluation responses)
+  - Preserve metadata linkage (response_id, field_name, user context)
+- Integration with existing sentiment analysis results via response_id mapping
+
+**2.4 Embedding Generation & Storage System**
 - Implement `src/rag/core/vector_search/embedder.py`:
-  - Support for multiple embedding models (OpenAI, Sentence-BERT, local models)
-  - Batch processing for efficiency
-  - Embedding dimension consistency management
-  - Integration with content processing pipeline
+  - Batch processing for efficient embedding generation
+  - Support for OpenAI `text-embedding-ada-002` (primary) and Sentence-BERT (fallback)
+  - Error handling and retry logic for API failures
+  - Metadata augmentation with sentiment scores from existing sentiment analysis
+- Store embeddings with rich metadata for filtering and retrieval
 
-**2.4 Semantic Retrieval Engine**
-- Create `src/rag/core/vector_search/retriever.py`:
-  - Similarity search with configurable distance metrics
-  - Metadata filtering (by sentiment, user_level, agency, course_type)
-  - Hybrid ranking combining similarity scores and metadata relevance
-  - Result reranking and diversification
+**2.5 Vector Search Tool Development**
+- Create `src/rag/core/tools/vector_search_tool.py` as standalone LangChain tool:
+  - Similarity search with configurable distance metrics (cosine, euclidean)
+  - Metadata filtering capabilities (sentiment, user_level, agency, field_name)
+  - Result ranking with combined similarity and metadata relevance
+  - Integration interface for future LangGraph router
+- Design for modularity and testability independent of router implementation
 
-**2.5 Content Indexing Management**
-- Develop `src/rag/core/vector_search/indexer.py`:
-  - Incremental indexing for new evaluation responses
-  - Index optimization and maintenance
-  - Version control for embedding models
-  - Performance monitoring and tuning
-
-**2.6 Data Serialization Strategy**
-- Implement `src/rag/data/content_processor.py`:
-  - Row serialization for evaluation responses with context
-  - Relationship descriptions (user-course-evaluation connections)
-  - Structured data augmentation for vector search
-  - Integration with existing database schema
+**2.6 Initial Data Ingestion Script**
+- Implement `src/rag/data/ingestion_script.py` for one-off data loading:
+  - Extract all evaluation records with non-empty target fields
+  - Process through PII detection → chunking → embedding → storage pipeline
+  - Comprehensive logging and error handling for batch processing
+  - Integration with existing sentiment analysis data
+  - Monitoring and progress reporting for large dataset processing
 
 #### Components to be Developed/Modified
 
 **New Components:**
-- Complete vector search infrastructure
-- Content embedding and indexing pipeline
-- Semantic retrieval with metadata filtering
-- Integration layer between structured and unstructured data
+- `src/rag/core/privacy/pii_detector.py` - Presidio-based PII detection
+- `src/rag/core/vector_search/text_processor.py` - Text extraction and anonymisation
+- `src/rag/core/vector_search/embedder.py` - Embedding generation system
+- `src/rag/core/tools/vector_search_tool.py` - Standalone vector search tool
+- `src/rag/data/embeddings_manager.py` - Vector storage and retrieval
+- `src/rag/data/ingestion_script.py` - Initial data loading pipeline
+
+**Database Schema Extensions:**
+- Add `rag_embeddings` table to pgvector database
+- Create appropriate indexes for vector similarity search
+- Establish foreign key relationships with evaluation table
 
 **Modified Components:**
-- Extend database schema with embedding tables
-- Update sentiment analysis pipeline to support RAG integration
-- Enhance `runner.py` to support vector search queries
+- Update `src/rag/config/settings.py` with vector search configuration
+- Extend `requirements.txt` with Presidio, vector search libraries
+- Update `docker-compose.yml` if local embedding models are used
 
 #### Architecture Documentation Updates
-- Document vector search architecture and embedding strategies
-- Add content processing pipeline diagrams
+- Document vector search architecture with explicit data flow
+- Add PII anonymisation pipeline diagrams
 - Include metadata filtering and hybrid ranking explanations
-- Document integration patterns with existing sentiment analysis
+- Document integration patterns with existing sentiment analysis data
+- Create testing strategy for vector search accuracy and security
 
-#### Data Privacy/Governance Steps
-- Implement content anonymization before embedding generation
-- Create embedding versioning and lineage tracking
-- Establish data retention policies for vector embeddings
-- Document PII handling in unstructured content processing
+#### Data Privacy/Governance Steps (MANDATORY)
+- **PII Anonymisation**: Implement comprehensive PII detection before embedding
+- **Data Lineage**: Track anonymisation steps and embedding generation
+- **Access Control**: Maintain read-only database access for RAG operations
+- **Audit Logging**: Log all PII detection events and anonymisation actions
+- **Retention Policy**: Establish policies for embedding storage and lifecycle management
 
-#### Testing/Validation
-- Unit tests for embedding generation and vector operations
-- Integration tests for content processing pipeline
-- Performance tests for similarity search and retrieval
-- Quality tests for embedding accuracy and relevance
-- Comparative evaluation against keyword-based search
+#### Testing/Validation Strategy
+- **Unit Tests**: PII detection accuracy, embedding generation, vector operations
+- **Integration Tests**: End-to-end text processing pipeline with real evaluation data
+- **Security Tests**: PII leakage prevention, anonymisation effectiveness
+- **Performance Tests**: Embedding generation speed, similarity search latency
+- **Quality Tests**: Embedding relevance using evaluation against known similar responses
+- **Terminal Integration**: Test vector search tool independently via terminal interface
+
+#### Modular Design for Future Integration
+- Vector search tool designed as standalone LangChain component
+- Clear interfaces for LangGraph router integration in Phase 3
+- Separation of concerns: PII detection, text processing, embedding, search
+- Configurable similarity thresholds and metadata filtering
+- Extensible metadata schema for future enhancement
+
+#### Components to be Developed/Modified
+
+**New Components:**
+- `src/rag/core/privacy/pii_detector.py` - Presidio-based PII detection
+- `src/rag/core/vector_search/text_processor.py` - Text extraction and anonymisation
+- `src/rag/core/vector_search/embedder.py` - Embedding generation system
+- `src/rag/core/tools/vector_search_tool.py` - Standalone vector search tool
+- `src/rag/data/embeddings_manager.py` - Vector storage and retrieval
+- `src/rag/data/ingestion_script.py` - Initial data loading pipeline
+
+**Database Schema Extensions:**
+- Add `rag_embeddings` table to pgvector database
+- Create appropriate indexes for vector similarity search
+- Establish foreign key relationships with evaluation table
+
+**Modified Components:**
+- Update `src/rag/config/settings.py` with vector search configuration
+- Extend `requirements.txt` with Presidio, vector search libraries
+- Update `docker-compose.yml` if local embedding models are used
+
+#### Architecture Documentation Updates
+- Document vector search architecture with explicit data flow
+- Add PII anonymisation pipeline diagrams
+- Include metadata filtering and hybrid ranking explanations
+- Document integration patterns with existing sentiment analysis data
+- Create testing strategy for vector search accuracy and security
+
+#### Data Privacy/Governance Steps (MANDATORY)
+- **PII Anonymisation**: Implement comprehensive PII detection before embedding
+- **Data Lineage**: Track anonymisation steps and embedding generation
+- **Access Control**: Maintain read-only database access for RAG operations
+- **Audit Logging**: Log all PII detection events and anonymisation actions
+- **Retention Policy**: Establish policies for embedding storage and lifecycle management
+
+#### Testing/Validation Strategy
+- **Unit Tests**: PII detection accuracy, embedding generation, vector operations
+- **Integration Tests**: End-to-end text processing pipeline with real evaluation data
+- **Security Tests**: PII leakage prevention, anonymisation effectiveness
+- **Performance Tests**: Embedding generation speed, similarity search latency
+- **Quality Tests**: Embedding relevance using evaluation against known similar responses
+- **Terminal Integration**: Test vector search tool independently via terminal interface
+
+#### Modular Design for Future Integration
+- Vector search tool designed as standalone LangChain component
+- Clear interfaces for LangGraph router integration in Phase 3
+- Separation of concerns: PII detection, text processing, embedding, search
+- Configurable similarity thresholds and metadata filtering
+- Extensible metadata schema for future enhancement
 
 **Example Queries Enabled:**
 ```bash
+# Direct vector search testing via terminal
 > "Find courses with negative feedback about facilitator communication"
 > "What do users say about technical difficulties in virtual courses?"
-> "Show similar feedback across different agencies"
+> "Show similar feedback patterns across different agencies"
+> "Locate evaluation responses mentioning accessibility issues"
 ```
 
 #### Success Criteria
-- Vector search returns relevant results with >80% precision@10
-- Content processing pipeline handles full evaluation dataset
-- Embedding generation completes in <1 hour for complete dataset
-- Metadata filtering provides accurate scope control
-- Integration with sentiment data enhances result relevance
+- **Security**: Zero PII leakage in embeddings with 99.9%+ detection accuracy
+- **Performance**: Vector search returns relevant results with >80% precision@10
+- **Scalability**: Embedding generation processes full evaluation dataset in <2 hours
+- **Integration**: Seamless metadata filtering with sentiment analysis data
+- **Modularity**: Vector search tool functions independently for testing and future router integration
+- **Compliance**: Full anonymisation pipeline meets Australian Privacy Principles (APP) requirements
+
+#### Implementation Priority
+1. **PII Detection & Anonymisation** (Security Critical)
+2. **pgVector Schema & Infrastructure** (Foundation)
+3. **Text Processing Pipeline** (Core Functionality)
+4. **Embedding Generation** (Core Functionality)
+5. **Vector Search Tool** (Testable Interface)
+6. **Data Ingestion Script** (MVP Completion)
 
 ---
 
