@@ -230,7 +230,7 @@ src/rag/
 
 ## 5. RAG Integration: Phased Implementation Plan
 
-### Phase 1: Minimal Text-to-SQL MVP (Weeks 1-2)
+### Phase 1: Minimal Text-to-SQL MVP
 
 #### Objectives
 - Create a **narrow, functional Text-to-SQL slice** answering basic questions about course evaluations and attendance
