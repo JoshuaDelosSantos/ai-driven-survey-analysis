@@ -840,188 +840,822 @@ Sources: SQL analysis from attendance table, sentiment analysis from evaluation 
 
 ---
 
-### Phase 4: Privacy Enhancement & Security Hardening
+### Phase 4: FastAPI Web Service & Advanced RAG Techniques
 
 #### Objectives
-- Implement comprehensive PII detection and anonymization
-- Enhance security framework with advanced threat protection
-- Establish compliance with Australian Privacy Principles (APPs)
-- Create privacy-preserving analytics capabilities
+- Develop production-ready FastAPI service with asynchronous architecture
+- Implement advanced RAG techniques for improved answer quality
+- Create comprehensive SQL query validation and safety mechanisms
+- Establish robust monitoring, logging, and evaluation frameworks
 
 #### Key Tasks
 
-**4.1 PII Detection and Anonymization**
-- Implement `src/rag/core/privacy/pii_detector.py` using Presidio:
-  - Australian-specific PII patterns (TFN, Medicare numbers, addresses)
-  - Custom entity recognition for APS-specific identifiers
-  - Confidence scoring for PII detection
-  - Real-time detection in query inputs and results
+**4.1 FastAPI Service Architecture**
 
-**4.2 Data Anonymization Framework**
-- Develop `src/rag/core/privacy/anonymizer.py`:
-  - Multiple anonymization strategies (masking, pseudonymization, generalization)
-  - Reversible anonymization for authorized access
-  - Consistency preservation across related records
-  - Integration with embedding generation pipeline
+Create a production-ready web service that reuses core logic from the LangGraph agent:
 
-**4.3 Access Control Enhancement**
-- Upgrade `src/rag/core/privacy/access_control.py`:
-  - Role-based access control (RBAC) integration
-  - Attribute-based access control (ABAC) for fine-grained permissions
-  - Query result filtering based on user permissions
-  - Audit trail for all access attempts and data modifications
+```
+src/api/
+├── __init__.py
+├── main.py                 # FastAPI application entry point
+├── routers/
+│   ├── __init__.py
+│   ├── query.py           # Query processing endpoints
+│   ├── admin.py           # Administrative endpoints
+│   └── health.py          # Health check endpoints
+├── middleware/
+│   ├── __init__.py
+│   ├── auth.py            # Authentication middleware
+│   ├── rate_limit.py      # Rate limiting middleware
+│   └── logging.py         # Request logging middleware
+├── models/
+│   ├── __init__.py
+│   ├── request.py         # Pydantic request models
+│   └── response.py        # Pydantic response models
+└── core/
+    ├── __init__.py
+    ├── agent_wrapper.py   # Async wrapper for LangGraph agent
+    └── config.py          # API-specific configuration
+```
 
-**4.4 Security Monitoring and Compliance**
-- Implement security monitoring:
-  - Anomaly detection for unusual query patterns
-  - Rate limiting and abuse prevention
-  - Encrypted data transmission and storage
-  - Compliance reporting for APP requirements
+**Core Implementation Strategy:**
+- **Reuse LangGraph Agent**: Wrap existing `src/rag/core/agent.py` with async interface
+- **Async Architecture**: All endpoints use `async def` with `ainvoke()` methods
+- **FastAPI Best Practices**: Dependency injection, middleware, and proper error handling
 
-**4.5 Privacy-Preserving Analytics**
-- Create privacy-preserving analysis capabilities:
-  - Differential privacy for aggregate statistics
-  - k-anonymity preservation in result sets
-  - Secure multi-party computation for cross-agency analysis
-  - Privacy budget management for repeated queries
+**Priority Implementation Tasks:**
+1. Create async wrapper for LangGraph agent (`src/api/core/agent_wrapper.py`)
+2. Implement core endpoints with Pydantic models for validation
+3. Add authentication and rate limiting middleware
+4. Create comprehensive OpenAPI documentation
+
+**4.2 Advanced RAG Techniques Implementation**
+
+Enhance the RAG system with sophisticated retrieval and generation methods:
+
+**Re-ranking Pipeline (`src/rag/core/reranker.py`):**
+```python
+from sentence_transformers import CrossEncoder
+from typing import List, Tuple
+
+class DocumentReranker:
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
+        self.cross_encoder = CrossEncoder(model_name)
+    
+    async def rerank_documents(
+        self, 
+        query: str, 
+        documents: List[str], 
+        top_k: int = 5
+    ) -> List[Tuple[str, float]]:
+        """Re-rank documents using cross-encoder for relevance"""
+        # Implementation details...
+```
+
+**Query Transformation (`src/rag/core/query_transformer.py`):**
+- **Hypothetical Document Embeddings (HyDE)**: Generate hypothetical answers and use for retrieval
+- **Query Decomposition**: Break complex queries into sub-questions
+- **Query Expansion**: Add synonyms and related terms for better retrieval
+
+**Multi-Query Generation (`src/rag/core/multi_query.py`):**
+```python
+async def generate_multiple_queries(original_query: str) -> List[str]:
+    """Generate multiple query variations for comprehensive retrieval"""
+    prompt = f"""
+    Generate 3 different ways to ask this question for better document retrieval:
+    Original: {original_query}
+    
+    Variations:
+    1.
+    2.
+    3.
+    """
+    # Implementation with LLM call...
+```
+
+**4.3 SQL Query Validation and Safety**
+
+Implement comprehensive SQL validation using LangChain's QuerySQLCheckerTool:
+
+**SQL Validator (`src/rag/tools/sql_validator.py`):**
+```python
+from langchain_community.tools.sql_database.tool import QuerySQLCheckerTool
+from langchain_community.utilities import SQLDatabase
+from typing import Dict, Any
+
+class SQLQueryValidator:
+    def __init__(self, db_uri: str):
+        self.db = SQLDatabase.from_uri(db_uri)
+        self.validator = QuerySQLCheckerTool(db=self.db, llm=llm)
+    
+    async def validate_query(self, query: str) -> Dict[str, Any]:
+        """Validate SQL query for safety and correctness"""
+        try:
+            # Check for dangerous operations
+            dangerous_keywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE']
+            query_upper = query.upper()
+            
+            for keyword in dangerous_keywords:
+                if keyword in query_upper:
+                    return {
+                        "valid": False,
+                        "error": f"Dangerous operation detected: {keyword}",
+                        "query": query
+                    }
+            
+            # Use LangChain validator
+            validation_result = await self.validator.ainvoke({"query": query})
+            
+            return {
+                "valid": True,
+                "validated_query": validation_result,
+                "original_query": query
+            }
+            
+        except Exception as e:
+            return {
+                "valid": False,
+                "error": str(e),
+                "query": query
+            }
+```
+
+**Integration with Text-to-SQL Tool:**
+- All generated SQL queries must pass validation before execution
+- Implement query complexity limits (max joins, subqueries, etc.)
+- Add query timeout and resource usage monitoring
+- Create SQL injection prevention measures
+
+**4.4 Monitoring, Logging, and Evaluation Framework**
+
+**Structured Logging (`src/rag/utils/logging.py`):**
+```python
+import structlog
+from typing import Dict, Any
+import time
+
+class RAGLogger:
+    def __init__(self):
+        self.logger = structlog.get_logger()
+    
+    async def log_query(
+        self, 
+        query: str, 
+        user_id: str, 
+        query_type: str,
+        response_time: float,
+        success: bool,
+        metadata: Dict[str, Any] = None
+    ):
+        """Log query with structured data for analysis"""
+        self.logger.info(
+            "rag_query",
+            query=query,
+            user_id=user_id,
+            query_type=query_type,
+            response_time=response_time,
+            success=success,
+            timestamp=time.time(),
+            metadata=metadata or {}
+        )
+```
+
+**Performance Monitoring (`src/rag/monitoring/metrics.py`):**
+```python
+from prometheus_client import Counter, Histogram, Gauge
+import time
+from functools import wraps
+
+# Metrics definitions
+QUERY_COUNTER = Counter('rag_queries_total', 'Total RAG queries', ['query_type', 'status'])
+QUERY_DURATION = Histogram('rag_query_duration_seconds', 'Query processing time', ['query_type'])
+ACTIVE_QUERIES = Gauge('rag_active_queries', 'Currently processing queries')
+
+def monitor_query_performance(query_type: str):
+    """Decorator to monitor query performance"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            start_time = time.time()
+            ACTIVE_QUERIES.inc()
+            
+            try:
+                result = await func(*args, **kwargs)
+                QUERY_COUNTER.labels(query_type=query_type, status='success').inc()
+                return result
+            except Exception as e:
+                QUERY_COUNTER.labels(query_type=query_type, status='error').inc()
+                raise
+            finally:
+                duration = time.time() - start_time
+                QUERY_DURATION.labels(query_type=query_type).observe(duration)
+                ACTIVE_QUERIES.dec()
+        
+        return wrapper
+    return decorator
+```
+
+**Answer Quality Evaluation (`src/rag/evaluation/evaluator.py`):**
+```python
+from typing import Dict, List, Any
+import asyncio
+
+class RAGEvaluator:
+    def __init__(self):
+        self.llm = # Initialize LLM for evaluation
+    
+    async def evaluate_answer_quality(
+        self, 
+        query: str, 
+        answer: str, 
+        retrieved_docs: List[str]
+    ) -> Dict[str, float]:
+        """Evaluate answer quality on multiple dimensions"""
+        
+        # Relevance evaluation
+        relevance_prompt = f"""
+        Query: {query}
+        Answer: {answer}
+        
+        Rate the relevance of the answer to the query on a scale of 1-5:
+        """
+        
+        # Faithfulness evaluation (answer supported by retrieved docs)
+        faithfulness_prompt = f"""
+        Retrieved Documents: {retrieved_docs}
+        Answer: {answer}
+        
+        Rate how well the answer is supported by the documents on a scale of 1-5:
+        """
+        
+        # Run evaluations concurrently
+        relevance_task = self._evaluate_dimension(relevance_prompt)
+        faithfulness_task = self._evaluate_dimension(faithfulness_prompt)
+        
+        relevance_score, faithfulness_score = await asyncio.gather(
+            relevance_task, faithfulness_task
+        )
+        
+        return {
+            "relevance": relevance_score,
+            "faithfulness": faithfulness_score,
+            "overall": (relevance_score + faithfulness_score) / 2
+        }
+```
 
 #### Components to be Developed/Modified
 
 **New Components:**
-- Complete privacy and security framework
-- PII detection and anonymization pipeline
-- Advanced access control and monitoring systems
-- Compliance reporting and audit tools
+- FastAPI application with async architecture (`src/api/`)
+- Advanced RAG techniques implementation (`src/rag/core/reranker.py`, etc.)
+- SQL query validation system (`src/rag/tools/sql_validator.py`)
+- Comprehensive monitoring and logging framework (`src/rag/monitoring/`, `src/rag/utils/`)
+- Answer quality evaluation system (`src/rag/evaluation/`)
 
 **Modified Components:**
-- Integrate privacy controls into all query processing components
-- Update database access patterns with enhanced security
-- Modify result formatting to include privacy indicators
+- Update LangGraph agent to support async operations (`src/rag/core/agent.py`)
+- Enhance text-to-SQL tool with validation integration (`src/rag/tools/text_to_sql.py`)
+- Modify vector search tool for re-ranking support (`src/rag/tools/vector_search.py`)
+- Update configuration management for production settings (`src/rag/config.py`)
+
+**Integration Requirements:**
+- All FastAPI endpoints must use async/await patterns
+- LangGraph agent wrapper must maintain state consistency
+- Monitoring must be integrated into all major components
+- SQL validation must be mandatory for all generated queries
 
 #### Architecture Documentation Updates
-- Document comprehensive privacy and security architecture
-- Add APP compliance mapping and controls
-- Include threat model and security risk assessment
-- Document privacy-preserving analytics capabilities
+- Document async architecture patterns and best practices
+- Add comprehensive API reference with OpenAPI specification
+- Include monitoring and observability setup guides
+- Document advanced RAG techniques and their use cases
+- Create SQL validation and security documentation
 
 #### Data Privacy/Governance Steps
-- Complete Australian Privacy Principles (APP) compliance assessment
-- Implement data minimization and purpose limitation controls
-- Create privacy impact assessment documentation
-- Establish incident response procedures for privacy breaches
+- Implement request/response logging with PII detection
+- Create audit trails for all API access and SQL queries
+- Establish data retention policies for logs and metrics
+- Document security controls for FastAPI deployment
 
 #### Testing/Validation
-- Security penetration testing for all components
-- Privacy compliance testing against APP requirements
-- Performance impact assessment for privacy controls
-- User experience testing with privacy features enabled
-- Compliance audit preparation and documentation
+- **Unit Tests**: All new components with >90% coverage
+- **Integration Tests**: FastAPI endpoints with realistic workloads
+- **Performance Tests**: Load testing with concurrent async requests
+- **Security Tests**: SQL injection and API security validation
+- **Evaluation Tests**: Answer quality assessment on test dataset
 
-#### Success Criteria
-- Zero PII exposure in anonymized query results
-- 100% compliance with applicable APP requirements
-- Security controls pass penetration testing
-- Privacy features maintain system performance within 20% impact
-- Compliance documentation ready for audit
+**Testing Strategy:**
+```python
+# Example async test for FastAPI endpoint
+import pytest
+from httpx import AsyncClient
 
----
-
-### Phase 5: API Development & Production Readiness
-
-#### Objectives
-- Develop FastAPI interface for web application integration
-- Implement production-grade monitoring and logging
-- Create comprehensive documentation and deployment guides
-- Establish performance optimization and scalability framework
-
-#### Key Tasks
-
-**5.1 FastAPI Interface Development**
-- Create RESTful API endpoints:
-  - `/query` - Main query processing endpoint
-  - `/explain` - Query explanation and debugging
-  - `/health` - System health and status monitoring
-  - `/admin` - Administrative functions and configuration
-- Implement async processing for concurrent queries
-- Create API documentation with OpenAPI/Swagger
-
-**5.2 Production Monitoring and Observability**
-- Implement comprehensive monitoring:
-  - Query performance metrics and latency tracking
-  - System resource utilization monitoring
-  - Error rate and failure analysis
-  - User behavior and query pattern analytics
-- Create alerting for critical system events
-- Implement distributed tracing for complex queries
-
-**5.3 Scalability and Performance Optimization**
-- Implement caching strategies:
-  - Query result caching with TTL management
-  - Embedding cache for frequently accessed content
-  - Schema metadata caching with invalidation
-- Create connection pooling and resource management
-- Implement load balancing for multiple instances
-
-**5.4 Documentation and Developer Experience**
-- Create comprehensive documentation:
-  - API reference with examples
-  - Developer integration guides
-  - Configuration and deployment documentation
-  - Troubleshooting and FAQ sections
-- Implement SDK/client libraries for common platforms
-- Create interactive examples and tutorials
-
-**5.5 Deployment and Operations**
-- Create Docker containerization for all components
-- Implement CI/CD pipeline with automated testing
-- Create deployment scripts and infrastructure as code
-- Establish backup and disaster recovery procedures
-
-#### Components to be Developed/Modified
-
-**New Components:**
-- Complete FastAPI application with production features
-- Monitoring and observability infrastructure
-- Caching and performance optimization systems
-- Deployment and operations tooling
-
-**Modified Components:**
-- Adapt terminal application to use API backend
-- Update configuration management for production settings
-- Enhance logging and monitoring across all components
-
-#### Architecture Documentation Updates
-- Document production architecture and deployment patterns
-- Add API reference and integration guides
-- Include monitoring and observability setup
-- Document scalability patterns and performance tuning
-
-#### Data Privacy/Governance Steps
-- Implement API authentication and authorization
-- Create API access logging and audit trails
-- Establish rate limiting and abuse prevention
-- Document API security and privacy controls
-
-#### Testing/Validation
-- Load testing for API performance and scalability
-- Integration testing for all API endpoints
-- Deployment testing in staging environment
-- User acceptance testing with web interface
-- Production readiness assessment and checklist
-
-**Example API Usage:**
-```bash
-curl -X POST "http://localhost:8000/query" \
-     -H "Content-Type: application/json" \
-     -d '{"query": "What are the main issues in virtual courses?", "format": "summary"}'
+@pytest.mark.asyncio
+async def test_query_endpoint():
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.post(
+            "/query", 
+            json={"query": "What are common course issues?"}
+        )
+    assert response.status_code == 200
+    assert "answer" in response.json()
 ```
 
 #### Success Criteria
-- API handles 100+ concurrent queries with <2s response time
-- Monitoring provides comprehensive system visibility
-- Documentation enables self-service developer adoption
-- Deployment process is automated and repeatable
-- System passes production readiness review
+- **Performance**: API handles 200+ concurrent requests with <3s median response
+- **Quality**: Advanced RAG techniques improve answer relevance by 25%
+- **Security**: 100% of SQL queries pass validation without false positives
+- **Monitoring**: Comprehensive metrics collection with <1% overhead
+- **Reliability**: 99.9% uptime with proper error handling and recovery
+- **Code Quality**: >90% test coverage with comprehensive documentation
+
+---
+
+### Phase 5: Production Operations & Advanced Analytics
+
+#### Objectives
+- Establish production deployment and operations infrastructure
+- Implement comprehensive security and compliance frameworks
+- Create advanced analytics and business intelligence capabilities
+- Develop continuous improvement and optimization processes
+
+#### Key Tasks
+
+**5.1 Production Deployment Infrastructure**
+
+**Containerization and Orchestration (`deployment/`):**
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  rag-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8000"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_DB: rag_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+**CI/CD Pipeline (`.github/workflows/deploy.yml`):**
+```yaml
+name: Deploy RAG System
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: |
+          python -m pytest tests/ --cov=src --cov-report=xml
+          
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run security scan
+        run: |
+          bandit -r src/
+          safety check
+          
+  deploy:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        run: |
+          docker-compose -f docker-compose.prod.yml up -d
+```
+
+**5.2 Security and Compliance Framework**
+
+**Authentication and Authorization (`src/api/security/`):**
+```python
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Dict, List
+import jwt
+
+class RoleBasedAuth:
+    def __init__(self):
+        self.security = HTTPBearer()
+        self.roles = {
+            "analyst": ["query", "explain"],
+            "admin": ["query", "explain", "admin", "metrics"],
+            "readonly": ["query"]
+        }
+    
+    async def verify_token(
+        self, 
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+    ) -> Dict[str, str]:
+        """Verify JWT token and extract user info"""
+        try:
+            payload = jwt.decode(
+                credentials.credentials, 
+                SECRET_KEY, 
+                algorithms=["HS256"]
+            )
+            return {
+                "user_id": payload["sub"],
+                "role": payload["role"],
+                "permissions": self.roles.get(payload["role"], [])
+            }
+        except jwt.JWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
+    def require_permission(self, permission: str):
+        """Decorator to require specific permission"""
+        def decorator(func):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                user = await self.verify_token()
+                if permission not in user["permissions"]:
+                    raise HTTPException(status_code=403, detail="Insufficient permissions")
+                return await func(*args, **kwargs)
+            return wrapper
+        return decorator
+```
+
+**Data Privacy Controls (`src/rag/privacy/`):**
+```python
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
+from typing import Dict, List, Any
+
+class PrivacyController:
+    def __init__(self):
+        self.analyzer = AnalyzerEngine()
+        self.anonymizer = AnonymizerEngine()
+        
+    async def scan_and_anonymize_response(
+        self, 
+        response: str, 
+        anonymization_level: str = "strict"
+    ) -> Dict[str, Any]:
+        """Scan response for PII and anonymize if necessary"""
+        
+        # Analyze for PII
+        results = self.analyzer.analyze(
+            text=response,
+            language='en',
+            entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "AU_TFN", "AU_ABN"]
+        )
+        
+        if results:
+            # Anonymize detected PII
+            anonymized_response = self.anonymizer.anonymize(
+                text=response,
+                analyzer_results=results
+            )
+            
+            return {
+                "original_response": response,
+                "anonymized_response": anonymized_response.text,
+                "pii_detected": True,
+                "pii_entities": [r.entity_type for r in results],
+                "anonymization_applied": True
+            }
+        
+        return {
+            "response": response,
+            "pii_detected": False,
+            "anonymization_applied": False
+        }
+```
+
+**5.3 Advanced Analytics and Business Intelligence**
+
+**Query Pattern Analytics (`src/analytics/query_patterns.py`):**
+```python
+import pandas as pd
+from typing import Dict, List, Any
+from datetime import datetime, timedelta
+
+class QueryAnalytics:
+    def __init__(self, db_connection):
+        self.db = db_connection
+    
+    async def analyze_query_patterns(
+        self, 
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """Analyze query patterns and user behavior"""
+        
+        # Query frequency analysis
+        query_freq = await self._get_query_frequency(days)
+        
+        # Topic clustering
+        topics = await self._cluster_query_topics()
+        
+        # Performance trends
+        performance = await self._analyze_performance_trends(days)
+        
+        # User behavior analysis
+        user_behavior = await self._analyze_user_behavior(days)
+        
+        return {
+            "query_frequency": query_freq,
+            "popular_topics": topics,
+            "performance_trends": performance,
+            "user_behavior": user_behavior,
+            "recommendations": await self._generate_recommendations()
+        }
+    
+    async def _cluster_query_topics(self) -> List[Dict[str, Any]]:
+        """Cluster queries by topic using embeddings"""
+        # Implementation using vector similarity clustering
+        pass
+    
+    async def _generate_recommendations(self) -> List[str]:
+        """Generate system improvement recommendations"""
+        return [
+            "Add FAQ section for top 10 most common queries",
+            "Optimize vector search for slow query patterns",
+            "Create additional training data for low-confidence topics"
+        ]
+```
+
+**Performance Optimization Dashboard (`src/analytics/performance.py`):**
+```python
+import plotly.graph_objects as go
+import plotly.express as px
+from typing import Dict, List
+
+class PerformanceDashboard:
+    async def generate_performance_report(self) -> Dict[str, Any]:
+        """Generate comprehensive performance report"""
+        
+        # Query latency distribution
+        latency_data = await self._get_latency_metrics()
+        latency_fig = px.histogram(
+            latency_data, 
+            x='response_time', 
+            title='Query Response Time Distribution'
+        )
+        
+        # Success rate trends
+        success_data = await self._get_success_metrics()
+        success_fig = px.line(
+            success_data, 
+            x='date', 
+            y='success_rate',
+            title='Query Success Rate Over Time'
+        )
+        
+        # Resource utilization
+        resource_data = await self._get_resource_metrics()
+        resource_fig = go.Figure()
+        resource_fig.add_trace(go.Scatter(
+            x=resource_data['timestamp'],
+            y=resource_data['cpu_usage'],
+            name='CPU Usage'
+        ))
+        resource_fig.add_trace(go.Scatter(
+            x=resource_data['timestamp'],
+            y=resource_data['memory_usage'],
+            name='Memory Usage'
+        ))
+        
+        return {
+            "latency_distribution": latency_fig.to_json(),
+            "success_trends": success_fig.to_json(),
+            "resource_utilization": resource_fig.to_json(),
+            "summary_metrics": await self._calculate_summary_metrics()
+        }
+```
+
+**5.4 Continuous Improvement Framework**
+
+**A/B Testing for RAG Improvements (`src/experimentation/ab_testing.py`):**
+```python
+from typing import Dict, Any, Optional
+import random
+from enum import Enum
+
+class ExperimentVariant(Enum):
+    CONTROL = "control"
+    TREATMENT_A = "treatment_a"
+    TREATMENT_B = "treatment_b"
+
+class RAGExperimentManager:
+    def __init__(self):
+        self.active_experiments = {}
+    
+    async def assign_variant(
+        self, 
+        user_id: str, 
+        experiment_name: str
+    ) -> ExperimentVariant:
+        """Assign user to experiment variant"""
+        
+        # Consistent assignment based on user_id hash
+        hash_value = hash(f"{user_id}_{experiment_name}") % 100
+        
+        if experiment_name == "reranking_model":
+            if hash_value < 33:
+                return ExperimentVariant.CONTROL  # No re-ranking
+            elif hash_value < 66:
+                return ExperimentVariant.TREATMENT_A  # Cross-encoder re-ranking
+            else:
+                return ExperimentVariant.TREATMENT_B  # Dual-encoder re-ranking
+        
+        return ExperimentVariant.CONTROL
+    
+    async def log_experiment_result(
+        self,
+        user_id: str,
+        experiment_name: str,
+        variant: ExperimentVariant,
+        query: str,
+        response_quality: float,
+        user_satisfaction: Optional[float] = None
+    ):
+        """Log experiment results for analysis"""
+        # Implementation for experiment result tracking
+        pass
+```
+
+**Model Performance Monitoring (`src/monitoring/model_monitor.py`):**
+```python
+import numpy as np
+from typing import List, Dict, Any
+from datetime import datetime, timedelta
+
+class ModelDriftMonitor:
+    def __init__(self):
+        self.baseline_metrics = {}
+        self.drift_threshold = 0.1  # 10% degradation threshold
+    
+    async def check_model_drift(
+        self, 
+        model_name: str, 
+        recent_predictions: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Check for model performance drift"""
+        
+        current_metrics = await self._calculate_metrics(recent_predictions)
+        baseline = self.baseline_metrics.get(model_name, {})
+        
+        if not baseline:
+            # Initialize baseline
+            self.baseline_metrics[model_name] = current_metrics
+            return {"drift_detected": False, "status": "baseline_established"}
+        
+        # Calculate drift
+        drift_scores = {}
+        for metric, current_value in current_metrics.items():
+            baseline_value = baseline.get(metric, current_value)
+            drift = abs(current_value - baseline_value) / baseline_value
+            drift_scores[metric] = drift
+        
+        max_drift = max(drift_scores.values())
+        drift_detected = max_drift > self.drift_threshold
+        
+        return {
+            "drift_detected": drift_detected,
+            "max_drift": max_drift,
+            "drift_scores": drift_scores,
+            "current_metrics": current_metrics,
+            "baseline_metrics": baseline,
+            "recommendation": self._get_drift_recommendation(drift_detected, max_drift)
+        }
+    
+    def _get_drift_recommendation(
+        self, 
+        drift_detected: bool, 
+        max_drift: float
+    ) -> str:
+        """Get recommendation based on drift analysis"""
+        if not drift_detected:
+            return "Model performance is stable"
+        elif max_drift < 0.2:
+            return "Minor drift detected - monitor closely"
+        else:
+            return "Significant drift detected - consider model retraining"
+```
+
+#### Components to be Developed/Modified
+
+**New Components:**
+- Production deployment infrastructure (`deployment/`, `docker-compose.yml`)
+- Security and authentication framework (`src/api/security/`)
+- Advanced analytics and BI dashboards (`src/analytics/`)
+- A/B testing and experimentation framework (`src/experimentation/`)
+- Model drift monitoring system (`src/monitoring/model_monitor.py`)
+- Comprehensive privacy controls (`src/rag/privacy/`)
+
+**Enhanced Components:**
+- FastAPI application with production middleware and security
+- Database migration and backup systems
+- Monitoring dashboards with real-time alerts
+- Documentation with operational runbooks
+
+#### Architecture Documentation Updates
+- Complete deployment and operations guide
+- Security architecture and compliance documentation
+- Analytics and business intelligence setup
+- Troubleshooting and incident response procedures
+- Performance tuning and optimization guide
+
+#### Data Privacy/Governance Steps
+- Complete Australian Privacy Principles (APP) compliance implementation
+- Automated PII detection and anonymization in all responses
+- Comprehensive audit logging with immutable records
+- Data retention and deletion policies with automated enforcement
+- Privacy impact assessment and regular compliance reviews
+
+#### Testing/Validation
+- **Production Testing**: Blue-green deployment with health checks
+- **Security Testing**: Penetration testing and vulnerability assessment
+- **Compliance Testing**: Automated APP compliance validation
+- **Performance Testing**: Load testing with realistic production scenarios
+- **Disaster Recovery Testing**: Backup and restore procedures validation
+
+**Comprehensive Test Suite:**
+```python
+# Production readiness test suite
+@pytest.mark.production
+async def test_production_deployment():
+    """Test production deployment health"""
+    # Health check endpoints
+    # Database connectivity
+    # External service dependencies
+    # Performance benchmarks
+    pass
+
+@pytest.mark.security
+async def test_security_controls():
+    """Test security implementations"""
+    # Authentication and authorization
+    # PII anonymization
+    # SQL injection prevention
+    # Rate limiting
+    pass
+
+@pytest.mark.compliance
+async def test_privacy_compliance():
+    """Test privacy compliance"""
+    # APP requirement validation
+    # Data retention policies
+    # User consent handling
+    # Audit trail completeness
+    pass
+```
+
+#### Success Criteria
+- **Deployment**: Zero-downtime deployments with automated rollback
+- **Security**: 100% compliance with security requirements and APP regulations
+- **Performance**: Sub-2s response times for 95th percentile under production load
+- **Reliability**: 99.9% uptime with comprehensive monitoring and alerting
+- **Analytics**: Business intelligence dashboard providing actionable insights
+- **Compliance**: Successful third-party security and privacy audit
+- **Operations**: Complete operational runbooks and incident response procedures
 
 ---
 
