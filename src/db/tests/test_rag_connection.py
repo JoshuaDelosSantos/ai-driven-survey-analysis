@@ -25,11 +25,11 @@ def test_rag_connection():
     try:
         # Connection parameters for RAG read-only role
         connection_params = {
-            'host': os.getenv('RAG_DB_HOST', 'localhost'),
-            'port': os.getenv('RAG_DB_PORT', '5432'),
-            'database': os.getenv('RAG_DB_NAME', 'csi-db'),
-            'user': os.getenv('RAG_DB_USER', 'rag_user_readonly'),
-            'password': os.getenv('RAG_DB_PASSWORD', 'rag_secure_readonly_2025')
+            'host': os.getenv('RAG_DB_HOST'),
+            'port': os.getenv('RAG_DB_PORT'),
+            'database': os.getenv('RAG_DB_NAME'),
+            'user': os.getenv('RAG_DB_USER'),
+            'password': os.getenv('RAG_DB_PASSWORD')
         }
         
         logger.info("Testing RAG read-only database connection...")
