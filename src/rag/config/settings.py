@@ -148,6 +148,18 @@ class RAGSettings(BaseSettings):
         
         return f"RAGSettings({', '.join(field_strs)})"
     
+    def get_database_uri(self) -> str:
+        """
+        Get the database URI for connections.
+        
+        Returns:
+            str: PostgreSQL connection URI
+        """
+        if self.rag_database_url:
+            return self.rag_database_url
+        
+        return f"postgresql://{self.rag_db_user}:{self.rag_db_password}@{self.rag_db_host}:{self.rag_db_port}/{self.rag_db_name}"
+    
     def get_safe_dict(self) -> dict:
         """
         Get a dictionary representation with sensitive fields masked.
