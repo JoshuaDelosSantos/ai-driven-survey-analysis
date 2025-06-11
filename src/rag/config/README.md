@@ -80,10 +80,20 @@ def build_database_url(cls, v):
 ### LLM Configuration
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `llm_api_key` | `LLM_API_KEY` | Yes | OpenAI/LLM API key |
+| `llm_api_key` | `LLM_API_KEY` | Yes | OpenAI/Anthropic/Google API key |
 | `llm_model_name` | `LLM_MODEL_NAME` | No | Model name (default: gpt-3.5-turbo) |
 | `llm_temperature` | `LLM_TEMPERATURE` | No | Temperature 0.0-2.0 (default: 0.1) |
 | `llm_max_tokens` | `LLM_MAX_TOKENS` | No | Max tokens (default: 1000) |
+
+#### Supported LLM Providers
+- **OpenAI**: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo`, `gpt-4o`
+- **Anthropic**: `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229`, `claude-3-haiku-20240307`
+- **Google Gemini**: `gemini-pro`, `gemini-1.5-pro`, `models/gemini-pro`
+
+#### Provider-Specific Notes
+- **OpenAI Models**: Use standard model names as published in OpenAI documentation
+- **Anthropic Models**: Include version dates for specific model versions
+- **Google Gemini**: Supports both `gemini-pro` and `models/gemini-pro` formats; the system automatically handles format conversion
 
 ### Query Processing
 | Parameter | Environment Variable | Required | Description |
@@ -140,13 +150,39 @@ safe_config = settings.get_safe_dict()
 logger.info(f"Configuration loaded: {safe_config}")
 ```
 
+### Multi-Provider LLM Configuration
+```python
+# Example configurations for different LLM providers
+
+# OpenAI Configuration
+from rag.utils.llm_utils import LLMManager
+openai_llm = LLMManager(model_name='gpt-4', api_key='your_openai_key')
+
+# Anthropic Configuration  
+anthropic_llm = LLMManager(model_name='claude-3-5-sonnet-20241022', api_key='your_anthropic_key')
+
+# Google Gemini Configuration
+gemini_llm = LLMManager(model_name='gemini-pro', api_key='your_google_key')
+
+# The system automatically detects provider based on model name prefix
+```
+
 ### Environment Setup
 ```bash
 # Required environment variables
 export RAG_DB_NAME="csi-db"
 export RAG_DB_USER="rag_user_readonly" 
 export RAG_DB_PASSWORD="your_secure_password"
-export LLM_API_KEY="your_openai_api_key"
+
+# LLM API Key (choose one provider)
+export LLM_API_KEY="your_openai_api_key"        # For OpenAI
+export LLM_API_KEY="your_anthropic_api_key"     # For Anthropic  
+export LLM_API_KEY="your_google_api_key"        # For Google Gemini
+
+# Optional: Specify model
+export LLM_MODEL_NAME="gpt-3.5-turbo"           # OpenAI (default)
+export LLM_MODEL_NAME="claude-3-5-sonnet-20241022"  # Anthropic
+export LLM_MODEL_NAME="gemini-pro"              # Google Gemini
 
 # Validate configuration
 python src/rag/config/settings.py
@@ -250,7 +286,7 @@ print('DB URL (masked):', s.get_safe_dict()['rag_database_url'])
 
 ---
 
-**Last Updated**: 9 June 2025  
+**Last Updated**: 11 June 2025  
 **Security Level**: High  
 **Compliance Status**: APP Aligned  
 **Test Coverage**: 100% (Configuration)
