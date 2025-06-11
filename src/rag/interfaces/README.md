@@ -1,290 +1,170 @@
-# External Service Interfaces
+# User Interfaces
 
-This directory contains secure interfaces for external service integration, implementing comprehensive data governance controls for third-party API interactions and database connectivity.
+This directory contains secure user interfaces for the RAG system, implementing comprehensive data governance controls for user interactions and external service integration.
 
 ## Overview
 
-The interfaces module provides secure, compliant connectivity to external services:
+The interfaces module provides secure, compliant user interaction capabilities:
+- **Terminal Application**: Phase 1 MVP terminal interface for Text-to-SQL queries  
 - **Database Interface**: Read-only database connectivity with audit controls
-- **LLM API Interface**: Secure OpenAI/LLM provider integration with data sovereignty considerations
+- **LLM API Interface**: Secure multi-provider LLM integration with data sovereignty considerations
 - **Monitoring Interface**: Audit logging and compliance monitoring integration
-- **Cache Interface**: Secure caching layer with privacy-aware data handling
 
-## Current Status: **In Development**
+## Current Architecture
 
-## Planned Architecture
+### Status: **Phase 1 Complete**
 
 ```
 interfaces/
 ├── __init__.py                 # Interface module initialisation
 ├── README.md                  # This documentation
-├── database/                  # Database connectivity
-│   ├── __init__.py
-│   ├── connection.py          # Secure database connection management
-│   ├── query_executor.py      # Read-only query execution
-│   └── audit_logger.py        # Database access audit logging
-├── llm/                       # LLM service integration
-│   ├── __init__.py
-│   ├── openai_client.py       # OpenAI API client with governance
-│   ├── azure_client.py        # Azure OpenAI integration
-│   └── response_validator.py   # LLM response validation
-├── monitoring/                # Monitoring and compliance
-│   ├── __init__.py
-│   ├── audit_service.py       # Comprehensive audit logging
-│   ├── metrics_collector.py   # Performance and usage metrics
-│   └── compliance_reporter.py # Privacy compliance reporting
-└── cache/                     # Caching interfaces
-    ├── __init__.py
-    ├── memory_cache.py        # In-memory caching with TTL
-    ├── redis_cache.py         # Redis integration (future)
-    └── cache_governance.py    # Privacy-aware cache management
+└── terminal_app.py            # Terminal MVP application (Phase 1)
 ```
+
+## Implementation Status
+
+### Phase 1: Terminal MVP Application (Complete)
+
+#### Terminal Application (`terminal_app.py`)
+- **`TerminalApp`**: Async terminal interface for natural language queries
+- **`run_terminal_app()`**: Main entry point with asyncio event loop integration
+- **Session Management**: UUID-based session tracking for audit purposes
+- **Error Handling**: Secure error messages without credential exposure
+- **Query Processing**: Integration with Text-to-SQL pipeline
+
+#### Key Features Implemented
+```python
+# Current implementation highlights
+class TerminalApp:
+    """Terminal application for RAG Text-to-SQL system with async-first design."""
+    
+    async def run(self):
+        """Main terminal loop with natural language query processing."""
+        # Async event loop with proper resource management
+        # Integration with AsyncSQLTool for Text-to-SQL processing
+        # Secure error handling and result formatting
+        
+    async def process_query(self, question: str) -> None:
+        """Process natural language question with comprehensive audit trail."""
+        # Query validation and sanitisation
+        # Integration with LLM-powered SQL generation
+        # Result formatting with privacy protection
+```
+
+#### Security Architecture
+- **Read-Only Access**: Terminal operations limited to database SELECT queries
+- **Session Isolation**: Each terminal session isolated with unique identifiers
+- **Input Sanitisation**: All user input validated before processing
+- **Output Protection**: No sensitive data exposed in terminal output
+- **Audit Trail**: Complete logging of terminal sessions and queries
 
 ## Data Governance Framework
 
-### Security Controls by Interface
+### Current Security Controls
 
-#### Database Interface
-- **Read-Only Enforcement**: All connections use read-only credentials
-- **Connection Pooling**: Secure connection management with timeout controls
-- **Query Validation**: SQL injection prevention and complexity limits
-- **Access Logging**: Complete audit trail of database operations
+#### Terminal Interface Security
+- **Read-Only Enforcement**: All terminal operations use read-only database credentials
+- **Session Management**: UUID-based session tracking with comprehensive audit logging
+- **Input Validation**: Natural language query sanitisation and validation
+- **Output Protection**: Query results sanitised to prevent PII exposure
+- **Resource Limits**: Query timeout and result size limits enforced
 
-#### LLM API Interface  
-- **Data Minimisation**: Only schema metadata transmitted, no actual data
-- **API Security**: Secure credential management and encrypted connections
-- **Response Validation**: LLM response sanitisation and validation
-- **Cross-Border Controls**: Data sovereignty compliance for external APIs
-
-#### Monitoring Interface
-- **Audit Trail**: Comprehensive logging of all system operations
-- **Privacy Logging**: Sensitive data masking in all log outputs
-- **Compliance Monitoring**: Real-time privacy policy compliance tracking
-- **Incident Detection**: Automated security event detection and alerting
+#### Integrated External Services
+- **Database Interface**: Read-only database access through text_to_sql module
+- **LLM API Interface**: Multi-provider LLM integration (OpenAI/Anthropic/Gemini)
+- **Schema Interface**: Privacy-safe database schema provision to LLMs
+- **Audit Interface**: Comprehensive logging with PII sanitisation
 
 ### Privacy Compliance Implementation
 
 #### Australian Privacy Principles (APP) Compliance
 
-**APP 1 (Open and Transparent Management)**
-- Clear documentation of all external service integrations
-- Transparent data flow documentation for third-party APIs
-- Comprehensive privacy impact assessments for each interface
-
 **APP 3 (Collection of Personal Information)**
-- Minimal data collection principles enforced in all interfaces
-- Purpose-bound data transmission to external services
-- No personal information transmitted to LLM APIs
+- **Terminal Input**: Only natural language queries collected, no personal identification
+- **Session Data**: Minimal session metadata collected for audit purposes only
+- **No Data Sampling**: Terminal interface never samples or stores actual database content
 
-**APP 6 (Use or Disclosure of Personal Information)**
-- Strict purpose limitation for all external service interactions
-- No secondary use of data transmitted through interfaces
-- Clear boundaries on data sharing with third-party services
+**APP 6 (Use or Disclosure of Personal Information)**  
+- **Purpose-Bound Processing**: Terminal queries used solely for Text-to-SQL translation
+- **No Secondary Use**: Terminal session data not used for analytics or profiling
+- **Internal Processing**: All processing occurs within secure Australian jurisdiction
 
 **APP 8 (Cross-border Disclosure of Personal Information)**
-- Documented data sovereignty considerations for LLM APIs
-- Schema-only transmission policy (no actual data to external services)
-- Compliance monitoring for international data transfers
+- **Schema-Only Transmission**: Only database schema structure sent to external LLMs
+- **No Personal Data**: Zero transmission of actual user data to external APIs
+- **Audit Trail**: Complete logging of cross-border schema transmissions
 
 **APP 11 (Security of Personal Information)**
-- Encrypted connections for all external service communications
-- Secure credential management across all interfaces
-- Comprehensive security monitoring and incident response
+- **Encrypted Connections**: All external API communications use TLS encryption
+- **Credential Protection**: Secure credential management through configuration system
+- **Session Security**: Terminal sessions isolated with secure cleanup procedures
+- **Error Sanitisation**: All terminal error messages sanitised before display
 
-## Interface Specifications
+## Usage Examples
 
-### Database Interface
+### Terminal Application Usage
 
-#### Planned Implementation
-```python
-# Concept for secure database interface
-class SecureDatabaseInterface:
-    """Secure, read-only database interface with comprehensive audit controls."""
-    
-    def __init__(self, connection_string: str, audit_logger: AuditLogger):
-        """
-        Initialise secure database connection.
-        
-        Args:
-            connection_string: Read-only database connection string
-            audit_logger: Audit logging service for compliance
-        """
-        self.connection = self._create_readonly_connection(connection_string)
-        self.audit_logger = audit_logger
-    
-    async def execute_query(self, sql: str, context: QueryContext) -> QueryResult:
-        """
-        Execute read-only SQL query with full audit trail.
-        
-        Security Controls:
-        - SQL injection prevention
-        - Read-only operation validation
-        - Query complexity analysis
-        - Complete audit logging
-        """
-        pass
-    
-    def get_schema_metadata(self) -> SchemaMetadata:
-        """
-        Retrieve database schema with privacy filtering.
-        
-        Returns filtered schema excluding sensitive field descriptions
-        and implementing data classification controls.
-        """
-        pass
+#### Starting the Terminal Application
+```bash
+# Run the terminal MVP application
+cd /Users/josh/Desktop/CP3101/ai-driven-analysis-project/src/rag
+python runner.py
+
+# Alternative direct execution
+python -c "
+import asyncio
+from rag.interfaces.terminal_app import run_terminal_app
+asyncio.run(run_terminal_app())
+"
 ```
 
-#### Data Governance Features
-- **Connection Security**: TLS-encrypted connections with certificate validation
-- **Access Control**: Dedicated read-only database user with minimal privileges
-- **Query Monitoring**: Real-time SQL query analysis and logging
-- **Resource Protection**: Connection pooling and query timeout enforcement
+#### Example Terminal Session
+```
+🚀 RAG Text-to-SQL Terminal (Session: a1b2c3d4)
+================================================
+📋 Example queries:
+  • How many users completed courses in each agency?
+  • Show attendance status breakdown by user level
+  • Which courses have the highest enrollment?
 
-### LLM API Interface
+💬 Enter your question (or 'quit' to exit): How many users completed training?
 
-#### Planned Implementation
-```python
-# Concept for secure LLM API interface
-class SecureLLMInterface:
-    """Secure LLM API interface with data sovereignty controls."""
-    
-    def __init__(self, api_key: str, model_config: ModelConfig, audit_logger: AuditLogger):
-        """
-        Initialise secure LLM API client.
-        
-        Args:
-            api_key: Encrypted API key for LLM service
-            model_config: Model configuration with governance parameters
-            audit_logger: Audit logging for API interactions
-        """
-        self.client = self._create_secure_client(api_key)
-        self.audit_logger = audit_logger
-    
-    async def generate_sql(self, schema: FilteredSchema, query: str) -> SQLResponse:
-        """
-        Generate SQL using LLM with comprehensive governance controls.
-        
-        Data Governance:
-        - Schema-only transmission (no actual data)
-        - Request/response audit logging
-        - Data sovereignty compliance
-        - Response validation and sanitisation
-        """
-        pass
-    
-    def validate_response(self, response: LLMResponse) -> ValidationResult:
-        """
-        Validate LLM response for security and compliance.
-        
-        Includes SQL injection detection, complexity analysis,
-        and privacy policy compliance validation.
-        """
-        pass
+🔍 Processing your question...
+📊 Query Result:
+┌─────────────────┬─────────┐
+│ agency          │ count   │
+├─────────────────┼─────────┤
+│ Department A    │ 150     │
+│ Department B    │ 127     │
+│ Department C    │ 89      │
+└─────────────────┴─────────┘
+
+⏱️  Query executed in 2.3 seconds
+📝 Query logged for audit (Session: a1b2c3d4)
 ```
 
-#### Cross-Border Data Considerations
-- **Schema Transmission**: Only database structure metadata sent to external APIs
-- **No Personal Data**: Zero transmission of actual user or personal data
-- **API Logging**: Complete audit trail of external API interactions
-- **Data Sovereignty**: Clear documentation of data crossing international boundaries
-
-### Monitoring Interface
-
-#### Planned Implementation
+#### Secure Query Processing
 ```python
-# Concept for comprehensive monitoring interface
-class ComplianceMonitoringInterface:
-    """Comprehensive monitoring interface for privacy and security compliance."""
+# Example of terminal query processing with governance controls
+from rag.interfaces.terminal_app import TerminalApp
+
+async def secure_query_example():
+    """Example of secure terminal query processing."""
+    app = TerminalApp()
     
-    def __init__(self, audit_config: AuditConfig):
-        """
-        Initialise compliance monitoring with secure audit configuration.
-        """
-        self.audit_config = audit_config
-        self.metrics_collector = MetricsCollector()
+    # Question processing with comprehensive security
+    question = "How many users completed courses in each agency?"
     
-    def log_database_access(self, query: str, context: QueryContext, result: QueryResult):
-        """
-        Log database access with privacy-aware formatting.
-        
-        Includes query masking, result size logging, and
-        compliance metadata for audit purposes.
-        """
-        pass
+    # Security validation occurs automatically:
+    # 1. Input sanitisation and validation
+    # 2. Schema-only context provided to LLM
+    # 3. SQL generation with safety validation
+    # 4. Read-only database execution
+    # 5. Result sanitisation and formatting
     
-    def log_llm_interaction(self, request: LLMRequest, response: LLMResponse):
-        """
-        Log LLM API interactions with data sovereignty tracking.
-        
-        Logs schema transmission, response characteristics,
-        and cross-border data movement compliance.
-        """
-        pass
-    
-    def generate_compliance_report(self, period: TimePeriod) -> ComplianceReport:
-        """
-        Generate comprehensive compliance report for audit purposes.
-        
-        Includes APP compliance metrics, security event summaries,
-        and data governance adherence statistics.
-        """
-        pass
+    await app.process_query(question)
+    # Output: Secure, formatted results with audit trail
 ```
-
-#### Audit and Compliance Features
-- **Real-time Monitoring**: Continuous compliance monitoring and alerting
-- **Privacy Metrics**: Automated privacy policy adherence tracking
-- **Security Events**: Comprehensive security event logging and analysis
-- **Compliance Reporting**: Automated generation of compliance reports
-
-### Cache Interface
-
-#### Planned Implementation
-```python
-# Concept for privacy-aware caching interface
-class PrivacyAwareCacheInterface:
-    """Caching interface with comprehensive privacy controls."""
-    
-    def __init__(self, cache_config: CacheConfig, privacy_policy: PrivacyPolicy):
-        """
-        Initialise privacy-aware caching with governance controls.
-        """
-        self.cache_config = cache_config
-        self.privacy_policy = privacy_policy
-    
-    async def cache_query_result(self, key: str, result: QueryResult, ttl: int):
-        """
-        Cache query result with privacy-aware data handling.
-        
-        Implements data retention policies, anonymisation,
-        and secure cache key generation.
-        """
-        pass
-    
-    async def get_cached_result(self, key: str) -> Optional[QueryResult]:
-        """
-        Retrieve cached result with privacy validation.
-        
-        Includes TTL validation, data freshness checks,
-        and privacy policy compliance verification.
-        """
-        pass
-    
-    def purge_expired_data(self):
-        """
-        Automated purging of expired cache data.
-        
-        Implements data retention policies and
-        secure deletion of cached information.
-        """
-        pass
-```
-
-#### Privacy Controls for Caching
-- **Data Retention**: Configurable TTL with automatic expiration
-- **Anonymisation**: Cached data anonymisation for privacy protection
-- **Secure Deletion**: Cryptographic deletion of expired cache entries
-- **Access Logging**: Audit trail for all cache operations
 
 ## Configuration Integration
 
@@ -400,8 +280,8 @@ pytest tests/test_interfaces/test_monitoring_compliance.py -v
 
 ---
 
-**Status**: Planning Phase  
+**Status**: Phase 1 Complete  
 **Security Priority**: Critical  
 **Privacy Compliance**: APP Aligned  
 **Data Governance**: Comprehensive  
-**Last Updated**: 9 June 2025
+**Last Updated**: 11 June 2025
