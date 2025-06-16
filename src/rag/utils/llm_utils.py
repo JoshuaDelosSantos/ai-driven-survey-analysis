@@ -6,6 +6,39 @@ and response processing for the Text-to-SQL system.
 
 Security: No sensitive data in prompts, secure error handling.
 Performance: Async operations with retry logic.
+
+Core Examples:
+
+    # Basic LLM manager usage
+    manager = LLMManager(model_name='gpt-4')
+    response = await manager.generate(
+        prompt="What is machine learning?",
+        system_message="You are a helpful AI assistant."
+    )
+    print(response.content)
+
+    # Generate SQL from natural language
+    question = "How many users completed courses?"
+    schema = "Table users: user_id, name, agency..."
+    sql = await generate_sql_query(question, schema)
+    print(sql)  # SELECT COUNT(*) FROM users WHERE status = 'completed'
+
+    # Validate and improve SQL
+    improved_sql = await validate_and_improve_sql(
+        sql_query="SELECT * FROM users",
+        question="Show all active users"
+    )
+
+    # Using prompt templates
+    template = SQL_GENERATION_TEMPLATE
+    prompt = template.format(
+        schema="users(id, name), courses(id, title)",
+        question="List all users and their enrolled courses"
+    )
+
+    # Quick access to pre-configured LLM
+    llm = get_llm()
+    result = await llm.ainvoke("Generate a query...")
 """
 
 import asyncio
