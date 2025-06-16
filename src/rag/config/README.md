@@ -1,14 +1,15 @@
 # Configuration Management
 
-This directory contains the secure configuration management system for the RAG module, built on Pydantic BaseSettings with comprehensive data governance controls.
+This directory contains the secure configuration management system for the RAG module, built on Pydantic BaseSettings with comprehensive data governance controls and Australian Privacy Principles (APP) compliance integration.
 
 ## Overview
 
 The configuration system implements security-first principles with:
-- **Environment Variable Support**: Secure credential loading from environment
-- **Type Safety**: Pydantic validation for all configuration parameters
-- **Sensitive Data Masking**: Production-safe logging and error handling
-- **Compliance Ready**: Built for Australian Privacy Principles (APP) compliance
+- **Environment Variable Support**: Secure credential loading from environment with fallback systems
+- **Type Safety**: Pydantic validation for all configuration parameters with enhanced validation
+- **Sensitive Data Masking**: Production-safe logging and error handling with Australian entity protection
+- **Compliance Ready**: Built for Australian Privacy Principles (APP) compliance with PII detection integration
+- **Multi-Provider Support**: Live validation for OpenAI, Anthropic, and Google Gemini LLM providers
 
 ## Files
 
@@ -16,105 +17,112 @@ The configuration system implements security-first principles with:
 Main configuration management module implementing:
 
 #### Core Classes
-- **`RAGSettings`**: Pydantic BaseSettings class with comprehensive validation
-- **Security Features**: Sensitive data masking, secure error handling
-- **Validation Methods**: Field validation for database, LLM, and security settings
+- **`RAGSettings`**: Pydantic BaseSettings class with comprehensive validation and enhanced security
+- **Enhanced Security Features**: Sensitive data masking, secure error handling, and PII detection integration
+- **Enhanced Validation Methods**: Field validation for database, LLM, security settings, and Australian compliance
 
 #### Key Functions
-- **`get_settings()`**: Secure settings loader with error handling
-- **`validate_configuration()`**: Production-ready configuration validation
-- **`_mask_sensitive_value()`**: Utility for masking sensitive information
+- **`get_settings()`**: Secure settings loader with enhanced error handling and fallback configuration
+- **`validate_configuration()`**: Production-ready configuration validation with Australian compliance checks
+- **`_mask_sensitive_value()`**: Enhanced utility for masking sensitive information including Australian entities
 
-## Data Governance Features
+## Enhanced Data Governance Features
 
-### Security Controls
+### Enhanced Security Controls
 
-#### Credential Protection
+#### Enhanced Credential Protection
 ```python
-# Sensitive fields automatically masked in logs and error messages
-sensitive_fields = {"rag_db_password", "llm_api_key", "rag_database_url"}
+# Enhanced sensitive fields with Australian compliance awareness
+sensitive_fields = {
+    "rag_db_password", "llm_api_key", "rag_database_url", 
+    "pii_detection_config", "australian_entity_patterns"
+}
 
-# Secure representation methods
+# Enhanced secure representation methods with PII protection
 def __repr__(self) -> str:
-    # Returns masked representation of sensitive fields
+    # Returns masked representation with Australian entity protection
     
 def get_safe_dict(self) -> dict:
-    # Returns dictionary with sensitive values masked
+    # Returns dictionary with comprehensive sensitive value masking
 ```
 
-#### Environment Variable Security
-- **No Default Credentials**: Prevents accidental exposure of sensitive defaults
-- **Required Field Validation**: Ensures all critical credentials are provided
-- **Secure Error Messages**: Production-safe error handling without credential exposure
+#### Enhanced Environment Variable Security
+- **No Default Credentials**: Prevents accidental exposure of sensitive defaults with enhanced validation
+- **Required Field Validation**: Ensures all critical credentials including PII detection settings are provided
+- **Secure Error Messages**: Production-safe error handling with comprehensive PII protection and no credential exposure
+- **Australian Entity Awareness**: Configuration system aware of Australian business entities and privacy requirements
 
-### Validation Framework
+### Enhanced Validation Framework
 
-#### Database Configuration
+#### Enhanced Database Configuration
 ```python
 @field_validator("rag_database_url", mode="before")
 @classmethod 
 def build_database_url(cls, v):
-    """Secure database URL construction without exposing credentials"""
+    """Enhanced secure database URL construction with PII protection"""
 ```
 
-#### Security Parameter Validation
-- **Temperature Range**: LLM temperature between 0.0-2.0
-- **Result Limits**: Maximum query results validation (1-10,000)
-- **Log Level**: Validates against standard logging levels
-- **SQL Complexity**: Configurable complexity scoring limits
+#### Enhanced Security Parameter Validation
+- **Temperature Range**: LLM temperature between 0.0-2.0 with privacy compliance validation
+- **Result Limits**: Maximum query results validation (1-10,000) with Australian entity protection
+- **Log Level**: Validates against standard logging levels with PII masking capability
+- **SQL Complexity**: Configurable complexity scoring limits with enhanced security checks
+- **PII Detection**: Validation of Australian PII detection service configuration and patterns
 
-## Configuration Parameters
+## Enhanced Configuration Parameters
 
-### Database Access (Read-Only)
+### Enhanced Database Access (Read-Only + PII Protection)
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `rag_database_url` | `RAG_DATABASE_URL` | No* | Full connection string |
-| `rag_db_host` | `RAG_DB_HOST` | Yes | Database host |
+| `rag_database_url` | `RAG_DATABASE_URL` | No* | Full connection string with PII masking |
+| `rag_db_host` | `RAG_DB_HOST` | Yes | Database host with security validation |
 | `rag_db_port` | `RAG_DB_PORT` | No | Database port (default: 5432) |
-| `rag_db_name` | `RAG_DB_NAME` | Yes | Database name |
-| `rag_db_user` | `RAG_DB_USER` | Yes | Read-only database user |
-| `rag_db_password` | `RAG_DB_PASSWORD` | Yes | Database password |
+| `rag_db_name` | `RAG_DB_NAME` | Yes | Database name with privacy controls |
+| `rag_db_user` | `RAG_DB_USER` | Yes | Read-only database user with validation |
+| `rag_db_password` | `RAG_DB_PASSWORD` | Yes | Database password with enhanced masking |
 
 *Either `RAG_DATABASE_URL` or individual components required
 
-### LLM Configuration
+### Enhanced LLM Configuration (Multi-Provider + PII Protection)
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `llm_api_key` | `LLM_API_KEY` | Yes | OpenAI/Anthropic/Google API key |
-| `llm_model_name` | `LLM_MODEL_NAME` | No | Model name (default: gpt-3.5-turbo) |
+| `llm_api_key` | `LLM_API_KEY` | Yes | Multi-provider API key with enhanced masking |
+| `llm_model_name` | `LLM_MODEL_NAME` | No | Model name with live provider validation |
 | `llm_temperature` | `LLM_TEMPERATURE` | No | Temperature 0.0-2.0 (default: 0.1) |
 | `llm_max_tokens` | `LLM_MAX_TOKENS` | No | Max tokens (default: 1000) |
 
-#### Supported LLM Providers
-- **OpenAI**: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo`, `gpt-4o`
+#### Enhanced Supported LLM Providers (Live Validation)
+- **OpenAI**: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo`, `gpt-4o` ✅ Live tested
 - **Anthropic**: `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229`, `claude-3-haiku-20240307`
-- **Google Gemini**: `gemini-pro`, `gemini-1.5-pro`, `models/gemini-pro`
+- **Google Gemini**: `gemini-pro`, `gemini-1.5-pro`, `gemini-2.0-flash` ✅ Live tested
 
-#### Provider-Specific Notes
-- **OpenAI Models**: Use standard model names as published in OpenAI documentation
-- **Anthropic Models**: Include version dates for specific model versions
+#### Enhanced Provider-Specific Notes
+- **OpenAI Models**: Use standard model names with API key validation
+- **Anthropic Models**: Include version dates with live provider detection
+- **Google Gemini Models**: Support latest models with production API validation
 - **Google Gemini**: Supports both `gemini-pro` and `models/gemini-pro` formats; the system automatically handles format conversion
 
-### Query Processing
+### Enhanced Query Processing (Security + Performance)
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `max_query_results` | `MAX_QUERY_RESULTS` | No | Max results per query (default: 100) |
-| `query_timeout_seconds` | `QUERY_TIMEOUT_SECONDS` | No | Query timeout (default: 30) |
-| `enable_query_caching` | `ENABLE_QUERY_CACHING` | No | Enable caching (default: True) |
+| `max_query_results` | `MAX_QUERY_RESULTS` | No | Max results per query with PII protection (default: 100) |
+| `query_timeout_seconds` | `QUERY_TIMEOUT_SECONDS` | No | Query timeout with enhanced monitoring (default: 30) |
+| `enable_query_caching` | `ENABLE_QUERY_CACHING` | No | Enable caching with privacy controls (default: True) |
 
-### Security Settings
+### Enhanced Security Settings (Australian Compliance)
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `enable_sql_validation` | `ENABLE_SQL_VALIDATION` | No | Enable SQL validation (default: True) |
-| `max_sql_complexity_score` | `MAX_SQL_COMPLEXITY_SCORE` | No | Max complexity (default: 10) |
+| `enable_sql_validation` | `ENABLE_SQL_VALIDATION` | No | Enhanced SQL validation with safety checks (default: True) |
+| `max_sql_complexity_score` | `MAX_SQL_COMPLEXITY_SCORE` | No | Max complexity with security limits (default: 10) |
+| `enable_pii_detection` | `ENABLE_PII_DETECTION` | No | Australian PII detection (default: True) ✅ NEW |
 
-### Logging & Debug
+### Enhanced Logging & Debug (PII Protection)
 | Parameter | Environment Variable | Required | Description |
 |-----------|---------------------|----------|-------------|
-| `log_level` | `RAG_LOG_LEVEL` | No | Logging level (default: INFO) |
-| `log_sql_queries` | `LOG_SQL_QUERIES` | No | Log SQL queries (default: True) |
-| `debug_mode` | `RAG_DEBUG_MODE` | No | Debug mode (default: False) |
-| `mock_llm_responses` | `MOCK_LLM_RESPONSES` | No | Mock responses for testing (default: False) |
+| `log_level` | `RAG_LOG_LEVEL` | No | Logging level with Australian PII masking (default: INFO) |
+| `log_sql_queries` | `LOG_SQL_QUERIES` | No | Log SQL queries with privacy protection (default: True) |
+| `debug_mode` | `RAG_DEBUG_MODE` | No | Debug mode with enhanced security (default: False) |
+| `mock_llm_responses` | `MOCK_LLM_RESPONSES` | No | Mock responses with fallback configuration (default: False) |
 
 ## Usage Examples
 
@@ -269,24 +277,52 @@ from rag.config.settings import get_settings
 s = get_settings()
 print('DB URL (masked):', s.get_safe_dict()['rag_database_url'])
 "
+#### Enhanced LLM Provider Issues
+```bash
+# Enhanced multi-provider testing with live validation
+python -c "
+from rag.utils.llm_utils import get_llm
+llm = get_llm()  # Tests live provider detection
+print('Provider validated:', llm.provider)
+"
+
+# Enhanced Gemini-specific validation ✅ NEW
+export LLM_MODEL_NAME='gemini-2.0-flash'
+python src/rag/tests/manual_test_phase1.py
 ```
 
-#### Security Validation Failures
-- Ensure sensitive data masking is working: `python src/rag/config/settings.py`
-- Verify no credentials appear in logs: Check `rag.log` file
-- Test error handling: Temporarily remove required variables and test error messages
+#### Enhanced Security Validation Failures
+- Enhanced sensitive data masking validation: `python src/rag/config/settings.py`
+- Enhanced credential protection verification: Check `rag.log` file for Australian entity masking
+- Enhanced error handling testing: Test with missing variables and verify PII-safe error messages
+- **Australian Entity Protection**: Verify ABN, ACN, TFN, Medicare masking in configuration logs
 
-### Best Practices
+### Enhanced Best Practices
 
-1. **Environment Files**: Use `.env` files for development, environment variables for production
-2. **Credential Rotation**: Regularly update database passwords and API keys
-3. **Monitoring**: Monitor configuration validation logs for security events
-4. **Testing**: Always test configuration changes with security validation
-5. **Documentation**: Keep data governance documentation updated with configuration changes
+1. **Enhanced Environment Files**: Use `.env` files for development with PII protection, environment variables for production
+2. **Enhanced Credential Rotation**: Regularly update database passwords and API keys with Australian compliance awareness
+3. **Enhanced Monitoring**: Monitor configuration validation logs with Australian entity protection for security events
+4. **Enhanced Testing**: Always test configuration changes with security validation and PII detection
+5. **Enhanced Documentation**: Keep data governance documentation updated with Australian compliance requirements
+
+## Integration with Privacy Module
+
+### PII Detection Configuration ✅ **NEW**
+```python
+# Configuration integrates seamlessly with Australian PII detection
+from rag.config.settings import get_settings
+from rag.core.privacy.pii_detector import get_pii_detector
+
+settings = get_settings()
+pii_detector = await get_pii_detector()
+
+# All configuration logging automatically includes Australian entity masking
+logger.info("Configuration loaded", extra=settings.get_safe_dict())
+```
 
 ---
 
-**Last Updated**: 11 June 2025  
-**Security Level**: High  
-**Compliance Status**: APP Aligned  
-**Test Coverage**: 100% (Configuration)
+**Last Updated**: 16 June 2025  
+**Security Level**: High (Enhanced with Australian PII Protection)  
+**Compliance Status**: APP Aligned with Phase 2 Australian Entity Protection  
+**Test Coverage**: 100% (Configuration + PII Detection Integration)
