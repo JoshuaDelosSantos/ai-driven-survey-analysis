@@ -50,21 +50,21 @@ class RAGSettings(BaseSettings):
     # LLM Configuration
     llm_api_key: str = Field(
         ..., 
-        description="API key for LLM provider (OpenAI, etc.)",
+        description="API key for LLM provider (OpenAI, Anthropic, or Google)",
         alias="LLM_API_KEY"
     )
     llm_model_name: str = Field(
-        default="gpt-3.5-turbo", 
-        description="LLM model name",
+        ..., 
+        description="LLM model name (e.g., gpt-3.5-turbo, claude-3-sonnet-20240229, gemini-pro)",
         alias="LLM_MODEL_NAME"
     )
     llm_temperature: float = Field(
-        default=0.1, 
+        ..., 
         description="LLM temperature for SQL generation",
         alias="LLM_TEMPERATURE"
     )
     llm_max_tokens: int = Field(
-        default=1000, 
+        ..., 
         description="Maximum tokens for LLM responses",
         alias="LLM_MAX_TOKENS"
     )
@@ -123,9 +123,13 @@ class RAGSettings(BaseSettings):
     )
     
     model_config = ConfigDict(
-        env_file=".env",
+        env_file=[
+            ".env",  # Look in current directory first
+            "../../.env",  # Look in project root
+        ],
         env_file_encoding="utf-8",
-        case_sensitive=False
+        case_sensitive=False,
+        extra="ignore"  # Ignore extra fields from .env file
     )
     
     def model_post_init(self, __context) -> None:
