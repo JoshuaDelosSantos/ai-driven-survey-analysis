@@ -15,9 +15,15 @@ import re
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 import os
+import sys
 from pathlib import Path
 
-from ..config.settings import get_settings
+# Add the rag module to path for absolute imports
+rag_path = Path(__file__).parent.parent
+if str(rag_path) not in sys.path:
+    sys.path.insert(0, str(rag_path))
+
+from config.settings import get_settings
 
 
 class PIIMaskingFormatter(logging.Formatter):
