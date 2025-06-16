@@ -16,6 +16,8 @@ Privacy: No PII or sensitive data in schema descriptions.
 
 import asyncio
 import logging
+import json
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
@@ -58,9 +60,40 @@ class SchemaManager:
         self._db: Optional[SQLDatabase] = None
         self._schema_cache: Optional[str] = None
         self._cache_timestamp: Optional[float] = None
+        self._data_dictionary: Optional[Dict] = None
         
         # Cache duration: 1 hour
         self.cache_duration = 3600
+        
+    def _load_data_dictionary(self) -> Optional[Dict]:
+        """
+        Load data dictionary from JSON file if available.
+        
+        Returns:
+            Dict: Data dictionary content or None if not found
+        """
+        if self._data_dictionary is not None:
+            return self._data_dictionary
+            
+        # Look for data dictionary in common locations
+        possible_paths = [
+            Path(__file__).parent.parent.parent.parent / "csv" / "data-dictionary.json",
+            Path("../../../csv/data-dictionary.json"),
+            Path("data-dictionary.json")
+        ]
+        
+        for path in possible_paths:
+            try:
+                if path.exists():
+                    with open(path, 'r', encoding='utf-8') as f:
+                        self._data_dictionary = json.load(f)
+                    logger.info(f"Loaded data dictionary from {path}")
+                    return self._data_dictionary
+            except Exception as e:
+                logger.debug(f"Could not load data dictionary from {path}: {e}")
+                
+        logger.info("No data dictionary found, will use database introspection")
+        return None
         
     async def get_database(self) -> SQLDatabase:
         """
@@ -152,9 +185,16 @@ class SchemaManager:
             # Generate new schema description
             logger.info("Generating fresh schema description for LLM context")
             
-            db = await self.get_database()
-            table_info = await self._get_table_information(db)
-            schema_description = await self._format_schema_for_llm(table_info)
+            # Try to use data dictionary first
+            data_dict = self._load_data_dictionary()
+            if data_dict:
+                logger.info("Using data dictionary for schema description")
+                schema_description = await self._format_data_dictionary_for_llm(data_dict)
+            else:
+                logger.info("Using database introspection for schema description")
+                db = await self.get_database()
+                table_info = await self._get_table_information(db)
+                schema_description = await self._format_schema_for_llm(table_info)
             
             # Update cache
             self._schema_cache = schema_description
@@ -214,6 +254,72 @@ class SchemaManager:
                 continue
         
         return table_info
+    
+    async def _format_data_dictionary_for_llm(self, data_dict: Dict) -> str:
+        """
+        Format data dictionary for LLM context with accurate schema information.
+        
+        Args:
+            data_dict: Loaded data dictionary
+            
+        Returns:
+            str: Formatted schema description for LLM
+        """
+        schema_parts = [
+            "DATABASE SCHEMA INFORMATION",
+            "=" * 50,
+            "",
+            "You are working with a learning analytics database containing information about Australian Public Service training and development.",
+            "",
+            "TABLES AND COLUMNS:",
+            ""
+        ]
+        
+        for table_name, table_info in data_dict.items():
+            schema_parts.append(f"## {table_name.upper()} TABLE")
+            schema_parts.append(f"Description: {table_info['description']}")
+            schema_parts.append("Columns:")
+            
+            for column in table_info['columns']:
+                col_desc = f"  - {column['name']} ({column['dataType']}): {column['description']}"
+                if column.get('isPrimaryKey'):
+                    col_desc += " [PRIMARY KEY]"
+                if column.get('isForeignKey'):
+                    col_desc += f" [FOREIGN KEY -> {column.get('foreignKeyReference')}]"
+                if column.get('isFreeText'):
+                    col_desc += " [FREE TEXT - may contain PII]"
+                schema_parts.append(col_desc)
+            
+            schema_parts.append("")
+        
+        # Add important notes for SQL generation
+        schema_parts.extend([
+            "IMPORTANT NOTES FOR SQL GENERATION:",
+            "",
+            "1. ATTENDANCE STATUS VALUES:",
+            "   - Use 'Completed' (capital C) for completed courses",
+            "   - Use 'Enrolled' for active enrollments", 
+            "   - Use 'Cancelled' for cancelled enrollments",
+            "",
+            "2. COLUMN NAMES:",
+            "   - Use 'date_effective' (not date_start or date_end) for attendance dates",
+            "   - Use 'learning_content_surrogate_key' to join with learning_content table",
+            "   - Use 'status' column in attendance table for enrollment status",
+            "",
+            "3. COMMON QUERIES:",
+            "   - To find completed courses: WHERE a.status = 'Completed'",
+            "   - To join users and attendance: JOIN users u ON a.user_id = u.user_id",
+            "   - To join with learning content: JOIN learning_content lc ON a.learning_content_surrogate_key = lc.surrogate_key",
+            "",
+            "4. PRIVACY PROTECTION:",
+            "   - Never include PII in queries or results",
+            "   - Aggregate data when possible (COUNT, GROUP BY)",
+            "   - Free text columns may contain sensitive information",
+            "",
+            "=" * 50
+        ])
+        
+        return "\n".join(schema_parts)
     
     def _get_table_description(self, table_name: str) -> str:
         """Get human-readable description of table purpose."""
