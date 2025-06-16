@@ -186,11 +186,11 @@ class AustralianPIIDetector:
         )
         self.analyzer.registry.add_recognizer(abn_recognizer)
         
-        # Australian Company Number (ACN) recognizer  
+        # Australian Company Number (ACN) recognizer - more flexible
         acn_pattern = Pattern(
             name="acn_pattern",
-            regex=r'\b(?:ACN\s*:?\s*)?(\d{3}\s?\d{3}\s?\d{3})\b',
-            score=0.9
+            regex=r'\bACN\s*(?:is\s*|:?\s*)(\d{3}\s?\d{3}\s?\d{3})\b',
+            score=1.0
         )
         acn_recognizer = PatternRecognizer(
             supported_entity="AU_ACN",
@@ -199,11 +199,11 @@ class AustralianPIIDetector:
         )
         self.analyzer.registry.add_recognizer(acn_recognizer)
         
-        # Australian Tax File Number (TFN) recognizer
+        # Australian Tax File Number (TFN) recognizer - more flexible
         tfn_pattern = Pattern(
             name="tfn_pattern",
-            regex=r'\b(?:TFN\s*:?\s*)?(\d{3}\s?\d{3}\s?\d{3})\b',
-            score=0.95
+            regex=r'\bTFN\s*(?:is\s*|:?\s*)(\d{3}\s?\d{3}\s?\d{3})\b',
+            score=1.0
         )
         tfn_recognizer = PatternRecognizer(
             supported_entity="AU_TFN", 
@@ -212,11 +212,11 @@ class AustralianPIIDetector:
         )
         self.analyzer.registry.add_recognizer(tfn_recognizer)
         
-        # Australian Medicare Number recognizer
+        # Australian Medicare Number recognizer - match only the number
         medicare_pattern = Pattern(
-            name="medicare_pattern",
-            regex=r'\b(?:Medicare\s*(?:No|Number)\s*:?\s*)?(\d{4}\s?\d{5}\s?\d{1})\b',
-            score=0.9
+            name="medicare_pattern", 
+            regex=r'(?<=Medicare\s*(?:No\.?\s*|Number\.?\s*):?\s*)(\d{4}\s?\d{5}\s?\d{1})\b',
+            score=1.0
         )
         medicare_recognizer = PatternRecognizer(
             supported_entity="AU_MEDICARE",
@@ -286,7 +286,7 @@ class AustralianPIIDetector:
             language='en',
             entities=[
                 'PERSON', 'EMAIL_ADDRESS', 'PHONE_NUMBER', 'LOCATION',
-                'ORGANIZATION', 'DATE_TIME', 'IP_ADDRESS', 'CREDIT_CARD',
+                'DATE_TIME', 'IP_ADDRESS', 'CREDIT_CARD',
                 'AU_ABN', 'AU_ACN', 'AU_TFN', 'AU_MEDICARE'  # Australian entities
             ]
         )
