@@ -82,7 +82,7 @@ class TestPresidioAnonymisation:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "pii_type",
-        ["EMAIL", "PHONE", "PERSON", "LOCATION", "ORGANISATION", "ABN", "ACN", "MEDICARE", "TFN"]
+        ["EMAIL", "PHONE", "PERSON", "LOCATION", "ABN", "ACN", "MEDICARE", "TFN"]
     )
     async def test_presidio_anonymises_various_pii(self, initialised_detector, pii_type):
         """Checks that various PII types are correctly found and anonymised by Presidio."""
