@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
 """
-Test script for ContentProcessor implementation
+Test suite for ContentProcessor implementation
 
-This script provides basic validation of the ContentProcessor module
+This module provides comprehensive testing of the ContentProcessor module
 and its integration with existing RAG components.
 """
 
+import pytest
 import asyncio
 import logging
 import sys
@@ -22,7 +22,7 @@ from src.rag.data.content_processor import (
     process_evaluation_batch
 )
 
-# Set up logging
+# Set up logging for tests
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -31,6 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.asyncio
 async def test_content_processor_initialization():
     """Test that ContentProcessor can be initialized successfully."""
     logger.info("Testing ContentProcessor initialization...")
@@ -55,13 +56,14 @@ async def test_content_processor_initialization():
         await processor.cleanup()
         logger.info("✅ ContentProcessor cleanup successful")
         
-        return True
+        assert True  # Test passed
         
     except Exception as e:
         logger.error(f"❌ ContentProcessor initialization failed: {e}")
-        return False
+        pytest.fail(f"ContentProcessor initialization failed: {e}")
 
 
+@pytest.mark.asyncio
 async def test_text_chunking():
     """Test the text chunking functionality."""
     logger.info("Testing text chunking...")
@@ -82,13 +84,15 @@ async def test_text_chunking():
         for i, chunk in enumerate(chunks):
             logger.info(f"  Chunk {i}: {chunk.text[:50]}..." if len(chunk.text) > 50 else f"  Chunk {i}: {chunk.text}")
         
-        return True
+        assert len(chunks) > 0, "Should create at least one chunk"
+        assert all(hasattr(chunk, 'text') for chunk in chunks), "All chunks should have text attribute"
         
     except Exception as e:
         logger.error(f"❌ Text chunking failed: {e}")
-        return False
+        pytest.fail(f"Text chunking failed: {e}")
 
 
+@pytest.mark.asyncio
 async def test_component_imports():
     """Test that all required components can be imported."""
     logger.info("Testing component imports...")
@@ -110,13 +114,14 @@ async def test_component_imports():
         from src.rag.data.content_processor import SentimentAnalyser
         logger.info("✅ Sentiment analyser import successful")
         
-        return True
+        assert True  # All imports successful
         
     except Exception as e:
         logger.error(f"❌ Component import failed: {e}")
-        return False
+        pytest.fail(f"Component import failed: {e}")
 
 
+@pytest.mark.asyncio
 async def test_convenience_functions():
     """Test the convenience functions."""
     logger.info("Testing convenience functions...")
@@ -134,58 +139,53 @@ async def test_convenience_functions():
         # We're just testing that the functions can be called
         logger.info("✅ Convenience functions are callable")
         
-        return True
+        assert True  # Functions are callable
         
     except Exception as e:
         logger.info(f"ℹ️  Convenience functions failed (expected without database): {e}")
-        return True  # This is expected without a database connection
+        assert True  # This is expected without a database connection
 
 
-async def main():
-    """Run all tests."""
-    logger.info("Starting ContentProcessor tests...")
+# Additional helper tests for specific components
+
+@pytest.mark.asyncio
+async def test_processing_config():
+    """Test ProcessingConfig dataclass functionality."""
+    config = ProcessingConfig()
     
-    tests = [
-        ("Component Imports", test_component_imports),
-        ("Text Chunking", test_text_chunking),
-        ("Convenience Functions", test_convenience_functions),
-        ("ContentProcessor Initialization", test_content_processor_initialization),
-    ]
+    # Test default values
+    assert config.text_fields == ["general_feedback", "did_experience_issue_detail", "course_application_other"]
+    assert config.chunk_strategy == "sentence"
+    assert config.batch_size == 50
+    assert config.enable_pii_detection == True
+    assert config.enable_sentiment_analysis == True
     
-    results = []
-    for test_name, test_func in tests:
-        logger.info(f"\n{'='*50}")
-        logger.info(f"Running test: {test_name}")
-        logger.info(f"{'='*50}")
-        
-        try:
-            result = await test_func()
-            results.append((test_name, result))
-        except Exception as e:
-            logger.error(f"Test {test_name} crashed: {e}")
-            results.append((test_name, False))
-    
-    # Summary
-    logger.info(f"\n{'='*50}")
-    logger.info("TEST SUMMARY")
-    logger.info(f"{'='*50}")
-    
-    passed = 0
-    for test_name, result in results:
-        status = "✅ PASS" if result else "❌ FAIL"
-        logger.info(f"{status}: {test_name}")
-        if result:
-            passed += 1
-    
-    logger.info(f"\nResults: {passed}/{len(results)} tests passed")
-    
-    if passed == len(results):
-        logger.info("🎉 All tests passed!")
-        return 0
-    else:
-        logger.warning("⚠️  Some tests failed. Check the logs above for details.")
-        return 1
+    # Test custom values
+    custom_config = ProcessingConfig(
+        text_fields=["general_feedback"],
+        batch_size=10,
+        enable_pii_detection=False
+    )
+    assert len(custom_config.text_fields) == 1
+    assert custom_config.batch_size == 10
+    assert custom_config.enable_pii_detection == False
 
 
-if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+@pytest.mark.asyncio
+async def test_text_chunker_edge_cases():
+    """Test TextChunker with edge cases."""
+    from src.rag.data.content_processor import TextChunker
+    
+    chunker = TextChunker(max_chunk_size=50, min_chunk_size=10)
+    
+    # Test empty text
+    chunks = await chunker.chunk_text("")
+    assert len(chunks) == 0
+    
+    # Test very short text
+    chunks = await chunker.chunk_text("Hi.")
+    assert len(chunks) == 0  # Below min_chunk_size
+    
+    # Test text with no sentence boundaries
+    chunks = await chunker.chunk_text("This is a long text without proper sentence boundaries that should still be chunked")
+    assert len(chunks) >= 1
