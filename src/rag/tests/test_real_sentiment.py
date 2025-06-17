@@ -6,6 +6,7 @@ Quick test to verify the real SentimentAnalyser is working with actual sentiment
 import asyncio
 import sys
 from pathlib import Path
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -13,6 +14,7 @@ sys.path.insert(0, str(project_root))
 
 from src.rag.data.content_processor import SentimentAnalyser
 
+@pytest.mark.asyncio
 async def test_real_sentiment():
     """Test real sentiment analysis with sample texts."""
     
