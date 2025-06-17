@@ -69,6 +69,43 @@ class RAGSettings(BaseSettings):
         alias="LLM_MAX_TOKENS"
     )
     
+    # Embedding Configuration
+    embedding_provider: str = Field(
+        default="openai",
+        description="Embedding provider (openai, sentence_transformers)",
+        alias="EMBEDDING_PROVIDER"
+    )
+    embedding_model_name: str = Field(
+        default="text-embedding-ada-002",
+        description="Embedding model name",
+        alias="EMBEDDING_MODEL_NAME"
+    )
+    embedding_dimension: int = Field(
+        default=1536,
+        description="Embedding vector dimension",
+        alias="EMBEDDING_DIMENSION"
+    )
+    embedding_api_key: Optional[str] = Field(
+        default=None,
+        description="API key for embedding provider (if different from LLM)",
+        alias="EMBEDDING_API_KEY"
+    )
+    embedding_batch_size: int = Field(
+        default=100,
+        description="Batch size for embedding generation",
+        alias="EMBEDDING_BATCH_SIZE"
+    )
+    chunk_size: int = Field(
+        default=500,
+        description="Text chunk size for embedding",
+        alias="CHUNK_SIZE"
+    )
+    chunk_overlap: int = Field(
+        default=50,
+        description="Overlap between text chunks",
+        alias="CHUNK_OVERLAP"
+    )
+    
     # Query Processing Configuration
     max_query_results: int = Field(
         default=100, 
@@ -140,7 +177,7 @@ class RAGSettings(BaseSettings):
     
     def __repr__(self) -> str:
         """Secure string representation that masks sensitive fields."""
-        sensitive_fields = {"rag_db_password", "llm_api_key", "rag_database_url"}
+        sensitive_fields = {"rag_db_password", "llm_api_key", "rag_database_url", "embedding_api_key"}
         
         field_strs = []
         for field_name, field_value in self.__dict__.items():
@@ -171,7 +208,7 @@ class RAGSettings(BaseSettings):
         Returns:
             dict: Configuration with sensitive values masked
         """
-        sensitive_fields = {"rag_db_password", "llm_api_key", "rag_database_url"}
+        sensitive_fields = {"rag_db_password", "llm_api_key", "rag_database_url", "embedding_api_key"}
         
         safe_dict = {}
         for field_name, field_value in self.__dict__.items():
