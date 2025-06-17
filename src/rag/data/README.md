@@ -81,11 +81,20 @@ await manager.close()
 All embedding settings are managed through the RAG configuration system:
 
 ```python
-# Environment variables
-EMBEDDING_PROVIDER=openai  # or sentence_transformers
+# Environment variables for OpenAI (High Quality)
+EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL_NAME=text-embedding-ada-002
 EMBEDDING_DIMENSION=1536
 EMBEDDING_API_KEY=your_api_key  # optional if using LLM_API_KEY
+EMBEDDING_BATCH_SIZE=100
+CHUNK_SIZE=500
+CHUNK_OVERLAP=50
+
+# Environment variables for Local Model (Current Configuration)
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
+EMBEDDING_API_KEY=  # Not required for local models
 EMBEDDING_BATCH_SIZE=100
 CHUNK_SIZE=500
 CHUNK_OVERLAP=50
@@ -93,7 +102,7 @@ CHUNK_OVERLAP=50
 
 ## Database Schema
 
-The `rag_embeddings` table stores vector embeddings with rich metadata:
+The `rag_embeddings` table stores vector embeddings with rich metadata and configurable dimensions:
 
 ```sql
 CREATE TABLE rag_embeddings (
@@ -102,13 +111,15 @@ CREATE TABLE rag_embeddings (
     field_name VARCHAR(50) NOT NULL,     -- 'general_feedback', 'did_experience_issue_detail', etc.
     chunk_text TEXT NOT NULL,            -- Anonymised text chunk
     chunk_index INTEGER NOT NULL,        -- Position within original text
-    embedding VECTOR(1536) NOT NULL,     -- Configurable dimension
-    model_version VARCHAR(50) NOT NULL,  -- e.g., 'openai-text-embedding-ada-002-v1'
+    embedding VECTOR(384) NOT NULL,      -- Configurable dimension (384 for all-MiniLM-L6-v2, 1536 for OpenAI)
+    model_version VARCHAR(50) NOT NULL,  -- e.g., 'sentence-transformers-all-MiniLM-L6-v2-v1'
     metadata JSONB,                      -- Rich metadata for filtering
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(response_id, field_name, chunk_index)
 );
 ```
+
+**Note**: Vector dimension is automatically configured based on `EMBEDDING_DIMENSION` environment variable when creating the table.
 
 ### Metadata Structure
 
