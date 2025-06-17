@@ -290,6 +290,9 @@ class EmbeddingsManager:
             async with self.db_pool.acquire() as conn:
                 async with conn.transaction():
                     for i, (chunk_text, embedding) in enumerate(zip(text_chunks, embeddings)):
+                        # Convert embedding list to pgvector format
+                        embedding_str = '[' + ','.join(map(str, embedding)) + ']'
+                        
                         embedding_id = await conn.fetchval("""
                             INSERT INTO rag_embeddings (
                                 response_id, field_name, chunk_text, chunk_index,
@@ -304,7 +307,7 @@ class EmbeddingsManager:
                                 created_at = CURRENT_TIMESTAMP
                             RETURNING embedding_id
                         """, response_id, field_name, chunk_text, i, 
-                           embedding, model_version, json.dumps(metadata) if metadata else None)
+                           embedding_str, model_version, json.dumps(metadata) if metadata else None)
                         
                         embedding_ids.append(embedding_id)
                         
@@ -346,9 +349,12 @@ class EmbeddingsManager:
             query_embeddings = await self.embedding_provider.generate_embeddings([query_text])
             query_embedding = query_embeddings[0]
             
+            # Convert query embedding to pgvector format
+            query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+            
             # Build search query
             where_conditions = ["1 - (embedding <=> $1) >= $2"]
-            params = [query_embedding, similarity_threshold]
+            params = [query_embedding_str, similarity_threshold]
             param_index = 3
             
             if field_name:
