@@ -24,7 +24,7 @@ This directory contains comprehensive test suites for the RAG (Retrieval-Augment
 
 ## Current Test Implementation
 
-### Status: **Phase 1 Complete + Phase 2 Task 2.1 Complete** - 56/56 Tests Passing
+### Status: **Phase 1 Complete + Phase 2 Embedding Integration Complete** - 75/75 Tests Passing
 
 #### Configuration Testing (`test_config.py`) - 8 Tests
 **Purpose**: Validates Pydantic-based configuration management with security focus
@@ -132,7 +132,7 @@ test_configuration_to_schema_flow()   # End-to-end workflow validation
 test_async_function_signatures()      # Async pattern verification
 ```
 
-#### **Phase 2 Embedding Testing (`test_embeddings_manager.py`) - **NEW**
+#### **Phase 2 Embedding Testing (`test_embeddings_manager.py`) - 19 Tests ✅ **Complete**
 **Purpose**: Comprehensive validation of local sentence transformer embedding functionality
 
 **Test Categories**:
@@ -150,6 +150,7 @@ test_async_function_signatures()      # Async pattern verification
 - **Async Architecture**: All tests validate async/await patterns for future Phase 3 integration
 - **Database Integration**: Tests work with configurable vector dimensions and existing schema
 - **Metadata Handling**: Complex metadata serialisation including sentiment scores and user context
+- **Production Ready**: All 19 tests passing, ready for Phase 3 integration
 
 **Configuration Requirements**:
 ```bash
@@ -160,6 +161,15 @@ EMBEDDING_BATCH_SIZE=100
 CHUNK_SIZE=500
 CHUNK_OVERLAP=50
 ```
+
+#### **Test Infrastructure (`run_embedding_tests.py`) - Support Script ✅ **NEW**
+**Purpose**: Convenience script for running embedding-specific tests
+
+**Features**:
+- Simplified test execution for embedding functionality
+- Environment validation before test execution
+- Readable output formatting for test results
+- Integration with pytest framework
 
 ## Implementation Status
 
@@ -173,6 +183,15 @@ CHUNK_OVERLAP=50
 - **LLM Manager**: Multi-provider LLM support (OpenAI, Anthropic, Gemini)
 - **Logging System**: Structured logging with PII masking and compliance tracking
 - **Terminal Interface**: MVP terminal application with natural language query processing
+
+### Phase 2: Embedding Integration (Complete) ✅ **NEW**
+
+#### Vector Embedding Infrastructure
+- **EmbeddingsManager**: Complete async implementation for vector storage and retrieval
+- **Multi-Provider Support**: OpenAI and local Sentence Transformers integration
+- **Local Model Integration**: all-MiniLM-L6-v2 fully integrated and tested
+- **Database Integration**: PostgreSQL with pgvector extension and configurable dimensions
+- **Australian Data Compatibility**: Tested with real Australian Public Service evaluation data
 
 #### Security & Compliance Implementation
 - **Read-Only Database Access**: All operations limited to SELECT queries
@@ -201,7 +220,7 @@ cp .env.example .env.test
 
 ### Test Execution
 
-**Run All Tests** (Current: 47/47 Automated + 9/9 Manual = 56/56 Total):
+**Run All Tests** (Current: 66/66 Automated + 9/9 Manual = 75/75 Total):
 ```bash
 # From RAG module root
 cd src/rag && python -m pytest tests/ -v
@@ -221,14 +240,23 @@ python -m pytest tests/test_config.py -v
 # Phase 1 refactoring tests only (26 tests)
 python -m pytest tests/test_phase1_refactoring.py -v
 
-# Australian PII detection tests only (13 tests) ✅ NEW
+# Australian PII detection tests only (13 tests)
 python -m pytest tests/test_pii_detection.py -v
+
+# Embedding functionality tests only (19 tests) ✅ NEW
+python -m pytest tests/test_embeddings_manager.py -v
+
+# Run embedding tests with convenience script ✅ NEW
+python tests/run_embedding_tests.py
 
 # Security-focused tests
 python -m pytest tests/ -k "security" -v
 
-# PII and privacy tests ✅ NEW
+# PII and privacy tests
 python -m pytest tests/ -k "pii" -v
+
+# Embedding and vector tests ✅ NEW
+python -m pytest tests/ -k "embedding" -v
 
 # LLM integration tests
 python -m pytest tests/ -k "llm" -v
@@ -425,9 +453,10 @@ Each test includes:
 
 ---
 
-**Status**: Phase 1 Complete  
-**Test Coverage**: 43/43 Tests Passing (34 Automated + 9 Manual)  
+**Status**: Phase 1 Complete + Phase 2 Embedding Integration Complete  
+**Test Coverage**: 75/75 Tests Passing (66 Automated + 9 Manual)  
 **Security Priority**: Critical  
 **Privacy Compliance**: APP Aligned  
 **Data Governance**: Comprehensive  
-**Last Updated**: 11 June 2025
+**Embedding Support**: Local Models (all-MiniLM-L6-v2) + OpenAI Compatible  
+**Last Updated**: 17 June 2025
