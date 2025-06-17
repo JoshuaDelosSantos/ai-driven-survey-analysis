@@ -76,7 +76,7 @@ def create_rag_readonly_role():
         """)
         
         # 3. SELECT only on specific tables required for RAG
-        tables_for_rag = ['attendance', 'users', 'learning_content', 'evaluation']
+        tables_for_rag = ['attendance', 'users', 'learning_content', 'evaluation', 'rag_embeddings']
         
         for table in tables_for_rag:
             # Check if table exists before granting permissions
