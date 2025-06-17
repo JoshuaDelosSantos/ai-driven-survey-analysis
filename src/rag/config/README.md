@@ -9,7 +9,8 @@ The configuration system implements security-first principles with:
 - **Type Safety**: Pydantic validation for all configuration parameters with enhanced validation
 - **Sensitive Data Masking**: Production-safe logging and error handling with Australian entity protection
 - **Compliance Ready**: Built for Australian Privacy Principles (APP) compliance with PII detection integration
-- **Multi-Provider Support**: Live validation for OpenAI, Anthropic, and Google Gemini LLM providers
+- **Multi-Provider Support**: Live validation for OpenAI, Anthropic, Google Gemini LLM providers, and local embedding models
+- **Flexible Embedding Support**: Configurable embedding providers (OpenAI, local sentence transformers)
 
 ## Files
 
@@ -19,7 +20,7 @@ Main configuration management module implementing:
 #### Core Classes
 - **`RAGSettings`**: Pydantic BaseSettings class with comprehensive validation and enhanced security
 - **Enhanced Security Features**: Sensitive data masking, secure error handling, and PII detection integration
-- **Enhanced Validation Methods**: Field validation for database, LLM, security settings, and Australian compliance
+- **Enhanced Validation Methods**: Field validation for database, LLM, embedding, and security settings with Australian compliance
 
 #### Key Functions
 - **`get_settings()`**: Secure settings loader with enhanced error handling and fallback configuration
@@ -35,7 +36,7 @@ Main configuration management module implementing:
 # Enhanced sensitive fields with Australian compliance awareness
 sensitive_fields = {
     "rag_db_password", "llm_api_key", "rag_database_url", 
-    "pii_detection_config", "australian_entity_patterns"
+    "embedding_api_key", "pii_detection_config", "australian_entity_patterns"
 }
 
 # Enhanced secure representation methods with PII protection
@@ -98,6 +99,27 @@ def build_database_url(cls, v):
 
 #### Enhanced Provider-Specific Notes
 - **OpenAI Models**: Use standard model names with API key validation
+- **Anthropic Models**: Requires separate API key configuration with enhanced validation
+- **Google Gemini**: Beta support with enhanced error handling and fallback configuration
+
+### Enhanced Embedding Configuration (Multi-Provider Support) ✅ **NEW**
+| Parameter | Environment Variable | Required | Description |
+|-----------|---------------------|----------|-------------|
+| `embedding_provider` | `EMBEDDING_PROVIDER` | No | Provider (openai, sentence_transformers) (default: openai) |
+| `embedding_model_name` | `EMBEDDING_MODEL_NAME` | No | Model name (default: text-embedding-ada-002) |
+| `embedding_dimension` | `EMBEDDING_DIMENSION` | No | Vector dimension (384 for local, 1536 for OpenAI) |
+| `embedding_api_key` | `EMBEDDING_API_KEY` | No* | API key for embedding provider (uses LLM key if unset) |
+| `embedding_batch_size` | `EMBEDDING_BATCH_SIZE` | No | Batch size for processing (default: 100) |
+| `chunk_size` | `CHUNK_SIZE` | No | Text chunk size for embedding (default: 500) |
+| `chunk_overlap` | `CHUNK_OVERLAP` | No | Overlap between chunks (default: 50) |
+
+*Required only if different from LLM provider
+
+#### Supported Embedding Providers
+- **OpenAI**: `text-embedding-ada-002`, `text-embedding-3-small`, `text-embedding-3-large`
+- **Local Models**: `all-MiniLM-L6-v2`, `all-mpnet-base-v2` ✅ Currently configured
+  - **Benefits**: No API costs, full privacy control, offline capability
+  - **Configuration**: Set `EMBEDDING_PROVIDER=sentence_transformers` and `EMBEDDING_DIMENSION=384`
 - **Anthropic Models**: Include version dates with live provider detection
 - **Google Gemini Models**: Support latest models with production API validation
 - **Google Gemini**: Supports both `gemini-pro` and `models/gemini-pro` formats; the system automatically handles format conversion
@@ -322,7 +344,8 @@ logger.info("Configuration loaded", extra=settings.get_safe_dict())
 
 ---
 
-**Last Updated**: 16 June 2025  
+**Last Updated**: 17 June 2025  
 **Security Level**: High (Enhanced with Australian PII Protection)  
 **Compliance Status**: APP Aligned with Phase 2 Australian Entity Protection  
-**Test Coverage**: 100% (Configuration + PII Detection Integration)
+**Test Coverage**: 100% (Configuration + PII Detection Integration)  
+**Embedding Support**: Multi-provider (OpenAI + Local Models)
