@@ -80,6 +80,14 @@ This directory contains standalone Python scripts for managing and manipulating 
   - Validates security constraints and documents compliance with Australian Privacy Principles (APP).
   - Implements defence-in-depth security for the Text-to-SQL functionality.
 
+- **create_rag_embeddings_table.py**  
+  Creates the `rag_embeddings` table for vector embeddings storage in the RAG system:
+  - Enables the pgvector extension if not already active.
+  - Creates the table with proper schema for storing text embeddings, metadata, and chunk information.
+  - Includes foreign key constraint to `evaluation(response_id)` for data integrity.
+  - Creates optimized indexes for vector similarity search (ivfflat) and metadata filtering (GIN).
+  - Supports configurable vector dimensions and embedding model versioning.
+
 - **tests/test_rag_connection.py**  
   Validates the RAG read-only database connection and security constraints:
   - Tests successful connection with the `rag_user_readonly` role.
@@ -169,6 +177,11 @@ python create_sentiment_table.py           # idempotent: logs if table exists
 python create_rag_readonly_role.py          # creates secure read-only role for RAG module
 ```
 
+### Create RAG Embeddings Table
+```bash
+python create_rag_embeddings_table.py       # creates table for vector embeddings in RAG
+```
+
 ### Test RAG Database Connection
 ```bash
 python -m pytest tests/test_rag_connection.py -v    # validates RAG security constraints
@@ -188,6 +201,7 @@ python create_evaluation_table.py          # create 'evaluation' table
 python load_evaluation_data.py             # load evaluation data from CSV
 python create_sentiment_table.py           # create 'evaluation_sentiment' table
 python create_rag_readonly_role.py          # create secure read-only role for RAG module
+python create_rag_embeddings_table.py       # creates table for vector embeddings in RAG
 ```
 
 ## Security and Testing
