@@ -23,8 +23,13 @@ Dependencies:
 - datetime: Timestamp logging
 """
 
+import os
 import db_connector
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def enable_pgvector_extension():
     """
@@ -116,14 +121,18 @@ def create_rag_embeddings_table():
         # Create rag_embeddings table if it doesn't exist
         print(f"[{datetime.now()}] rag_embeddings table does not exist, creating new table")
         
-        create_table_query = """
+        # Get vector dimension from environment variable
+        vector_dimension = int(os.getenv('EMBEDDING_DIMENSION', '1536'))
+        print(f"[{datetime.now()}] Using vector dimension: {vector_dimension}")
+        
+        create_table_query = f"""
         CREATE TABLE rag_embeddings (
             embedding_id SERIAL PRIMARY KEY,
             response_id INTEGER NOT NULL,
             field_name VARCHAR(50) NOT NULL,
             chunk_text TEXT NOT NULL,
             chunk_index INTEGER NOT NULL,
-            embedding VECTOR(1536) NOT NULL,
+            embedding VECTOR({vector_dimension}) NOT NULL,
             model_version VARCHAR(50) NOT NULL,
             metadata JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
