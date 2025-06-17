@@ -238,7 +238,7 @@ src/rag/
 
 **2.4 Embedding Generation & Storage System**
 - Implement `src/rag/core/vector_search/embedder.py` with async batch processing capabilities for efficiency.
-- Support for OpenAI `text-embedding-ada-002` (primary) and a fallback Sentence-BERT model.
+- Sentence-BERT model with a support for OpenAI `text-embedding-ada-002`.
 
 **2.5 Vector Search Tool Development**
 - Create `src/rag/core/tools/vector_search_tool.py` as a standalone, **async-ready** LangChain tool.
