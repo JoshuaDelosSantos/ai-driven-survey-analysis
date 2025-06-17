@@ -132,6 +132,35 @@ test_configuration_to_schema_flow()   # End-to-end workflow validation
 test_async_function_signatures()      # Async pattern verification
 ```
 
+#### **Phase 2 Embedding Testing (`test_embeddings_manager.py`) - **NEW**
+**Purpose**: Comprehensive validation of local sentence transformer embedding functionality
+
+**Test Categories**:
+- **Provider Testing** (4 tests): SentenceTransformerProvider initialisation, embedding generation, consistency, model versioning
+- **Manager Initialisation** (3 tests): EmbeddingsManager setup, provider configuration, database connection
+- **Embedding Storage** (3 tests): Single field storage, multiple chunks, all evaluation fields integration
+- **Vector Search** (3 tests): Semantic search, metadata filtering, cross-field search
+- **Database Integration** (3 tests): Schema compatibility, evaluation table integration, statistics functionality
+- **Error Handling** (3 tests): Empty chunks, no results scenarios, metadata serialisation
+
+**Key Features Tested**:
+- **Local Model Integration**: all-MiniLM-L6-v2 with 384-dimensional vectors
+- **Real Data Compatibility**: Uses actual evaluation free-text fields (did_experience_issue_detail, course_application_other, general_feedback)
+- **Australian Context**: Test data reflects Australian Public Service scenarios
+- **Async Architecture**: All tests validate async/await patterns for future Phase 3 integration
+- **Database Integration**: Tests work with configurable vector dimensions and existing schema
+- **Metadata Handling**: Complex metadata serialisation including sentiment scores and user context
+
+**Configuration Requirements**:
+```bash
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
+EMBEDDING_BATCH_SIZE=100
+CHUNK_SIZE=500
+CHUNK_OVERLAP=50
+```
+
 ## Implementation Status
 
 ### Phase 1: Core RAG Architecture (Complete)
