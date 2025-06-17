@@ -328,5 +328,92 @@
         "isFreeText": true
       }
     ]
+  },
+  "rag_embeddings": {
+    "description": "Stores vector embeddings for free-text fields from evaluation responses to enable semantic search in the RAG system. Supports configurable embedding models with versioning for future upgrades.",
+    "source_file": "Generated from evaluation.csv free-text fields via content processing pipeline",
+    "columns": [
+      {
+        "name": "embedding_id",
+        "dataType": "SERIAL",
+        "description": "Unique identifier for the embedding record.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "response_id",
+        "dataType": "INTEGER",
+        "description": "Reference to the evaluation response that this embedding was generated from.",
+        "isPrimaryKey": false,
+        "isForeignKey": true,
+        "foreignKeyReference": "evaluation.response_id",
+        "isFreeText": false
+      },
+      {
+        "name": "field_name",
+        "dataType": "VARCHAR(50)",
+        "description": "Name of the evaluation field that was embedded. Target fields: 'did_experience_issue_detail', 'course_application_other', 'general_feedback'.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "chunk_text",
+        "dataType": "TEXT",
+        "description": "PII-anonymised text chunk that was embedded. Text has been processed through Australian PII detection and anonymisation before embedding generation.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "chunk_index",
+        "dataType": "INTEGER",
+        "description": "Position of this chunk within the original text field (0-based). Enables reconstruction of original text order.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "embedding",
+        "dataType": "VECTOR(1536)",
+        "description": "Vector embedding representation of the text chunk. Dimension is configurable (default 1536 for OpenAI ada-002, 384 for sentence transformers).",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "model_version",
+        "dataType": "VARCHAR(50)",
+        "description": "Identifier for the embedding model used to generate this vector (e.g., 'openai-text-embedding-ada-002-v1', 'sentence-transformers-all-MiniLM-L6-v2-v1'). Enables model migration and performance tracking.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "metadata",
+        "dataType": "JSONB",
+        "description": "Rich metadata for filtering and analysis including user context (user_level, agency), sentiment scores, and chunk statistics. No personal identifiers stored.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "created_at",
+        "dataType": "TIMESTAMP",
+        "description": "Timestamp when the embedding was created and stored.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      }
+    ]
   }
 }
