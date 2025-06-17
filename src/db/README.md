@@ -83,10 +83,10 @@ This directory contains standalone Python scripts for managing and manipulating 
 - **create_rag_embeddings_table.py**  
   Creates the `rag_embeddings` table for vector embeddings storage in the RAG system:
   - Enables the pgvector extension if not already active.
-  - Creates the table with proper schema for storing text embeddings, metadata, and chunk information.
+  - Creates the table with configurable vector dimensions (384 for local models, 1536 for OpenAI).
   - Includes foreign key constraint to `evaluation(response_id)` for data integrity.
-  - Creates optimized indexes for vector similarity search (ivfflat) and metadata filtering (GIN).
-  - Supports configurable vector dimensions and embedding model versioning.
+  - Creates optimised indexes for vector similarity search (ivfflat) and metadata filtering (GIN).
+  - Supports multiple embedding model versions and comprehensive metadata storage.
 
 - **tests/test_rag_connection.py**  
   Validates the RAG read-only database connection and security constraints:
@@ -95,6 +95,14 @@ This directory contains standalone Python scripts for managing and manipulating 
   - Confirms write operations (INSERT, UPDATE, DELETE, CREATE) are properly blocked.
   - Tests complex JOIN queries to ensure analytical capabilities.
   - Uses pytest framework for automated testing and validation.
+
+- **tests/test_create_rag_embeddings_table.py**  
+  Comprehensive testing for RAG embeddings table creation and configuration:
+  - Tests pgvector extension enablement and vector column configuration.
+  - Validates table structure, foreign key constraints, and index creation.
+  - Verifies configurable vector dimensions work correctly.
+  - Tests compatibility with both local and cloud embedding models.
+  - Pytest-compatible with standalone execution options.
 
 ## Prerequisites
 
@@ -106,10 +114,13 @@ This directory contains standalone Python scripts for managing and manipulating 
    
    # RAG Module Database Access (read-only)
    RAG_DB_USER=rag_user_readonly
-   RAG_DB_PASSWORD=rag_secure_readonly_password
-   RAG_DB_HOST=IP
-   RAG_DB_PORT=port#
-   RAG_DB_NAME=db-name
+   RAG_DB_PASSWORD=rag_secure_readonly_2025
+   RAG_DB_HOST=localhost
+   RAG_DB_PORT=5432
+   RAG_DB_NAME=csi-db
+   
+   # Embedding Configuration (for RAG table creation)
+   EMBEDDING_DIMENSION=384  # 384 for local models, 1536 for OpenAI
    ```
 2. **Dependencies** — Ensure Python packages are installed:
    ```bash
@@ -182,9 +193,12 @@ python create_rag_readonly_role.py          # creates secure read-only role for 
 python create_rag_embeddings_table.py       # creates table for vector embeddings in RAG
 ```
 
-### Test RAG Database Connection
+### Test RAG Database Connection and Security
 ```bash
-python -m pytest tests/test_rag_connection.py -v    # validates RAG security constraints
+cd tests
+pytest test_rag_connection.py -v              # validates RAG security constraints
+pytest test_create_rag_embeddings_table.py -v # tests embeddings table creation
+pytest -v                                     # run all database tests
 ```
 
 ## Setup
@@ -206,17 +220,29 @@ python create_rag_embeddings_table.py       # creates table for vector embedding
 
 ## Security and Testing
 
-The database module includes comprehensive security measures for the RAG (Retrieval-Augmented Generation) integration:
+The database module includes comprehensive security measures and testing infrastructure for the RAG (Retrieval-Augmented Generation) integration:
 
 - **Read-Only Access Control**: The `rag_user_readonly` role provides minimal privileges following the principle of least privilege.
 - **Security Validation**: Automated tests verify that write operations are blocked and only authorised read operations are permitted.
+- **Comprehensive Testing**: Full test suite covering both security constraints and table creation functionality.
 - **Compliance Ready**: Security setup supports Australian Privacy Principles (APP) compliance and audit logging requirements.
 - **Defence-in-Depth**: Multiple layers of security including explicit permission denial and connection testing.
+
+### Current Test Status
+- **✅ All Tests Passing**: Both RAG connection and embeddings table tests are fully functional
+- **Configurable Dimensions**: Vector table supports both local (384) and cloud (1536) embedding models
+- **Production Ready**: Security constraints validated and embeddings infrastructure tested
 
 ### Running Security Tests
 ```bash
 # Test RAG database security constraints
-python -m pytest tests/test_rag_connection.py -v
+cd tests && pytest test_rag_connection.py -v
+
+# Test embeddings table creation and configuration
+cd tests && pytest test_create_rag_embeddings_table.py -v
+
+# Run all database tests
+cd tests && pytest -v
 
 # Test all database operations
 python db_connector.py
@@ -230,4 +256,8 @@ python db_connector.py
 - **Security**: Always use the dedicated `rag_user_readonly` role for RAG module database access.
 - **Testing**: Run security validation tests after any changes to database roles or permissions.
 - **Compliance**: Maintain audit logs and document any changes to database access controls.
+- **Vector Dimensions**: Configure `EMBEDDING_DIMENSION` appropriately for your embedding provider before creating the RAG embeddings table.
+
+---
+**Last Updated**: 17 June 2025
 
