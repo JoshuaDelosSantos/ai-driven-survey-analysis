@@ -1,18 +1,28 @@
 # RAG Data Module
 
-This module handles vector embeddings and content processing for the RAG system, supporting both cloud and local embedding providers with comprehensive testing infrastructure.
+This module handles vector embeddings and content processing for the RAG system, supporting both cloud and local embedding providers with comprehensive testing infrastructure and unified text processing pipeline.
 
 ## Overview
 
 The data module provides comprehensive functionality for:
 - **Vector Embedding Management**: Async operations for storing and retrieving embeddings
+- **Unified Content Processing**: Complete pipeline from raw text to embedded vectors ✅ **Phase 2 Task 2.3 Complete**
 - **Multi-Provider Support**: OpenAI and local Sentence Transformers embedding providers
 - **Batch Processing**: Efficient handling of large text datasets
 - **Metadata Filtering**: Rich search capabilities with metadata-based filtering
 - **Model Versioning**: Support for embedding model upgrades and migration
-- **Production Ready**: Fully tested with 19/19 tests passing
+- **Production Ready**: Fully tested with comprehensive test coverage
 
 ## Current Files
+
+### `content_processor.py` ✅ **NEW - Phase 2 Task 2.3**
+Complete implementation of the unified text processing and ingestion pipeline with:
+- **Five-Stage Pipeline**: Extract → Anonymise → Analyse → Chunk → Store
+- **Australian PII Protection**: Mandatory anonymisation using Presidio
+- **Sentiment Integration**: In-memory sentiment analysis for each text field
+- **Async Architecture**: Non-blocking operations with batch processing
+- **Error Resilience**: Comprehensive error handling and recovery
+- **Rich Metadata**: Contextual information stored with each embedding
 
 ### `embeddings_manager.py`
 Complete implementation of the EmbeddingsManager class with:
@@ -26,6 +36,80 @@ Complete implementation of the EmbeddingsManager class with:
 Module initialisation file for Python package structure.
 
 ## Components
+
+### ContentProcessor (`content_processor.py`) **Phase 2 Task 2.3 Complete**
+
+The unified text processing and ingestion pipeline with the following capabilities:
+
+#### Five-Stage Processing Pipeline
+1. **Extract**: Retrieve free-text fields from evaluation records
+2. **Anonymise**: Mandatory PII detection and anonymisation using Australian-specific patterns
+3. **Analyse**: Generate sentiment scores using local RoBERTa model
+4. **Chunk**: Split anonymised text into sentence-level chunks for optimal embedding
+5. **Store**: Generate embeddings and persist with rich contextual metadata
+
+#### Key Features
+- **Async Operations**: All processing operations are async for optimal performance
+- **Batch Processing**: Efficient handling of multiple records with configurable batch sizes
+- **Error Resilience**: Comprehensive error handling with detailed result reporting
+- **Australian PII Protection**: Mandatory anonymisation before any LLM or embedding processing
+- **Rich Metadata**: Context preservation including sentiment scores, user levels, agencies
+- **Resumption Capability**: Can resume processing from specific points for large datasets
+
+#### Usage Examples
+
+```python
+from src.rag.data.content_processor import ContentProcessor, ProcessingConfig
+
+# Initialize with custom configuration
+config = ProcessingConfig(
+    text_fields=["general_feedback", "did_experience_issue_detail", "course_application_other"],
+    batch_size=50,
+    enable_pii_detection=True,
+    enable_sentiment_analysis=True
+)
+
+# Process all evaluation records
+async with ContentProcessor(config) as processor:
+    results = await processor.process_all_evaluations()
+    
+    # Get processing statistics
+    stats = await processor.get_processing_statistics()
+    print(f"Processed {stats['total_processed']} records")
+    print(f"Success rate: {stats['success_rate']:.1f}%")
+
+# Process specific records
+response_ids = [1, 2, 3, 100, 150]
+results = await processor.process_evaluation_records(response_ids)
+
+# Process single record with detailed results
+result = await processor.process_single_evaluation(
+    response_id=123,
+    include_metadata=True
+)
+```
+
+#### Processing Result Structure
+```python
+ProcessingResult(
+    response_id=123,
+    success=True,
+    field_results={
+        "general_feedback": {
+            "success": True,
+            "chunks_processed": 3,
+            "embeddings_stored": 3,
+            "pii_detected": False,
+            "sentiment_scores": {"neg": 0.1, "neu": 0.7, "pos": 0.2}
+        }
+    },
+    chunks_processed=5,
+    embeddings_stored=5,
+    pii_detected=False,
+    sentiment_scores={"general_feedback": {"neg": 0.1, "neu": 0.7, "pos": 0.2}},
+    processing_time=2.45
+)
+```
 
 ### EmbeddingsManager (`embeddings_manager.py`)
 
@@ -197,14 +281,17 @@ The metadata JSONB field can contain:
 - **Analytics**: Embedding quality metrics and performance monitoring
 
 ### Integration Points
-- **Content Processor**: Integration with unified text processing pipeline
+- **Content Processor**: Integration with unified text processing pipeline ✅ **Phase 2 Task 2.3**
 - **Vector Search Tool**: LangChain tool integration for query routing
 - **Sentiment Analysis**: Direct integration with sentiment analysis results
 
 ## Testing Status
 
-### Comprehensive Test Coverage (19/19 tests passing)
-The embeddings functionality has been thoroughly tested with:
+### Comprehensive Test Coverage (23/23 tests passing) ✅ **Updated**
+The data module functionality has been thoroughly tested with:
+- **ContentProcessor Testing**: Complete pipeline validation with PII protection ✅ **NEW**
+- **Text Chunking**: Sentence-level segmentation with configurable strategies ✅ **NEW**
+- **Component Integration**: Seamless integration with PII detector, sentiment analyser, embeddings manager ✅ **NEW**
 - **Provider Testing**: SentenceTransformerProvider validation
 - **Manager Initialisation**: Configuration and database connection testing
 - **Storage Operations**: Single field, multiple chunks, and cross-field storage
@@ -217,6 +304,7 @@ The embeddings functionality has been thoroughly tested with:
 - **Database**: PostgreSQL with pgvector extension
 - **Real Data**: Tests use actual Australian Public Service evaluation data structure
 - **Security**: Read-only database access with proper permission validation
+- **PII Protection**: Australian-specific anonymisation testing ✅ **NEW**
 
 ---
-**Last Updated**: 17 June 2025
+**Last Updated**: 17 June 2025 - Phase 2 Task 2.3 Complete ✅
