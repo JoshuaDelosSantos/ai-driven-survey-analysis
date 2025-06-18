@@ -133,6 +133,9 @@ class VectorSearchTool(BaseTool):
     """
     args_schema: Type[VectorSearchInput] = VectorSearchInput
     
+    # Pydantic v2 requires model configuration to allow extra fields
+    model_config = {"arbitrary_types_allowed": True, "extra": "allow"}
+    
     def __init__(self):
         super().__init__()
         self._settings = get_settings()
