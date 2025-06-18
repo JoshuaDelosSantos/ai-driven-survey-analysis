@@ -23,6 +23,7 @@ def run_vector_search_tests(include_integration=False, unit_only=False):
     # Get test files
     test_dir = Path(__file__).parent
     test_files = [
+        test_dir / "test_imports.py",           # Quick import verification
         test_dir / "test_search_result.py",
         test_dir / "test_vector_search_tool.py",
         test_dir / "test_embeddings_manager.py"  # Updated with new methods
@@ -86,6 +87,7 @@ def run_specific_test_category(category):
     test_dir = Path(__file__).parent
     
     category_files = {
+        "imports": ["test_imports.py"],
         "structures": ["test_search_result.py"],
         "tool": ["test_vector_search_tool.py"],
         "manager": ["test_embeddings_manager.py"],
@@ -124,7 +126,7 @@ def main():
                        help="Include integration tests (requires database)")
     parser.add_argument("--unit-only", action="store_true",
                        help="Run only unit tests")
-    parser.add_argument("--category", choices=["structures", "tool", "manager", "privacy", "integration"],
+    parser.add_argument("--category", choices=["imports", "structures", "tool", "manager", "privacy", "integration"],
                        help="Run tests for specific category only")
     parser.add_argument("--quick", action="store_true",
                        help="Run a quick subset of tests for development")
@@ -135,7 +137,9 @@ def main():
         success = run_specific_test_category(args.category)
     elif args.quick:
         print("⚡ Running quick development tests...")
-        success = run_specific_test_category("structures")
+        success = run_specific_test_category("imports")
+        if success:
+            print("🔧 Quick import tests passed! Run full test suite before committing.")
         if success:
             print("🔧 Quick tests passed! Run full test suite before committing.")
     else:
