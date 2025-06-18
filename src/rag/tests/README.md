@@ -4,11 +4,11 @@
 
 This directory contains comprehensive test suites for the RAG (Retrieval-Augmented Generation) module, focusing on security validation, data governance compliance, and functionality testing. All tests are designed with Australian privacy principles, data sovereignty requirements, and mandatory PII protection in mind.
 
-## Current Test Status: **Phase 2 Task 2.3 Complete** ✅
+## Current Test Status: **Phase 2 Task 2.5 Complete** ✅
 
-**Total Coverage**: 81/81 Tests Passing  
-- **Automated Tests**: 72 passing  
-- **Manual Tests**: 9 passing  
+**Total Coverage**: 106+ Tests Passing  
+- **Automated Tests**: 95+ passing  
+- **Manual Tests**: 9+ passing  
 - **Integration**: Phase 1 + Phase 2 complete  
 
 ## Test Modules
@@ -35,19 +35,40 @@ This directory contains comprehensive test suites for the RAG (Retrieval-Augment
 - Integration with Microsoft Presidio
 - Fallback mechanisms and error handling
 
-### Embeddings Management (`test_embeddings_manager.py`) - 19 Tests
+### Embeddings Management (`test_embeddings_manager.py`) - 25+ Tests ✅ **Enhanced**
 **Purpose**: Validates vector embedding operations
 - Multi-provider support (OpenAI, Sentence Transformers)
 - Database integration with pgvector  
 - Metadata handling and search functionality
 - Batch processing and async operations
+- **NEW**: Advanced metadata filtering with `search_similar_with_metadata`
+- **NEW**: Complex filter combinations (user_level, agency, sentiment)
 
-### Content Processing (`test_content_processor.py`) - 6 Tests ✅ **NEW**
+### Content Processing (`test_content_processor.py`) - 6 Tests ✅ **Complete**
 **Purpose**: Validates unified text processing pipeline (Phase 2 Task 2.3)
 - Five-stage processing pipeline integration
 - Real sentiment analysis with transformer models
 - Text chunking with configurable strategies  
 - Component integration and error resilience
+
+### Vector Search Tool (`test_vector_search_tool.py`) - 40+ Tests ✅ **NEW - Phase 2 Task 2.5**
+**Purpose**: Validates complete vector search functionality
+- VectorSearchTool initialization and configuration
+- Basic and advanced search operations
+- Rich metadata filtering capabilities
+- Privacy compliance and PII protection
+- Performance monitoring and metrics collection
+- LangChain tool interface compatibility
+- Error handling and edge cases
+
+### Search Result Structures (`test_search_result.py`) - 25+ Tests ✅ **NEW - Phase 2 Task 2.5**
+**Purpose**: Validates search result data structures
+- SearchMetadata container functionality
+- VectorSearchResult properties and methods
+- VectorSearchResponse analysis capabilities
+- Relevance categorization logic
+- Serialization and JSON compatibility
+- Data structure integrity and utility methods
 
 ### Manual Testing & Utilities
 
@@ -104,38 +125,115 @@ pytest tests/test_pii_detection.py -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-## Configuration Requirements
+## Test Execution
 
-### Database Configuration
+### Quick Test Execution
+
+#### Run All Vector Search Tests (Phase 2 Task 2.5)
 ```bash
-RAG_DB_HOST=localhost
-RAG_DB_PORT=5432
-RAG_DB_NAME=csi-db
-RAG_DB_USER=rag_user_readonly
-RAG_DB_PASSWORD=your_secure_password
+# From src/rag/tests directory
+python run_vector_search_tests.py
+
+# Include integration tests (requires database)
+python run_vector_search_tests.py --integration
+
+# Run only unit tests
+python run_vector_search_tests.py --unit-only
+
+# Quick development testing
+python run_vector_search_tests.py --quick
 ```
 
-### LLM Configuration
+#### Run Specific Test Categories
 ```bash
-LLM_API_KEY=your_api_key
-LLM_MODEL_NAME=gemini-2.0-flash
-LLM_TEMPERATURE=0.1
-LLM_MAX_TOKENS=1000
+# Search result structures only
+python run_vector_search_tests.py --category structures
+
+# Vector search tool only
+python run_vector_search_tests.py --category tool
+
+# Updated embeddings manager only
+python run_vector_search_tests.py --category manager
+
+# Privacy compliance tests only
+python run_vector_search_tests.py --category privacy
+
+# Integration tests only
+python run_vector_search_tests.py --category integration
 ```
 
-### Embedding Configuration
+#### Run Individual Test Files
 ```bash
-EMBEDDING_PROVIDER=sentence_transformers
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
-EMBEDDING_DIMENSION=384
+# Using pytest directly
+pytest test_vector_search_tool.py -v
+pytest test_search_result.py -v
+pytest test_embeddings_manager.py -v
+
+# Run specific test classes
+pytest test_vector_search_tool.py::TestMetadataFiltering -v
+pytest test_search_result.py::TestVectorSearchResponse -v
 ```
 
-### Sentiment Analysis Configuration
+### Legacy Test Execution
+
+#### All Embedding Tests (Previous Phases)
 ```bash
-SENTIMENT_MODEL_NAME=cardiffnlp/twitter-roberta-base-sentiment
-FREE_TEXT_COLUMNS=did_experience_issue_detail,course_application_other,general_feedback
-SCORE_COLUMNS=neg,neu,pos
+python run_embedding_tests.py
 ```
+
+#### Complete Test Suite
+```bash
+# Run all tests
+pytest -v
+
+# Run with coverage
+pytest --cov=src.rag --cov-report=html -v
+
+# Run specific markers
+pytest -m "not integration" -v  # Skip integration tests
+pytest -m "asyncio" -v          # Only async tests
+```
+
+## Test Development Guidelines
+
+### Adding New Tests
+
+1. **Follow Existing Patterns**: Use the established async fixture patterns
+2. **Use Real Models**: Test with actual sentence transformers and API models
+3. **Privacy Compliance**: All tests must include PII protection validation
+4. **Performance Tracking**: Include timing and metrics validation
+5. **Error Handling**: Test both success and failure scenarios
+
+### Test Structure
+```python
+@pytest.mark.asyncio
+async def test_feature_name(fixture_name):
+    """Test description with specific focus."""
+    # Arrange
+    setup_data = create_test_data()
+    
+    # Act
+    result = await component.method(setup_data)
+    
+    # Assert
+    assert result.expected_property == expected_value
+    assert isinstance(result, ExpectedType)
+    
+    # Cleanup (if needed)
+    await cleanup_test_data()
+```
+
+### Privacy Testing Requirements
+- All user input must be tested for PII detection
+- Error messages must be validated for information leakage
+- Audit logging must be verified for anonymization
+- Cross-border data transmission must be monitored
+
+### Performance Testing
+- Measure and validate response times
+- Test with realistic data volumes
+- Monitor memory usage for large embeddings
+- Validate async operation efficiency
 
 ---
 
