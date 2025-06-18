@@ -1,36 +1,42 @@
 """
-Vector Search Module for RAG System
+Vector Search Module
 
-This module provides vector search capabilities including embedding generation,
-text chunking, semantic retrieval, and vector indexing for the RAG system.
+This module provides comprehensive vector search capabilities for the RAG system.
 
-Current Implementation:
-- embedder.py: Clean async embedding generation interface
-- vector_search_tool.py: LangChain-compatible vector search tool
-- search_result.py: Result data structures and containers
+Main Components:
+- Embedder: Async embedding generation with multiple provider support
+- VectorSearchTool: LangChain-compatible semantic search tool
+- Search Result Structures: Type-safe result containers with rich metadata
 
-Planned Components:
-- chunk_processor.py: Text chunking strategies  
-- retriever.py: Semantic retrieval
-- indexer.py: Vector indexing management
-
-Classes:
-- Embedder: Main embedding generation service
-- VectorSearchTool: Privacy-compliant semantic search tool
-- VectorSearchResult: Individual search result with metadata
-- VectorSearchResponse: Complete search response container
-- SearchMetadata: Rich metadata container for analysis
+Usage:
+    from src.rag.core.vector_search import VectorSearchTool, Embedder
+    from src.rag.core.vector_search import VectorSearchResponse, VectorSearchResult
 """
 
-from .embedder import Embedder
-from .vector_search_tool import VectorSearchTool
+# Core search functionality
+from .embedder import Embedder, EmbeddingResult, EmbeddingBatch
+from .vector_search_tool import VectorSearchTool, SearchParameters, VectorSearchInput
+
+# Result data structures
 from .search_result import (
-    VectorSearchResult,
-    VectorSearchResponse, 
     SearchMetadata,
+    VectorSearchResult, 
+    VectorSearchResponse,
     RelevanceCategory
 )
 
 __all__ = [
-    "Embedder"
+    # Core components
+    "Embedder",
+    "EmbeddingResult", 
+    "EmbeddingBatch",
+    "VectorSearchTool",
+    "SearchParameters",
+    "VectorSearchInput",
+    
+    # Result structures
+    "SearchMetadata",
+    "VectorSearchResult",
+    "VectorSearchResponse", 
+    "RelevanceCategory"
 ]
