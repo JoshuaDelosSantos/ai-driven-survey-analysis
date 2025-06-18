@@ -594,9 +594,9 @@ class TestAdvancedMetadataSearch:
         """Test search with multiple user level filtering."""
         # Store test data with different user levels
         test_data = [
-            (100, "Level 3", "Basic course feedback"),
-            (101, "Level 5", "Advanced course feedback"),
-            (102, "Exec Level 1", "Executive course feedback")
+            (81, "Level 3", "Basic course feedback"),
+            (82, "Level 5", "Advanced course feedback"),
+            (83, "Exec Level 1", "Executive course feedback")
         ]
         
         try:
@@ -628,7 +628,7 @@ class TestAdvancedMetadataSearch:
             # Results should only include Level 5 and Exec Level 1
             found_levels = set()
             for result in results:
-                if result['response_id'] in [100, 101, 102]:
+                if result['response_id'] in [81, 82, 83]:
                     user_level = result['metadata']['user_level']
                     found_levels.add(user_level)
                     assert user_level in ["Level 5", "Exec Level 1"]
@@ -644,7 +644,7 @@ class TestAdvancedMetadataSearch:
     @pytest.mark.asyncio
     async def test_search_with_sentiment_filtering(self, embeddings_manager):
         """Test search with sentiment score filtering."""
-        response_id = 103
+        response_id = 84
         
         metadata_with_sentiment = {
             "user_level": "Level 4",
@@ -694,7 +694,7 @@ class TestAdvancedMetadataSearch:
     @pytest.mark.asyncio
     async def test_search_with_complex_metadata_filters(self, embeddings_manager):
         """Test search with multiple complex metadata filters."""
-        response_id = 104
+        response_id = 85
         
         complex_metadata = {
             "user_level": "Level 6",
