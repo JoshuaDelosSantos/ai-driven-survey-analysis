@@ -50,7 +50,7 @@ Usage Example:
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Type
 from dataclasses import dataclass
 
 from langchain_core.tools import BaseTool
@@ -60,7 +60,7 @@ from pydantic import BaseModel, Field
 
 from .search_result import (
     VectorSearchResponse, VectorSearchResult, SearchMetadata,
-    SearchFilters, RelevanceCategory
+    RelevanceCategory
 )
 from .embedder import Embedder
 from ...data.embeddings_manager import EmbeddingsManager
@@ -78,7 +78,7 @@ class SearchParameters:
     query: str
     max_results: int = 10
     similarity_threshold: float = 0.75
-    filters: Optional[SearchFilters] = None
+    filters: Optional[Dict[str, Any]] = None
     field_names: Optional[List[str]] = None
     
     def validate(self) -> None:
@@ -107,22 +107,6 @@ class VectorSearchTool(BaseTool):
     
     Provides semantic search capabilities over evaluation feedback with
     automatic PII protection and rich metadata filtering.
-    
-    **Privacy Features:**
-    - Automatic query anonymization before embedding
-    - Privacy-safe error handling and logging
-    - Audit trail for compliance monitoring
-    
-    **Search Features:**
-    - Configurable similarity thresholds
-    - Rich metadata filtering (agency, user_level, sentiment)
-    - Performance monitoring and optimization
-    - Relevance categorization and ranking
-    
-    **Integration Features:**
-    - LangChain tool interface for agent orchestration
-    - Async-first design for scalable operations
-    - Clean result structures for synthesis components
     """
     
     name: str = "vector_search"
@@ -147,11 +131,11 @@ class VectorSearchTool(BaseTool):
         "field_name": ["general_feedback", "did_experience_issue_detail"]
     }
     """
-    args_schema = VectorSearchInput
+    args_schema: Type[VectorSearchInput] = VectorSearchInput
     
     def __init__(self):
         super().__init__()
-        self.settings = get_settings()
+        self._settings = get_settings()
         self._embedder: Optional[Embedder] = None
         self._embeddings_manager: Optional[EmbeddingsManager] = None
         self._pii_detector: Optional[AustralianPIIDetector] = None
@@ -207,7 +191,7 @@ class VectorSearchTool(BaseTool):
         query: str,
         max_results: int = 10,
         similarity_threshold: float = 0.75,
-        filters: Optional[SearchFilters] = None,
+        filters: Optional[Dict[str, Any]] = None,
         field_names: Optional[List[str]] = None
     ) -> VectorSearchResponse:
         """
@@ -243,7 +227,6 @@ class VectorSearchTool(BaseTool):
         
         try:
             # Step 1: Anonymize query for privacy compliance
-            anonymization_start = time.time()
             anonymized_query = await self._anonymize_query(query)
             
             # Step 2: Generate query embedding
@@ -299,15 +282,7 @@ class VectorSearchTool(BaseTool):
             raise RuntimeError(f"Search operation failed: {e}")
     
     async def _anonymize_query(self, query: str) -> str:
-        """
-        Anonymize query using PII detection for privacy compliance.
-        
-        Args:
-            query: Original user query
-            
-        Returns:
-            Anonymized query safe for processing
-        """
+        """Anonymize query using PII detection for privacy compliance."""
         try:
             result = await self._pii_detector.detect_and_anonymise(query)
             anonymized_query = result.get('anonymised_text', query)
@@ -322,15 +297,7 @@ class VectorSearchTool(BaseTool):
             return query
     
     async def _get_query_embedding(self, query: str) -> List[float]:
-        """
-        Generate embedding for the search query.
-        
-        Args:
-            query: Anonymized query text
-            
-        Returns:
-            Query embedding vector
-        """
+        """Generate embedding for the search query."""
         try:
             result = await self._embedder.embed_text(query)
             return result.embedding
@@ -344,22 +311,10 @@ class VectorSearchTool(BaseTool):
         query_embedding: List[float],
         similarity_threshold: float,
         max_results: int,
-        filters: Optional[SearchFilters],
+        filters: Optional[Dict[str, Any]],
         field_names: List[str]
     ) -> List[Dict[str, Any]]:
-        """
-        Perform the actual vector similarity search.
-        
-        Args:
-            query_embedding: Query vector for similarity search
-            similarity_threshold: Minimum similarity score
-            max_results: Maximum results to return
-            filters: Metadata filters to apply
-            field_names: Fields to search within
-            
-        Returns:
-            Raw search results from database
-        """
+        """Perform the actual vector similarity search."""
         try:
             # Build metadata filters
             metadata_filters = self._build_metadata_filters(filters, field_names)
@@ -380,19 +335,10 @@ class VectorSearchTool(BaseTool):
     
     def _build_metadata_filters(
         self,
-        filters: Optional[SearchFilters],
+        filters: Optional[Dict[str, Any]],
         field_names: List[str]
     ) -> Dict[str, Any]:
-        """
-        Build metadata filters for database query.
-        
-        Args:
-            filters: User-provided filters
-            field_names: Fields to search within
-            
-        Returns:
-            Formatted metadata filters for database
-        """
+        """Build metadata filters for database query."""
         metadata_filters = {}
         
         # Always filter by field names
@@ -435,15 +381,7 @@ class VectorSearchTool(BaseTool):
         self,
         raw_results: List[Dict[str, Any]]
     ) -> List[VectorSearchResult]:
-        """
-        Process raw search results into structured result objects.
-        
-        Args:
-            raw_results: Raw results from database search
-            
-        Returns:
-            Processed VectorSearchResult objects
-        """
+        """Process raw search results into structured result objects."""
         processed_results = []
         
         for raw_result in raw_results:
@@ -484,12 +422,7 @@ class VectorSearchTool(BaseTool):
         return processed_results
     
     async def _log_search_operation(self, response: VectorSearchResponse) -> None:
-        """
-        Log search operation for audit trail.
-        
-        Args:
-            response: Search response to log
-        """
+        """Log search operation for audit trail."""
         try:
             audit_data = {
                 "operation": "vector_search",
@@ -509,12 +442,7 @@ class VectorSearchTool(BaseTool):
             logger.warning(f"Failed to log search operation: {e}")
     
     def get_performance_metrics(self) -> Dict[str, Any]:
-        """
-        Get performance metrics for monitoring and optimization.
-        
-        Returns:
-            Performance statistics
-        """
+        """Get performance metrics for monitoring and optimization."""
         if self._search_count == 0:
             return {"searches_performed": 0}
         
