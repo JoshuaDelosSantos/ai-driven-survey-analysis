@@ -1,12 +1,12 @@
 # Vector Search Module
 
-[![Status](https://img.shields.io/badge/Status-Phase%202%20Task%202.4%20Complete-green)](https://shields.io/)
-[![Implementation](https://img.shields.io/badge/Implementation-Embedder%20Ready-blue)](https://shields.io/)
+[![Status](https://img.shields.io/badge/Status-Phase%202%20Task%202.5%20Complete-green)](https://shields.io/)
+[![Implementation](https://img.shields.io/badge/Implementation-Vector%20Search%20Tool%20Ready-blue)](https://shields.io/)
 [![Models](https://img.shields.io/badge/Models-Sentence--BERT%20%2B%20OpenAI-orange)](https://shields.io/)
 
 ## Overview
 
-The Vector Search module provides comprehensive semantic search capabilities for the RAG system. It implements efficient, async-first embedding generation with support for multiple providers, batch processing, and future-ready architecture for advanced retrieval strategies.
+The Vector Search module provides comprehensive semantic search capabilities for the RAG system. It implements efficient, async-first embedding generation with support for multiple providers, batch processing, and a complete LangChain-compatible search tool for agent orchestration.
 
 ## Current Implementation
 
@@ -28,26 +28,84 @@ Clean async embedding generation service that provides a focused interface for e
 - **OpenAI**: `text-embedding-ada-002` (1536 dimensions)
 - **Sentence Transformers**: `all-MiniLM-L6-v2` (384 dimensions) - **Local Priority**
 
-#### Usage Examples:
+### ✅ Vector Search Tool (`vector_search_tool.py`) **NEW - Phase 2 Task 2.5**
+
+**Status: Implemented**
+
+Privacy-compliant, async LangChain tool for semantic search over evaluation feedback with automatic PII protection and rich metadata filtering.
+
+#### Key Features:
+- **LangChain Integration**: Fully compatible `BaseTool` for agent orchestration
+- **Privacy-First Design**: Automatic query anonymization using Australian PII detection
+- **Rich Metadata Filtering**: Filter by user level, agency, sentiment, delivery type
+- **Performance Monitoring**: Built-in metrics and audit logging
+- **Relevance Categorization**: Automatic result quality classification
+- **Configurable Thresholds**: Adjustable similarity thresholds for different use cases
+
+#### Metadata Filtering Capabilities:
+- **High Priority**: `user_level`, `agency`, `sentiment_scores`
+- **Medium Priority**: `course_delivery_type`, `knowledge_level_prior`
+- **Field Filtering**: Target specific feedback fields (`general_feedback`, `did_experience_issue_detail`, `course_application_other`)
+
+### ✅ Search Result Structures (`search_result.py`) **NEW - Phase 2 Task 2.5**
+
+**Status: Implemented**
+
+Comprehensive data structures for vector search results with rich metadata access and performance tracking.
+
+#### Key Features:
+- **Type-Safe Results**: Structured result containers with metadata access
+- **Relevance Classification**: Automatic categorization (High/Medium/Low/Weak)
+- **Performance Metrics**: Processing time tracking and optimization data
+- **Serialization Support**: JSON-compatible for API responses
+- **User Context**: Human-readable summaries of user and sentiment context
+
+## Usage Examples
+
+### Basic Vector Search Tool Usage
 
 ```python
-from src.rag.core.vector_search.embedder import Embedder
+from src.rag.core.vector_search import VectorSearchTool
 
-# Basic usage with default configuration
-embedder = Embedder()
-await embedder.initialize()
+# Initialize and use vector search tool
+tool = VectorSearchTool()
+await tool.initialize()
 
-# Single text embedding
-result = await embedder.embed_text("sample text")
-print(f"Embedding: {result.embedding[:5]}...")  # First 5 dimensions
-print(f"Model: {result.model_version}")
-print(f"Processing time: {result.processing_time:.3f}s")
+# Basic semantic search
+response = await tool.search(
+    query="feedback about technical issues",
+    max_results=10,
+    similarity_threshold=0.75
+)
 
-# Batch embedding
-results = await embedder.embed_batch([
-    "First text to embed",
-    "Second text to embed",
-    "Third text to embed"
+print(f"Found {response.result_count} relevant feedback items")
+for result in response.results:
+    print(f"[{result.relevance_category.value}] {result.user_context}")
+    print(f"Feedback: {result.chunk_text[:200]}...")
+```
+
+### Advanced Metadata Filtering
+
+```python
+# Search with comprehensive filtering
+response = await tool.search(
+    query="course effectiveness feedback",
+    filters={
+        "user_level": ["Level 5", "Level 6", "Exec Level 1"],
+        "agency": ["Department of Finance", "Australian Taxation Office"],
+        "sentiment": {"type": "negative", "min_score": 0.6},
+        "course_delivery_type": ["Virtual", "Blended"],
+        "field_name": ["general_feedback", "did_experience_issue_detail"]
+    },
+    max_results=20,
+    similarity_threshold=0.65
+)
+
+# Analyze results by relevance
+distribution = response.relevance_distribution
+print(f"High relevance: {distribution['High']} results")
+print(f"Average similarity: {response.average_similarity:.3f}")
+```
 ])
 
 print(f"Processed {results.success_count}/{len(results.texts)} texts")
