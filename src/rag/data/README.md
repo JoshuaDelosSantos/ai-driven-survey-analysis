@@ -1,21 +1,21 @@
 # RAG Data Module
 
-This module handles vector embeddings and content processing for the RAG system, supporting both cloud and local embedding providers with comprehensive testing infrastructure and unified text processing pipeline.
+This module handles vector embeddings and content processing for the RAG system, supporting both cloud and local embedding providers with comprehensive testing infrastructure, unified text processing pipeline, and advanced metadata search capabilities.
 
 ## Overview
 
 The data module provides comprehensive functionality for:
-- **Vector Embedding Management**: Async operations for storing and retrieving embeddings
+- **Enhanced Vector Embedding Management**: Async operations with advanced metadata filtering ✅ **Phase 2 Task 2.5 Enhanced**
 - **Unified Content Processing**: Complete pipeline from raw text to embedded vectors ✅ **Phase 2 Task 2.3 Complete**
+- **Advanced Metadata Search**: Complex multi-criteria filtering with sentiment analysis ✅ **Phase 2 Task 2.5 NEW**
 - **Multi-Provider Support**: OpenAI and local Sentence Transformers embedding providers
 - **Batch Processing**: Efficient handling of large text datasets
-- **Metadata Filtering**: Rich search capabilities with metadata-based filtering
 - **Model Versioning**: Support for embedding model upgrades and migration
-- **Production Ready**: Fully tested with comprehensive test coverage
+- **Production Ready**: Fully tested with 106+ tests covering all functionality
 
 ## Current Files
 
-### `content_processor.py` ✅ **NEW - Phase 2 Task 2.3**
+### `content_processor.py` ✅ **Phase 2 Task 2.3 Complete**
 Complete implementation of the unified text processing and ingestion pipeline with:
 - **Five-Stage Pipeline**: Extract → Anonymise → Analyse → Chunk → Store
 - **Australian PII Protection**: Mandatory anonymisation using Presidio
@@ -24,10 +24,13 @@ Complete implementation of the unified text processing and ingestion pipeline wi
 - **Error Resilience**: Comprehensive error handling and recovery
 - **Rich Metadata**: Contextual information stored with each embedding
 
-### `embeddings_manager.py`
-Complete implementation of the EmbeddingsManager class with:
+### `embeddings_manager.py` ✅ **Phase 2 Task 2.5 Enhanced**
+Enhanced implementation of the EmbeddingsManager class with advanced capabilities:
 - **Async Architecture**: All operations use async/await patterns
 - **Multi-Provider Support**: OpenAI and Sentence Transformers providers
+- **Advanced Metadata Search**: New `search_similar_with_metadata()` method ✅ **NEW**
+- **Complex Filtering**: Multi-dimensional filtering by user level, agency, sentiment ✅ **NEW**
+- **Sentiment-Based Search**: Real-time filtering by sentiment scores with configurable thresholds ✅ **NEW**
 - **Database Integration**: PostgreSQL with pgvector extension
 - **Error Handling**: Comprehensive error handling and logging
 - **Australian Context**: Designed for Australian Public Service evaluation data
