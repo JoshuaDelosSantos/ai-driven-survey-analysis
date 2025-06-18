@@ -415,6 +415,166 @@ class EmbeddingsManager:
             logger.error(f"Failed to search similar embeddings: {e}")
             raise
             
+    async def search_similar_with_metadata(
+        self,
+        query_embedding: List[float],
+        similarity_threshold: float = 0.7,
+        limit: int = 10,
+        metadata_filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar embeddings using pre-computed embedding with advanced metadata filtering.
+        
+        Args:
+            query_embedding: Pre-computed embedding vector for the query
+            similarity_threshold: Minimum similarity score
+            limit: Maximum number of results
+            metadata_filters: Advanced metadata filters
+            
+        Returns:
+            List of similar chunks with metadata and similarity scores
+        """
+        if not self._initialized:
+            await self.initialize()
+            
+        logger.info(f"Searching with pre-computed embedding, threshold: {similarity_threshold}")
+        
+        try:
+            # Convert query embedding to pgvector format
+            query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+            
+            # Build search query with advanced metadata filtering
+            where_conditions = ["1 - (embedding <=> $1) >= $2"]
+            params = [query_embedding_str, similarity_threshold]
+            param_index = 3
+            
+            if metadata_filters:
+                # Handle field_name filtering
+                if 'field_name' in metadata_filters:
+                    field_names = metadata_filters['field_name']
+                    if isinstance(field_names, list):
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(field_names))])
+                        where_conditions.append(f"field_name IN ({placeholders})")
+                        params.extend(field_names)
+                        param_index += len(field_names)
+                    else:
+                        where_conditions.append(f"field_name = ${param_index}")
+                        params.append(field_names)
+                        param_index += 1
+                
+                # Handle user_level filtering
+                if 'user_level' in metadata_filters:
+                    user_levels = metadata_filters['user_level']
+                    if isinstance(user_levels, list):
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(user_levels))])
+                        where_conditions.append(f"metadata ->> 'user_level' IN ({placeholders})")
+                        params.extend(user_levels)
+                        param_index += len(user_levels)
+                    else:
+                        where_conditions.append(f"metadata ->> 'user_level' = ${param_index}")
+                        params.append(user_levels)
+                        param_index += 1
+                
+                # Handle agency filtering
+                if 'agency' in metadata_filters:
+                    agencies = metadata_filters['agency']
+                    if isinstance(agencies, list):
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(agencies))])
+                        where_conditions.append(f"metadata ->> 'agency' IN ({placeholders})")
+                        params.extend(agencies)
+                        param_index += len(agencies)
+                    else:
+                        where_conditions.append(f"metadata ->> 'agency' = ${param_index}")
+                        params.append(agencies)
+                        param_index += 1
+                
+                # Handle sentiment filtering
+                if 'sentiment' in metadata_filters:
+                    sentiment_filter = metadata_filters['sentiment']
+                    if isinstance(sentiment_filter, dict):
+                        sentiment_type = sentiment_filter.get('type')
+                        min_score = sentiment_filter.get('min_score', 0.5)
+                        
+                        if sentiment_type:
+                            where_conditions.append(
+                                f"(metadata -> 'sentiment_scores' ->> ${param_index})::float >= ${param_index + 1}"
+                            )
+                            params.extend([sentiment_type, min_score])
+                            param_index += 2
+                
+                # Handle course_delivery_type filtering
+                if 'course_delivery_type' in metadata_filters:
+                    delivery_types = metadata_filters['course_delivery_type']
+                    if isinstance(delivery_types, list):
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(delivery_types))])
+                        where_conditions.append(f"metadata ->> 'course_delivery_type' IN ({placeholders})")
+                        params.extend(delivery_types)
+                        param_index += len(delivery_types)
+                    else:
+                        where_conditions.append(f"metadata ->> 'course_delivery_type' = ${param_index}")
+                        params.append(delivery_types)
+                        param_index += 1
+                
+                # Handle knowledge_level_prior filtering
+                if 'knowledge_level_prior' in metadata_filters:
+                    knowledge_levels = metadata_filters['knowledge_level_prior']
+                    if isinstance(knowledge_levels, list):
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(knowledge_levels))])
+                        where_conditions.append(f"metadata ->> 'knowledge_level_prior' IN ({placeholders})")
+                        params.extend(knowledge_levels)
+                        param_index += len(knowledge_levels)
+                    else:
+                        where_conditions.append(f"metadata ->> 'knowledge_level_prior' = ${param_index}")
+                        params.append(knowledge_levels)
+                        param_index += 1
+                    
+            where_clause = " AND ".join(where_conditions)
+            
+            search_query = f"""
+                SELECT 
+                    embedding_id,
+                    response_id,
+                    field_name,
+                    chunk_text,
+                    chunk_index,
+                    model_version,
+                    metadata,
+                    created_at,
+                    1 - (embedding <=> $1) as similarity_score
+                FROM rag_embeddings
+                WHERE {where_clause}
+                ORDER BY similarity_score DESC
+                LIMIT ${param_index}
+            """
+            
+            params.append(limit)
+            
+            async with self.db_pool.acquire() as conn:
+                results = await conn.fetch(search_query, *params)
+                
+            # Convert results to dictionaries
+            search_results = []
+            for row in results:
+                result = {
+                    'embedding_id': row['embedding_id'],
+                    'response_id': row['response_id'],
+                    'field_name': row['field_name'],
+                    'chunk_text': row['chunk_text'],
+                    'chunk_index': row['chunk_index'],
+                    'model_version': row['model_version'],
+                    'metadata': json.loads(row['metadata']) if row['metadata'] else None,
+                    'created_at': row['created_at'],
+                    'similarity_score': float(row['similarity_score'])
+                }
+                search_results.append(result)
+                
+            logger.info(f"Found {len(search_results)} similar results with metadata filtering")
+            return search_results
+            
+        except Exception as e:
+            logger.error(f"Failed to search similar embeddings with metadata: {e}")
+            raise
+
     async def delete_embeddings(
         self,
         response_id: Optional[int] = None,
