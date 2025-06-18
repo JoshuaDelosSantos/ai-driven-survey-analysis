@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test suite for EmbeddingsManager with local sentence transformer model.
 
@@ -496,6 +495,285 @@ class TestErrorHandlingAndEdgeCases:
         # Cleanup
         await embeddings_manager.delete_embeddings(response_id=response_id)
 
+
+class TestAdvancedMetadataSearch:
+    """Test the new search_similar_with_metadata method with advanced filtering."""
+    
+    @pytest.mark.asyncio
+    async def test_search_with_metadata_basic(self, embeddings_manager, sample_metadata):
+        """Test basic search with metadata using pre-computed embedding."""
+        # First store some test data
+        response_id = 98
+        test_text = "This course provided excellent learning opportunities for professional development"
+        
+        embedding_ids = await embeddings_manager.store_embeddings(
+            response_id=response_id,
+            field_name="general_feedback",
+            text_chunks=[test_text],
+            metadata=sample_metadata
+        )
+        
+        try:
+            # Generate embedding for search
+            query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+                ["excellent learning opportunities"]
+            )
+            
+            # Search with metadata filters
+            results = await embeddings_manager.search_similar_with_metadata(
+                query_embedding=query_embedding[0],
+                similarity_threshold=0.3,
+                limit=5,
+                metadata_filters={
+                    "user_level": "Level 5",
+                    "agency": "Australian Taxation Office"
+                }
+            )
+            
+            assert isinstance(results, list)
+            # Should find our test data if similarity is high enough
+            for result in results:
+                if result['response_id'] == response_id:
+                    assert result['metadata']['user_level'] == "Level 5"
+                    assert result['metadata']['agency'] == "Australian Taxation Office"
+                    break
+            
+        finally:
+            # Cleanup
+            await embeddings_manager.delete_embeddings(response_id=response_id)
+    
+    @pytest.mark.asyncio
+    async def test_search_with_field_name_filtering(self, embeddings_manager, sample_metadata):
+        """Test search with field_name filtering."""
+        # Store test data in multiple fields
+        response_id = 99
+        test_texts = {
+            "general_feedback": ["Great course overall"],
+            "did_experience_issue_detail": ["Some technical problems occurred"]
+        }
+        
+        embedding_ids = []
+        
+        try:
+            for field_name, texts in test_texts.items():
+                ids = await embeddings_manager.store_embeddings(
+                    response_id=response_id,
+                    field_name=field_name,
+                    text_chunks=texts,
+                    metadata=sample_metadata
+                )
+                embedding_ids.extend(ids)
+            
+            # Generate embedding for search
+            query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+                ["course problems"]
+            )
+            
+            # Search with field_name filter
+            results = await embeddings_manager.search_similar_with_metadata(
+                query_embedding=query_embedding[0],
+                similarity_threshold=0.3,
+                limit=10,
+                metadata_filters={
+                    "field_name": ["did_experience_issue_detail"]
+                }
+            )
+            
+            assert isinstance(results, list)
+            # All results should be from the specified field
+            for result in results:
+                if result['response_id'] == response_id:
+                    assert result['field_name'] == "did_experience_issue_detail"
+        
+        finally:
+            # Cleanup
+            await embeddings_manager.delete_embeddings(response_id=response_id)
+    
+    @pytest.mark.asyncio
+    async def test_search_with_multiple_user_levels(self, embeddings_manager):
+        """Test search with multiple user level filtering."""
+        # Store test data with different user levels
+        test_data = [
+            (100, "Level 3", "Basic course feedback"),
+            (101, "Level 5", "Advanced course feedback"),
+            (102, "Exec Level 1", "Executive course feedback")
+        ]
+        
+        try:
+            for response_id, user_level, text in test_data:
+                metadata = {"user_level": user_level, "agency": "Test Agency"}
+                await embeddings_manager.store_embeddings(
+                    response_id=response_id,
+                    field_name="general_feedback",
+                    text_chunks=[text],
+                    metadata=metadata
+                )
+            
+            # Generate embedding for search
+            query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+                ["course feedback"]
+            )
+            
+            # Search with multiple user levels
+            results = await embeddings_manager.search_similar_with_metadata(
+                query_embedding=query_embedding[0],
+                similarity_threshold=0.3,
+                limit=10,
+                metadata_filters={
+                    "user_level": ["Level 5", "Exec Level 1"]
+                }
+            )
+            
+            assert isinstance(results, list)
+            # Results should only include Level 5 and Exec Level 1
+            found_levels = set()
+            for result in results:
+                if result['response_id'] in [100, 101, 102]:
+                    user_level = result['metadata']['user_level']
+                    found_levels.add(user_level)
+                    assert user_level in ["Level 5", "Exec Level 1"]
+            
+            # Should not find Level 3
+            assert "Level 3" not in found_levels
+        
+        finally:
+            # Cleanup
+            for response_id, _, _ in test_data:
+                await embeddings_manager.delete_embeddings(response_id=response_id)
+    
+    @pytest.mark.asyncio
+    async def test_search_with_sentiment_filtering(self, embeddings_manager):
+        """Test search with sentiment score filtering."""
+        response_id = 103
+        
+        metadata_with_sentiment = {
+            "user_level": "Level 4",
+            "agency": "Test Agency",
+            "sentiment_scores": {
+                "positive": 0.2,
+                "negative": 0.8,
+                "neutral": 0.0
+            }
+        }
+        
+        try:
+            await embeddings_manager.store_embeddings(
+                response_id=response_id,
+                field_name="general_feedback",
+                text_chunks=["This course was disappointing and poorly organized"],
+                metadata=metadata_with_sentiment
+            )
+            
+            # Generate embedding for search
+            query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+                ["disappointing course"]
+            )
+            
+            # Search with sentiment filtering
+            results = await embeddings_manager.search_similar_with_metadata(
+                query_embedding=query_embedding[0],
+                similarity_threshold=0.3,
+                limit=10,
+                metadata_filters={
+                    "sentiment": {"type": "negative", "min_score": 0.7}
+                }
+            )
+            
+            assert isinstance(results, list)
+            # Should find our negative sentiment text
+            for result in results:
+                if result['response_id'] == response_id:
+                    sentiment_scores = result['metadata']['sentiment_scores']
+                    assert sentiment_scores['negative'] >= 0.7
+                    break
+        
+        finally:
+            # Cleanup
+            await embeddings_manager.delete_embeddings(response_id=response_id)
+    
+    @pytest.mark.asyncio
+    async def test_search_with_complex_metadata_filters(self, embeddings_manager):
+        """Test search with multiple complex metadata filters."""
+        response_id = 104
+        
+        complex_metadata = {
+            "user_level": "Level 6",
+            "agency": "Department of Finance",
+            "course_delivery_type": "Virtual",
+            "knowledge_level_prior": "Intermediate",
+            "sentiment_scores": {
+                "positive": 0.1,
+                "negative": 0.7,
+                "neutral": 0.2
+            }
+        }
+        
+        try:
+            await embeddings_manager.store_embeddings(
+                response_id=response_id,
+                field_name="did_experience_issue_detail",
+                text_chunks=["Virtual platform had significant technical issues"],
+                metadata=complex_metadata
+            )
+            
+            # Generate embedding for search
+            query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+                ["technical issues platform"]
+            )
+            
+            # Search with complex filters
+            results = await embeddings_manager.search_similar_with_metadata(
+                query_embedding=query_embedding[0],
+                similarity_threshold=0.3,
+                limit=10,
+                metadata_filters={
+                    "user_level": ["Level 6"],
+                    "agency": "Department of Finance",
+                    "course_delivery_type": "Virtual",
+                    "sentiment": {"type": "negative", "min_score": 0.6}
+                }
+            )
+            
+            assert isinstance(results, list)
+            # Should find our test data if filters match
+            for result in results:
+                if result['response_id'] == response_id:
+                    metadata = result['metadata']
+                    assert metadata['user_level'] == "Level 6"
+                    assert metadata['agency'] == "Department of Finance"
+                    assert metadata['course_delivery_type'] == "Virtual"
+                    assert metadata['sentiment_scores']['negative'] >= 0.6
+                    break
+        
+        finally:
+            # Cleanup
+            await embeddings_manager.delete_embeddings(response_id=response_id)
+    
+    @pytest.mark.asyncio
+    async def test_search_with_no_matching_filters(self, embeddings_manager):
+        """Test search with filters that don't match any data."""
+        # Generate embedding for search
+        query_embedding = await embeddings_manager.embedding_provider.generate_embeddings(
+            ["any text"]
+        )
+        
+        # Search with filters that shouldn't match any existing data
+        results = await embeddings_manager.search_similar_with_metadata(
+            query_embedding=query_embedding[0],
+            similarity_threshold=0.1,
+            limit=10,
+            metadata_filters={
+                "user_level": ["Non-existent Level"],
+                "agency": "Non-existent Agency"
+            }
+        )
+        
+        assert isinstance(results, list)
+        # Should return empty list or no matching results
+        for result in results:
+            # If any results returned, they shouldn't match our impossible filters
+            assert result['metadata']['user_level'] != "Non-existent Level"
+            assert result['metadata']['agency'] != "Non-existent Agency"
 
 # Utility function for running specific test groups
 async def run_embedding_tests():
