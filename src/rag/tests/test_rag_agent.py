@@ -32,7 +32,7 @@ sys.path.insert(0, str(project_root))
 from src.rag.core.agent import RAGAgent, AgentState
 from src.rag.core.routing.query_classifier import QueryClassifier
 from src.rag.core.synthesis.answer_generator import AnswerGenerator
-from src.rag.core.text_to_sql.async_sql_tool import AsyncSQLTool
+from src.rag.core.text_to_sql.sql_tool import AsyncSQLTool
 from src.rag.core.vector_search.vector_search_tool import VectorSearchTool
 from src.rag.core.privacy.pii_detector import AustralianPIIDetector
 from src.rag.utils.llm_utils import get_llm
@@ -126,12 +126,12 @@ class TestRAGAgent:
             
             await agent.initialize()
             
-            assert agent.query_classifier is not None
-            assert agent.answer_generator is not None
-            assert agent.sql_tool is not None
-            assert agent.vector_tool is not None
-            assert agent.pii_detector is not None
-            assert agent.graph is not None
+            assert agent._query_classifier is not None
+            assert agent._answer_generator is not None
+            assert agent._sql_tool is not None
+            assert agent._vector_tool is not None
+            assert agent._pii_detector is not None
+            assert agent._compiled_graph is not None
     
     @pytest.mark.asyncio
     async def test_agent_initialization_failure(self):
@@ -160,7 +160,7 @@ class TestRAGAgent:
     @pytest.mark.asyncio
     async def test_classify_query_node(self, rag_agent, sample_state):
         """Test query classification node execution."""
-        result = await rag_agent.classify_query_node(sample_state)
+        result = await rag_agent._classify_query_node(sample_state)
         
         assert result["classification"] == "SQL"
         assert result["confidence"] == "HIGH"
@@ -174,7 +174,7 @@ class TestRAGAgent:
         sample_state["classification"] = "SQL"
         sample_state["confidence"] = "HIGH"
         
-        result = await rag_agent.sql_tool_node(sample_state)
+        result = await rag_agent._sql_tool_node(sample_state)
         
         assert result["sql_result"]["success"] is True
         assert "data" in result["sql_result"]
@@ -190,7 +190,7 @@ class TestRAGAgent:
         sample_state["classification"] = "SQL"
         sample_state["confidence"] = "HIGH"
         
-        result = await rag_agent.sql_tool_node(sample_state)
+        result = await rag_agent._sql_tool_node(sample_state)
         
         assert result["error"] is not None
         assert "Database connection failed" in result["error"]
@@ -202,7 +202,7 @@ class TestRAGAgent:
         sample_state["classification"] = "VECTOR"
         sample_state["confidence"] = "HIGH"
         
-        result = await rag_agent.vector_search_tool_node(sample_state)
+        result = await rag_agent._vector_search_tool_node(sample_state)
         
         assert result["vector_result"]["success"] is True
         assert "results" in result["vector_result"]
@@ -218,7 +218,7 @@ class TestRAGAgent:
         sample_state["classification"] = "VECTOR"
         sample_state["confidence"] = "HIGH"
         
-        result = await rag_agent.vector_search_tool_node(sample_state)
+        result = await rag_agent._vector_search_tool_node(sample_state)
         
         assert result["error"] is not None
         assert "Vector index unavailable" in result["error"]
@@ -239,7 +239,7 @@ class TestRAGAgent:
             "results": [{"content": "Great training program", "confidence": 0.9}]
         }
         
-        result = await rag_agent.hybrid_processing_node(sample_state)
+        result = await rag_agent._hybrid_processing_node(sample_state)
         
         assert "hybrid_processing" in result["tools_used"]
         assert result["sql_result"] is not None
@@ -255,7 +255,7 @@ class TestRAGAgent:
         }
         sample_state["classification"] = "SQL"
         
-        with patch.object(rag_agent.answer_generator, 'generate_answer') as mock_generate:
+        with patch.object(rag_agent._answer_generator, 'synthesize_answer') as mock_generate:
             mock_generate.return_value = {
                 "answer": "There are 150 users in the Education agency who completed training.",
                 "confidence": 0.9,
@@ -263,7 +263,7 @@ class TestRAGAgent:
                 "answer_type": "statistical"
             }
             
-            result = await rag_agent.synthesis_node(sample_state)
+            result = await rag_agent._synthesis_node(sample_state)
             
             assert result["final_answer"] is not None
             assert result["sources"] is not None
@@ -275,7 +275,7 @@ class TestRAGAgent:
         sample_state["requires_clarification"] = True
         sample_state["classification"] = "CLARIFICATION_NEEDED"
         
-        result = await rag_agent.clarification_node(sample_state)
+        result = await rag_agent._clarification_node(sample_state)
         
         assert result["final_answer"] is not None
         assert "clarification" in result["final_answer"].lower()
@@ -287,7 +287,7 @@ class TestRAGAgent:
         sample_state["error"] = "Test error occurred"
         sample_state["retry_count"] = 2
         
-        result = await rag_agent.error_handling_node(sample_state)
+        result = await rag_agent._error_handling_node(sample_state)
         
         assert result["final_answer"] is not None
         assert "error" in result["final_answer"].lower()
@@ -300,8 +300,8 @@ class TestRAGAgent:
         sample_state["classification"] = "SQL"
         sample_state["confidence"] = "HIGH"
         
-        next_node = await rag_agent.determine_next_node(sample_state)
-        assert next_node == "sql_tool"
+        next_node = rag_agent._route_after_classification(sample_state)
+        assert next_node == "sql"
     
     @pytest.mark.asyncio
     async def test_routing_high_confidence_vector(self, rag_agent, sample_state):
@@ -309,8 +309,8 @@ class TestRAGAgent:
         sample_state["classification"] = "VECTOR"
         sample_state["confidence"] = "HIGH"
         
-        next_node = await rag_agent.determine_next_node(sample_state)
-        assert next_node == "vector_search"
+        next_node = rag_agent._route_after_classification(sample_state)
+        assert next_node == "vector"
     
     @pytest.mark.asyncio
     async def test_routing_high_confidence_hybrid(self, rag_agent, sample_state):
@@ -318,8 +318,8 @@ class TestRAGAgent:
         sample_state["classification"] = "HYBRID"
         sample_state["confidence"] = "HIGH"
         
-        next_node = await rag_agent.determine_next_node(sample_state)
-        assert next_node == "hybrid_processing"
+        next_node = rag_agent._route_after_classification(sample_state)
+        assert next_node == "hybrid"
     
     @pytest.mark.asyncio
     async def test_routing_low_confidence_fallback(self, rag_agent, sample_state):
@@ -327,7 +327,7 @@ class TestRAGAgent:
         sample_state["classification"] = "SQL"
         sample_state["confidence"] = "LOW"
         
-        next_node = await rag_agent.determine_next_node(sample_state)
+        next_node = rag_agent._route_after_classification(sample_state)
         assert next_node == "clarification"
     
     @pytest.mark.asyncio
@@ -335,8 +335,8 @@ class TestRAGAgent:
         """Test routing logic for error states."""
         sample_state["error"] = "Classification failed"
         
-        next_node = await rag_agent.determine_next_node(sample_state)
-        assert next_node == "error_handling"
+        next_node = rag_agent._route_after_classification(sample_state)
+        assert next_node == "error"
     
     @pytest.mark.asyncio
     async def test_routing_retry_logic(self, rag_agent, sample_state):
@@ -374,7 +374,7 @@ class TestRAGAgent:
         query = "What feedback did users give about the new platform features?"
         
         # Mock classification to return VECTOR
-        with patch.object(rag_agent.query_classifier, 'classify_query') as mock_classify:
+        with patch.object(rag_agent._query_classifier, 'classify_query') as mock_classify:
             mock_classify.return_value = {
                 "classification": "VECTOR",
                 "confidence": "HIGH",
@@ -396,7 +396,7 @@ class TestRAGAgent:
         query = "Analyze course completion rates with supporting user feedback"
         
         # Mock classification to return HYBRID
-        with patch.object(rag_agent.query_classifier, 'classify_query') as mock_classify:
+        with patch.object(rag_agent._query_classifier, 'classify_query') as mock_classify:
             mock_classify.return_value = {
                 "classification": "HYBRID",
                 "confidence": "HIGH",
@@ -460,7 +460,7 @@ class TestRAGAgent:
         # Query with Australian PII
         query = "Show training data for John Smith with ABN 12345678901"
         
-        with patch.object(rag_agent.pii_detector, 'anonymize_text') as mock_anonymize:
+        with patch.object(rag_agent._pii_detector, 'detect_and_anonymise') as mock_anonymize:
             mock_anonymize.return_value = "Show training data for [REDACTED_PERSON] with [REDACTED_ABN]"
             
             result = await rag_agent.process_query(query, session_id="test_pii")
