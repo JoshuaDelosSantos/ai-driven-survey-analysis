@@ -15,6 +15,190 @@ Key Features:
 Security: All synthesized answers maintain PII anonymization.
 Performance: Async processing with configurable timeouts.
 Privacy: Australian Privacy Principles (APP) compliance maintained.
+
+Example Usage:
+    # Basic answer generation with statistical data only
+    async def statistical_example():
+        from ...utils.llm_utils import get_llm
+        from ..privacy.pii_detector import AustralianPIIDetector
+        
+        # Initialize components
+        llm = get_llm()
+        pii_detector = AustralianPIIDetector()
+        await pii_detector.initialize()
+        
+        generator = AnswerGenerator(
+            llm=llm,
+            pii_detector=pii_detector,
+            enable_source_attribution=True
+        )
+        
+        # SQL-only synthesis example
+        sql_result = {
+            "success": True,
+            "result": [
+                {"agency": "Department of Finance", "completion_rate": 87.5, "total_users": 240},
+                {"agency": "Department of Health", "completion_rate": 92.1, "total_users": 180},
+                {"agency": "Department of Education", "completion_rate": 78.9, "total_users": 320}
+            ],
+            "query": "SELECT agency, AVG(completion_rate) as completion_rate, COUNT(*) as total_users FROM user_stats GROUP BY agency"
+        }
+        
+        result = await generator.synthesize_answer(
+            query="What are the course completion rates by agency?",
+            sql_result=sql_result,
+            session_id="demo_001"
+        )
+        
+        print(f"Answer Type: {result.answer_type.value}")
+        print(f"Confidence: {result.confidence:.2f}")
+        print(f"Answer: {result.answer}")
+        # Output: Professional statistical analysis with agency completion rates
+    
+    # Feedback-only synthesis example
+    async def feedback_example():
+        llm = get_llm()
+        pii_detector = AustralianPIIDetector()
+        await pii_detector.initialize()
+        
+        generator = AnswerGenerator(llm=llm, pii_detector=pii_detector)
+        
+        vector_result = {
+            "results": [
+                {"text": "The virtual learning platform was intuitive and easy to navigate", "score": 0.92},
+                {"text": "I appreciated the flexibility to complete modules at my own pace", "score": 0.89},
+                {"text": "Some technical issues with video playback on older browsers", "score": 0.76},
+                {"text": "Overall satisfied with the learning experience and content quality", "score": 0.88},
+                {"text": "Would recommend improvements to the mobile interface", "score": 0.71}
+            ],
+            "query": "virtual learning platform feedback",
+            "total_results": 5
+        }
+        
+        result = await generator.synthesize_answer(
+            query="What feedback did users provide about the virtual learning platform?",
+            vector_result=vector_result,
+            session_id="demo_002"
+        )
+        
+        print(f"Answer Type: {result.answer_type.value}")
+        print(f"Sources: {result.sources}")
+        print(f"Answer: {result.answer}")
+        # Output: Comprehensive feedback analysis with themes and examples
+    
+    # Hybrid synthesis example (most comprehensive)
+    async def hybrid_example():
+        llm = get_llm()
+        pii_detector = AustralianPIIDetector()
+        await pii_detector.initialize()
+        
+        generator = AnswerGenerator(
+            llm=llm,
+            pii_detector=pii_detector,
+            max_answer_length=1500,
+            enable_source_attribution=True
+        )
+        
+        # Combined SQL and vector search results
+        sql_result = {
+            "success": True,
+            "result": [
+                {"satisfaction_avg": 4.2, "response_count": 450, "completion_rate": 85.7},
+                {"trend": "increasing", "period": "last_6_months"}
+            ]
+        }
+        
+        vector_result = {
+            "results": [
+                {"text": "The new features significantly improved my productivity", "score": 0.94},
+                {"text": "Interface is much more user-friendly than the previous version", "score": 0.91},
+                {"text": "Still experiencing occasional connectivity issues", "score": 0.68},
+                {"text": "Training materials were comprehensive and well-structured", "score": 0.87},
+                {"text": "Mobile accessibility has greatly improved work flexibility", "score": 0.89}
+            ]
+        }
+        
+        result = await generator.synthesize_answer(
+            query="Analyze overall user satisfaction with the new platform, including both metrics and feedback",
+            sql_result=sql_result,
+            vector_result=vector_result,
+            session_id="demo_003",
+            additional_context="Quarterly satisfaction review for executive summary"
+        )
+        
+        print(f"Answer Type: {result.answer_type.value}")
+        print(f"Confidence: {result.confidence:.2f}")
+        print(f"Processing Time: {result.processing_time:.2f}s")
+        print(f"PII Detected: {result.pii_detected}")
+        print(f"Answer: {result.answer}")
+        # Output: Executive-level analysis combining statistics with user sentiment
+    
+    # Error handling example
+    async def error_handling_example():
+        llm = get_llm()
+        generator = AnswerGenerator(llm=llm)
+        
+        # No results available
+        result = await generator.synthesize_answer(
+            query="What are the latest updates to the system?",
+            sql_result=None,
+            vector_result=None,
+            session_id="demo_004"
+        )
+        
+        print(f"Answer Type: {result.answer_type.value}")
+        print(f"Answer: {result.answer}")
+        # Output: User-friendly error message with suggestions
+    
+    # PII protection example
+    async def pii_protection_example():
+        llm = get_llm()
+        pii_detector = AustralianPIIDetector()
+        await pii_detector.initialize()
+        
+        generator = AnswerGenerator(llm=llm, pii_detector=pii_detector)
+        
+        # Vector result containing potential PII
+        vector_result = {
+            "results": [
+                {"text": "Contact John Smith at john.smith@agency.gov.au for follow-up", "score": 0.85},
+                {"text": "The training was excellent and very comprehensive", "score": 0.90}
+            ]
+        }
+        
+        result = await generator.synthesize_answer(
+            query="What follow-up actions were mentioned in the feedback?",
+            vector_result=vector_result,
+            session_id="demo_005"
+        )
+        
+        print(f"PII Detected: {result.pii_detected}")
+        print(f"Answer: {result.answer}")
+        # Output: Answer with PII automatically anonymized (email addresses masked)
+    
+    # Quality assessment example
+    async def quality_assessment_example():
+        llm = get_llm()
+        generator = AnswerGenerator(llm=llm)
+        
+        # High-quality data results
+        sql_result = {"success": True, "result": [{"metric": "value"}]}
+        vector_result = {"results": [{"text": "feedback", "score": 0.95}] * 10}
+        
+        result = await generator.synthesize_answer(
+            query="Comprehensive analysis request",
+            sql_result=sql_result,
+            vector_result=vector_result,
+            session_id="demo_006"
+        )
+        
+        print(f"Synthesis Quality Metrics:")
+        print(f"- Answer Type: {result.answer_type.value}")
+        print(f"- Confidence Score: {result.confidence:.2f}")
+        print(f"- Sources Used: {len(result.sources)}")
+        print(f"- Answer Length: {result.metadata['answer_length']} characters")
+        print(f"- Processing Time: {result.processing_time:.2f}s")
+        # Output: Detailed quality metrics for answer assessment
 """
 
 import asyncio
