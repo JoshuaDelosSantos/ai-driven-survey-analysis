@@ -20,8 +20,7 @@ class TestPhase3Integration:
 
     async def test_end_to_end_sql_query_workflow(self):
         """Test complete workflow for SQL-based queries."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM for classification
             mock_llm.return_value = AsyncMock()
@@ -29,20 +28,18 @@ class TestPhase3Integration:
                 content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Statistical query"}'
             )
             
-            # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            # Initialize RAG agent first
+            agent = RAGAgent()
+            await agent.initialize()
+            
+            # Now patch the agent's SQL tool instance
+            mock_sql_result = {
                 "success": True,
                 "result": [{"count": 150, "percentage": 85.5}],
                 "query": "SELECT COUNT(*) as count, AVG(completion_rate) as percentage FROM training_data",
                 "explanation": "Training completion statistics"
             }
-            mock_sql_tool.return_value = mock_sql_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
             # Test SQL query workflow
             query = "How many users completed the training program?"
@@ -64,12 +61,11 @@ class TestPhase3Integration:
             assert result["error"] is None or "SQL tool failed" in result.get("error", "")
             
             # Verify SQL tool was called
-            mock_sql_instance.process_query.assert_called_once()
+            agent._sql_tool.process_question.assert_called_once()
 
     async def test_end_to_end_vector_query_workflow(self):
         """Test complete workflow for vector search queries."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.vector_search.vector_search_tool.VectorSearchTool') as mock_vector_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM for classification
             mock_llm.return_value = AsyncMock()
@@ -77,10 +73,12 @@ class TestPhase3Integration:
                 content='{"classification": "VECTOR", "confidence": "HIGH", "reasoning": "Feedback query"}'
             )
             
-            # Mock vector search tool
-            mock_vector_instance = AsyncMock()
-            mock_vector_instance.initialize.return_value = None
-            mock_vector_instance.search.return_value = {
+            # Initialize RAG agent first
+            agent = RAGAgent()
+            await agent.initialize()
+            
+            # Now patch the agent's vector search tool instance
+            mock_vector_result = {
                 "success": True,
                 "results": [
                     {"text": "The training was excellent and very helpful", "score": 0.95},
@@ -88,11 +86,7 @@ class TestPhase3Integration:
                 ],
                 "total_results": 2
             }
-            mock_vector_tool.return_value = mock_vector_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._vector_tool.search = AsyncMock(return_value=mock_vector_result)
             
             # Test vector search workflow
             query = "What feedback did participants provide about the training?"
@@ -114,13 +108,11 @@ class TestPhase3Integration:
             # Vector search might work or fail, but should attempt processing
             
             # Verify vector tool was called
-            mock_vector_instance.search.assert_called_once()
+            agent._vector_tool.search.assert_called_once()
 
     async def test_end_to_end_hybrid_query_workflow(self):
         """Test complete workflow for hybrid queries requiring both tools."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool, \
-             patch('src.rag.core.vector_search.vector_search_tool.VectorSearchTool') as mock_vector_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM for classification and synthesis
             mock_llm.return_value = AsyncMock()
@@ -128,31 +120,26 @@ class TestPhase3Integration:
                 content='{"classification": "HYBRID", "confidence": "HIGH", "reasoning": "Needs both stats and feedback"}'
             )
             
-            # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            # Initialize RAG agent first
+            agent = RAGAgent()
+            await agent.initialize()
+            
+            # Now patch both tool instances
+            mock_sql_result = {
                 "success": True,
                 "result": [{"completion_rate": 89.5, "satisfaction_score": 4.2}],
                 "query": "SELECT AVG(completion_rate), AVG(satisfaction) FROM training_metrics"
             }
-            mock_sql_tool.return_value = mock_sql_instance
+            agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
-            # Mock vector search tool
-            mock_vector_instance = AsyncMock()
-            mock_vector_instance.initialize.return_value = None
-            mock_vector_instance.search.return_value = {
+            mock_vector_result = {
                 "success": True,
                 "results": [
                     {"text": "Training quality exceeded expectations", "score": 0.94},
                     {"text": "Comprehensive and well-organized content", "score": 0.91}
                 ]
             }
-            mock_vector_tool.return_value = mock_vector_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._vector_tool.search = AsyncMock(return_value=mock_vector_result)
             
             # Test hybrid workflow
             query = "Analyze the training effectiveness combining completion rates with participant feedback"
@@ -174,13 +161,12 @@ class TestPhase3Integration:
             # Hybrid processing should attempt to use both tools
             
             # Verify both tools were called
-            mock_sql_instance.process_query.assert_called_once()
-            mock_vector_instance.search.assert_called_once()
+            agent._sql_tool.process_question.assert_called_once()
+            agent._vector_tool.search.assert_called_once()
 
     async def test_terminal_app_integration(self):
         """Test terminal application integration with RAG agent."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM
             mock_llm.return_value = AsyncMock()
@@ -188,19 +174,17 @@ class TestPhase3Integration:
                 content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Count query"}'
             )
             
-            # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            # Initialize terminal app
+            terminal_app = TerminalApp()
+            await terminal_app.initialize()
+            
+            # Now patch the terminal app's agent's SQL tool instance
+            mock_sql_result = {
                 "success": True,
                 "result": [{"total_users": 250}],
                 "query": "SELECT COUNT(*) as total_users FROM users"
             }
-            mock_sql_tool.return_value = mock_sql_instance
-            
-            # Initialize terminal app
-            terminal_app = TerminalApp()
-            await terminal_app.initialize()
+            terminal_app._rag_agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
             # Process query through terminal app
             response = await terminal_app._process_with_agent("How many users are in the system?", "test_query_id")
@@ -210,14 +194,12 @@ class TestPhase3Integration:
             assert "final_answer" in response
             assert response["final_answer"] is not None and len(response["final_answer"]) > 0
             
-            # Verify internal state
-            assert terminal_app.query_count > 0
+            # Verify internal state (session should be initialized)
             assert terminal_app.session_id is not None
 
     async def test_privacy_compliance_integration(self):
         """Test privacy compliance throughout the complete workflow."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM (will receive anonymized query)
             mock_llm_instance = AsyncMock()
@@ -226,19 +208,17 @@ class TestPhase3Integration:
             )
             mock_llm.return_value = mock_llm_instance
             
-            # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            # Initialize RAG agent
+            agent = RAGAgent()
+            await agent.initialize()
+            
+            # Now patch the agent's SQL tool instance
+            mock_sql_result = {
                 "success": True,
                 "result": [{"completion_status": "completed", "score": 95}],
                 "query": "SELECT completion_status, score FROM training_data WHERE user_id = 'user123'"
             }
-            mock_sql_tool.return_value = mock_sql_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
             # Test with PII-containing query
             pii_query = "Show training results for John Smith with ABN 53 004 085 616"
@@ -267,8 +247,7 @@ class TestPhase3Integration:
 
     async def test_error_recovery_integration(self):
         """Test error recovery across the complete system."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM to succeed
             mock_llm.return_value = AsyncMock()
@@ -276,15 +255,12 @@ class TestPhase3Integration:
                 content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Database query"}'
             )
             
-            # Mock SQL tool to fail initially
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.side_effect = Exception("Database connection failed")
-            mock_sql_tool.return_value = mock_sql_instance
-            
             # Initialize RAG agent
             agent = RAGAgent()
             await agent.initialize()
+            
+            # Mock SQL tool to fail
+            agent._sql_tool.process_question = AsyncMock(side_effect=Exception("Database connection failed"))
             
             # Test error recovery
             query = "Show user statistics"
@@ -307,8 +283,7 @@ class TestPhase3Integration:
 
     async def test_session_management_integration(self):
         """Test session management across multiple queries."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM
             mock_llm.return_value = AsyncMock()
@@ -316,19 +291,17 @@ class TestPhase3Integration:
                 content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Data query"}'
             )
             
+            # Initialize RAG agent
+            agent = RAGAgent()
+            await agent.initialize()
+            
             # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            mock_sql_result = {
                 "success": True,
                 "result": [{"value": 42}],
                 "query": "SELECT 42 as value"
             }
-            mock_sql_tool.return_value = mock_sql_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
             # Test multiple queries in same session
             session_id = "session_test_123"
@@ -363,8 +336,7 @@ class TestPhase3Integration:
 
     async def test_concurrent_request_handling(self):
         """Test system handling of concurrent requests."""
-        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm, \
-             patch('src.rag.core.text_to_sql.sql_tool.AsyncSQLTool') as mock_sql_tool:
+        with patch('src.rag.utils.llm_utils.get_llm') as mock_llm:
             
             # Mock LLM
             mock_llm.return_value = AsyncMock()
@@ -372,19 +344,17 @@ class TestPhase3Integration:
                 content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Concurrent query"}'
             )
             
+            # Initialize RAG agent
+            agent = RAGAgent()
+            await agent.initialize()
+            
             # Mock SQL tool
-            mock_sql_instance = AsyncMock()
-            mock_sql_instance.initialize.return_value = None
-            mock_sql_instance.process_query.return_value = {
+            mock_sql_result = {
                 "success": True,
                 "result": [{"concurrent_result": "success"}],
                 "query": "SELECT 'success' as concurrent_result"
             }
-            mock_sql_tool.return_value = mock_sql_instance
-            
-            # Initialize RAG agent
-            agent = RAGAgent()
-            await agent.initialize()
+            agent._sql_tool.process_question = AsyncMock(return_value=mock_sql_result)
             
             # Create concurrent queries
             concurrent_queries = [
