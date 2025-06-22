@@ -662,7 +662,7 @@ class RAGAgent:
             if isinstance(sql_result, Exception):
                 logger.warning(f"SQL component of hybrid failed: {sql_result}")
                 tools_used.append("sql_failed")
-            elif sql_result and not sql_result.get("error"):
+            elif sql_result and (not hasattr(sql_result, 'error') or not sql_result.error):
                 final_state["sql_result"] = sql_result
                 tools_used.append("sql")
             
