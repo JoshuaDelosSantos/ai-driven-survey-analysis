@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Test suite for Answer Generation System with comprehensive coverage.
+Test suite for Answer G    @pytest_asyncio.fixture
+    async def pii_detector(self):
+        detector = AustralianPIIDetector()
+        await detector.initialise()
+        return detectorion System with comprehensive coverage.
 
 This module tests the intelligent answer synthesis including:
 - Multi-modal synthesis strategies (Statistical, Feedback, Hybrid, Error)
