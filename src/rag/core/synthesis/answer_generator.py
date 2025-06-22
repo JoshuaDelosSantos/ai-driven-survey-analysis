@@ -203,7 +203,7 @@ Example Usage:
 
 import asyncio
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from enum import Enum
 
@@ -444,12 +444,21 @@ Comprehensive Answer:
     
     def _determine_answer_type(
         self,
-        sql_result: Optional[Dict[str, Any]],
-        vector_result: Optional[Dict[str, Any]]
+        sql_result: Optional[Union[Dict[str, Any], Any]],  # Accept both dict and SQLResult
+        vector_result: Optional[Union[Dict[str, Any], Any]]  # Accept both dict and VectorSearchResponse
     ) -> AnswerType:
         """Determine the appropriate answer synthesis strategy."""
-        has_sql = sql_result and sql_result.get("success") and sql_result.get("result")
-        has_vector = vector_result and vector_result.get("results")
+        # Handle SQLResult dataclass
+        if hasattr(sql_result, 'success'):
+            has_sql = sql_result and sql_result.success and sql_result.result
+        else:
+            has_sql = sql_result and sql_result.get("success") and sql_result.get("result")
+        
+        # Handle VectorSearchResponse dataclass
+        if hasattr(vector_result, 'results'):
+            has_vector = vector_result and vector_result.results
+        else:
+            has_vector = vector_result and vector_result.get("results")
         
         if has_sql and has_vector:
             return AnswerType.HYBRID_COMBINED
@@ -463,13 +472,19 @@ Comprehensive Answer:
     async def _generate_statistical_answer(
         self,
         query: str,
-        sql_result: Dict[str, Any],
+        sql_result: Union[Dict[str, Any], Any],
         context: Optional[str]
     ) -> str:
         """Generate answer based on SQL results only."""
+        # Handle SQLResult dataclass
+        if hasattr(sql_result, 'result'):
+            result_data = sql_result.result
+        else:
+            result_data = sql_result.get("result", "No data available")
+            
         prompt = self._statistical_template.format(
             query=query,
-            sql_results=str(sql_result.get("result", "No data available")),
+            sql_results=str(result_data),
             context=context or "No additional context"
         )
         
@@ -497,16 +512,22 @@ Comprehensive Answer:
     async def _generate_hybrid_answer(
         self,
         query: str,
-        sql_result: Dict[str, Any],
-        vector_result: Dict[str, Any],
+        sql_result: Union[Dict[str, Any], Any],
+        vector_result: Union[Dict[str, Any], Any],
         context: Optional[str]
     ) -> str:
         """Generate comprehensive answer combining SQL and vector results."""
         feedback_summary = self._summarize_feedback_results(vector_result)
         
+        # Handle SQLResult dataclass
+        if hasattr(sql_result, 'result'):
+            result_data = sql_result.result
+        else:
+            result_data = sql_result.get("result", "No statistical data")
+        
         prompt = self._hybrid_template.format(
             query=query,
-            sql_results=str(sql_result.get("result", "No statistical data")),
+            sql_results=str(result_data),
             feedback_results=feedback_summary,
             context=context or "No additional context"
         )
@@ -532,9 +553,14 @@ Comprehensive Answer:
                 "Please try a different approach to your question."
             )
     
-    def _summarize_feedback_results(self, vector_result: Dict[str, Any]) -> str:
+    def _summarize_feedback_results(self, vector_result: Union[Dict[str, Any], Any]) -> str:
         """Create a summary of feedback results for prompt input."""
-        results = vector_result.get("results", [])
+        # Handle VectorSearchResponse dataclass
+        if hasattr(vector_result, 'results'):
+            results = vector_result.results
+        else:
+            results = vector_result.get("results", [])
+            
         if not results:
             return "No relevant feedback found"
         
@@ -547,6 +573,9 @@ Comprehensive Answer:
                 text = result.get("text", str(result))
                 score = result.get("score", "N/A")
                 summary_parts.append(f"{i}. (Score: {score}) {text}")
+            elif hasattr(result, 'text') and hasattr(result, 'score'):
+                # Handle VectorSearchResult dataclass
+                summary_parts.append(f"{i}. (Score: {result.score}) {result.text}")
             else:
                 summary_parts.append(f"{i}. {str(result)}")
         
@@ -554,8 +583,8 @@ Comprehensive Answer:
     
     def _calculate_confidence(
         self,
-        sql_result: Optional[Dict[str, Any]],
-        vector_result: Optional[Dict[str, Any]],
+        sql_result: Optional[Union[Dict[str, Any], Any]],
+        vector_result: Optional[Union[Dict[str, Any], Any]],
         answer_type: AnswerType
     ) -> float:
         """Calculate confidence score for the synthesized answer."""
@@ -565,13 +594,25 @@ Comprehensive Answer:
         confidence = 0.5  # Base confidence
         
         # Boost confidence based on available data
-        if sql_result and sql_result.get("success"):
+        # Handle SQLResult dataclass
+        if hasattr(sql_result, 'success'):
+            has_sql_success = sql_result and sql_result.success
+        else:
+            has_sql_success = sql_result and sql_result.get("success")
+            
+        if has_sql_success:
             confidence += 0.3
         
-        if vector_result and vector_result.get("results"):
+        # Handle VectorSearchResponse dataclass
+        if hasattr(vector_result, 'results'):
+            results = vector_result.results if vector_result else []
+        else:
+            results = vector_result.get("results", []) if vector_result else []
+            
+        if results:
             confidence += 0.2
             # Boost based on number of relevant results
-            num_results = len(vector_result["results"])
+            num_results = len(results)
             confidence += min(0.2, num_results * 0.05)
         
         # Cap at 1.0
@@ -579,17 +620,29 @@ Comprehensive Answer:
     
     def _build_sources_list(
         self,
-        sql_result: Optional[Dict[str, Any]],
-        vector_result: Optional[Dict[str, Any]],
+        sql_result: Optional[Union[Dict[str, Any], Any]],
+        vector_result: Optional[Union[Dict[str, Any], Any]],
         answer_type: AnswerType
     ) -> List[str]:
         """Build list of data sources used in the answer."""
         sources = []
         
-        if sql_result and sql_result.get("success"):
+        # Handle SQLResult dataclass
+        if hasattr(sql_result, 'success'):
+            has_sql_success = sql_result and sql_result.success
+        else:
+            has_sql_success = sql_result and sql_result.get("success")
+            
+        if has_sql_success:
             sources.append("Database Analysis")
         
-        if vector_result and vector_result.get("results"):
+        # Handle VectorSearchResponse dataclass
+        if hasattr(vector_result, 'results'):
+            has_vector_results = vector_result and vector_result.results
+        else:
+            has_vector_results = vector_result and vector_result.get("results")
+            
+        if has_vector_results:
             sources.append("User Feedback")
         
         return sources
