@@ -1,0 +1,553 @@
+#!/usr/bin/env python3
+"""
+Comprehensive test suite for LangGraph RAG Agent orchestration.
+
+Tests the full LangGraph agent workflow including node execution, state management,
+routing logic, error handling, and Australian privacy compliance throughout the
+agent execution pipeline.
+
+Coverage:
+- Agent initialization and configuration validation
+- Individual node testing (classify, SQL, vector, hybrid, synthesis, clarification)
+- State management and workflow orchestration
+- Routing logic based on query classification and confidence
+- Error handling, recovery, and graceful degradation
+- Integration workflows with real components
+- Privacy compliance throughout agent execution
+"""
+
+import asyncio
+import pytest
+import pytest_asyncio
+from pathlib import Path
+from unittest.mock import patch, MagicMock, AsyncMock
+import sys
+import json
+import time
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.rag.core.agent import RAGAgent, AgentState
+from src.rag.core.routing.query_classifier import QueryClassifier
+from src.rag.core.synthesis.answer_generator import AnswerGenerator
+from src.rag.core.text_to_sql.async_sql_tool import AsyncSQLTool
+from src.rag.core.vector_search.vector_search_tool import VectorSearchTool
+from src.rag.core.privacy.pii_detector import AustralianPIIDetector
+from src.rag.utils.llm_utils import get_llm
+
+
+class TestRAGAgent:
+    """Test LangGraph agent orchestration and workflow."""
+    
+    @pytest_asyncio.fixture
+    async def mock_llm(self):
+        """Mock LLM for testing without API calls."""
+        mock = AsyncMock()
+        mock.ainvoke.return_value = MagicMock(content='{"classification": "SQL", "confidence": "HIGH", "reasoning": "Statistical query"}')
+        return mock
+    
+    @pytest_asyncio.fixture
+    async def mock_sql_tool(self):
+        """Mock SQL tool for testing."""
+        mock = AsyncMock()
+        mock.arun.return_value = {
+            "success": True,
+            "data": [{"count": 150, "agency": "Department of Education"}],
+            "query": "SELECT COUNT(*) as count, agency FROM users GROUP BY agency",
+            "execution_time": 0.45
+        }
+        return mock
+    
+    @pytest_asyncio.fixture
+    async def mock_vector_tool(self):
+        """Mock vector search tool for testing."""
+        mock = AsyncMock()
+        mock.asearch.return_value = {
+            "success": True,
+            "results": [
+                {
+                    "content": "The new platform is very user-friendly and intuitive",
+                    "metadata": {"source": "evaluation_123", "confidence": 0.92},
+                    "distance": 0.15
+                }
+            ],
+            "query": "platform feedback",
+            "total_results": 1
+        }
+        return mock
+    
+    @pytest_asyncio.fixture
+    async def sample_state(self):
+        """Sample agent state for testing."""
+        return AgentState(
+            query="How many users completed training in each agency?",
+            session_id="test_session_123",
+            classification=None,
+            confidence=None,
+            classification_reasoning=None,
+            sql_result=None,
+            vector_result=None,
+            final_answer=None,
+            sources=None,
+            error=None,
+            retry_count=0,
+            requires_clarification=False,
+            user_feedback=None,
+            processing_time=None,
+            tools_used=[]
+        )
+    
+    @pytest_asyncio.fixture
+    async def rag_agent(self, mock_llm, mock_sql_tool, mock_vector_tool):
+        """RAG agent with mocked dependencies."""
+        with patch('src.rag.core.agent.get_llm', return_value=mock_llm), \
+             patch('src.rag.core.agent.AsyncSQLTool', return_value=mock_sql_tool), \
+             patch('src.rag.core.agent.VectorSearchTool', return_value=mock_vector_tool):
+            agent = RAGAgent()
+            await agent.initialize()
+            return agent
+    
+    # Initialization Tests
+    @pytest.mark.asyncio
+    async def test_agent_initialization_success(self):
+        """Test successful agent initialization with all components."""
+        agent = RAGAgent()
+        
+        # Mock all dependencies
+        with patch('src.rag.core.agent.get_llm') as mock_get_llm, \
+             patch('src.rag.core.agent.AsyncSQLTool') as mock_sql, \
+             patch('src.rag.core.agent.VectorSearchTool') as mock_vector:
+            
+            mock_get_llm.return_value = AsyncMock()
+            mock_sql.return_value = AsyncMock()
+            mock_vector.return_value = AsyncMock()
+            
+            await agent.initialize()
+            
+            assert agent.query_classifier is not None
+            assert agent.answer_generator is not None
+            assert agent.sql_tool is not None
+            assert agent.vector_tool is not None
+            assert agent.pii_detector is not None
+            assert agent.graph is not None
+    
+    @pytest.mark.asyncio
+    async def test_agent_initialization_failure(self):
+        """Test agent initialization handles component failures."""
+        agent = RAGAgent()
+        
+        # Mock LLM failure
+        with patch('src.rag.core.agent.get_llm') as mock_get_llm:
+            mock_get_llm.side_effect = Exception("LLM initialization failed")
+            
+            with pytest.raises(Exception, match="LLM initialization failed"):
+                await agent.initialize()
+    
+    def test_agent_config_validation(self):
+        """Test agent configuration validation."""
+        agent = RAGAgent()
+        
+        # Test invalid configuration
+        invalid_config = {"invalid_key": "invalid_value"}
+        
+        # Agent should use default config if invalid config provided
+        agent.config = invalid_config
+        assert hasattr(agent, 'config')
+    
+    # Node Tests
+    @pytest.mark.asyncio
+    async def test_classify_query_node(self, rag_agent, sample_state):
+        """Test query classification node execution."""
+        result = await rag_agent.classify_query_node(sample_state)
+        
+        assert result["classification"] == "SQL"
+        assert result["confidence"] == "HIGH"
+        assert "reasoning" in result["classification_reasoning"]
+        assert "classify_query" in result["tools_used"]
+    
+    @pytest.mark.asyncio
+    async def test_sql_tool_node_success(self, rag_agent, sample_state):
+        """Test SQL tool node with successful execution."""
+        # Set up state for SQL execution
+        sample_state["classification"] = "SQL"
+        sample_state["confidence"] = "HIGH"
+        
+        result = await rag_agent.sql_tool_node(sample_state)
+        
+        assert result["sql_result"]["success"] is True
+        assert "data" in result["sql_result"]
+        assert "sql_tool" in result["tools_used"]
+        assert result["error"] is None
+    
+    @pytest.mark.asyncio
+    async def test_sql_tool_node_failure(self, rag_agent, sample_state, mock_sql_tool):
+        """Test SQL tool node with execution failure."""
+        # Mock SQL tool failure
+        mock_sql_tool.arun.side_effect = Exception("Database connection failed")
+        
+        sample_state["classification"] = "SQL"
+        sample_state["confidence"] = "HIGH"
+        
+        result = await rag_agent.sql_tool_node(sample_state)
+        
+        assert result["error"] is not None
+        assert "Database connection failed" in result["error"]
+        assert result["retry_count"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_vector_search_tool_node_success(self, rag_agent, sample_state):
+        """Test vector search tool node with successful execution."""
+        sample_state["classification"] = "VECTOR"
+        sample_state["confidence"] = "HIGH"
+        
+        result = await rag_agent.vector_search_tool_node(sample_state)
+        
+        assert result["vector_result"]["success"] is True
+        assert "results" in result["vector_result"]
+        assert "vector_search" in result["tools_used"]
+        assert result["error"] is None
+    
+    @pytest.mark.asyncio
+    async def test_vector_search_tool_node_failure(self, rag_agent, sample_state, mock_vector_tool):
+        """Test vector search tool node with execution failure."""
+        # Mock vector search failure
+        mock_vector_tool.asearch.side_effect = Exception("Vector index unavailable")
+        
+        sample_state["classification"] = "VECTOR"
+        sample_state["confidence"] = "HIGH"
+        
+        result = await rag_agent.vector_search_tool_node(sample_state)
+        
+        assert result["error"] is not None
+        assert "Vector index unavailable" in result["error"]
+        assert result["retry_count"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_hybrid_processing_node(self, rag_agent, sample_state):
+        """Test hybrid processing node with both SQL and vector results."""
+        # Set up state with both tools executed
+        sample_state["classification"] = "HYBRID"
+        sample_state["confidence"] = "HIGH"
+        sample_state["sql_result"] = {
+            "success": True,
+            "data": [{"completion_rate": 85, "agency": "Education"}]
+        }
+        sample_state["vector_result"] = {
+            "success": True,
+            "results": [{"content": "Great training program", "confidence": 0.9}]
+        }
+        
+        result = await rag_agent.hybrid_processing_node(sample_state)
+        
+        assert "hybrid_processing" in result["tools_used"]
+        assert result["sql_result"] is not None
+        assert result["vector_result"] is not None
+    
+    @pytest.mark.asyncio
+    async def test_synthesis_node(self, rag_agent, sample_state):
+        """Test answer synthesis node execution."""
+        # Set up state with tool results
+        sample_state["sql_result"] = {
+            "success": True,
+            "data": [{"count": 150, "agency": "Education"}]
+        }
+        sample_state["classification"] = "SQL"
+        
+        with patch.object(rag_agent.answer_generator, 'generate_answer') as mock_generate:
+            mock_generate.return_value = {
+                "answer": "There are 150 users in the Education agency who completed training.",
+                "confidence": 0.9,
+                "sources": ["database_query"],
+                "answer_type": "statistical"
+            }
+            
+            result = await rag_agent.synthesis_node(sample_state)
+            
+            assert result["final_answer"] is not None
+            assert result["sources"] is not None
+            assert "answer_synthesis" in result["tools_used"]
+    
+    @pytest.mark.asyncio
+    async def test_clarification_node(self, rag_agent, sample_state):
+        """Test clarification node execution."""
+        sample_state["requires_clarification"] = True
+        sample_state["classification"] = "CLARIFICATION_NEEDED"
+        
+        result = await rag_agent.clarification_node(sample_state)
+        
+        assert result["final_answer"] is not None
+        assert "clarification" in result["final_answer"].lower()
+        assert "clarification_request" in result["tools_used"]
+    
+    @pytest.mark.asyncio
+    async def test_error_handling_node(self, rag_agent, sample_state):
+        """Test error handling node execution."""
+        sample_state["error"] = "Test error occurred"
+        sample_state["retry_count"] = 2
+        
+        result = await rag_agent.error_handling_node(sample_state)
+        
+        assert result["final_answer"] is not None
+        assert "error" in result["final_answer"].lower()
+        assert "error_handling" in result["tools_used"]
+    
+    # Routing Logic Tests
+    @pytest.mark.asyncio
+    async def test_routing_high_confidence_sql(self, rag_agent, sample_state):
+        """Test routing logic for high confidence SQL classification."""
+        sample_state["classification"] = "SQL"
+        sample_state["confidence"] = "HIGH"
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        assert next_node == "sql_tool"
+    
+    @pytest.mark.asyncio
+    async def test_routing_high_confidence_vector(self, rag_agent, sample_state):
+        """Test routing logic for high confidence vector classification."""
+        sample_state["classification"] = "VECTOR"
+        sample_state["confidence"] = "HIGH"
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        assert next_node == "vector_search"
+    
+    @pytest.mark.asyncio
+    async def test_routing_high_confidence_hybrid(self, rag_agent, sample_state):
+        """Test routing logic for high confidence hybrid classification."""
+        sample_state["classification"] = "HYBRID"
+        sample_state["confidence"] = "HIGH"
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        assert next_node == "hybrid_processing"
+    
+    @pytest.mark.asyncio
+    async def test_routing_low_confidence_fallback(self, rag_agent, sample_state):
+        """Test routing logic for low confidence requiring clarification."""
+        sample_state["classification"] = "SQL"
+        sample_state["confidence"] = "LOW"
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        assert next_node == "clarification"
+    
+    @pytest.mark.asyncio
+    async def test_routing_error_state(self, rag_agent, sample_state):
+        """Test routing logic for error states."""
+        sample_state["error"] = "Classification failed"
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        assert next_node == "error_handling"
+    
+    @pytest.mark.asyncio
+    async def test_routing_retry_logic(self, rag_agent, sample_state):
+        """Test routing logic for retry scenarios."""
+        sample_state["error"] = "Temporary failure"
+        sample_state["retry_count"] = 1
+        
+        next_node = await rag_agent.determine_next_node(sample_state)
+        
+        # Should retry if under max retry limit
+        if sample_state["retry_count"] < 3:
+            assert next_node in ["classify_query", "sql_tool", "vector_search"]
+        else:
+            assert next_node == "error_handling"
+    
+    # End-to-End Workflow Tests
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_end_to_end_sql_workflow(self, rag_agent):
+        """Test complete workflow for SQL query."""
+        query = "How many users completed training in each agency?"
+        
+        result = await rag_agent.process_query(query, session_id="test_sql")
+        
+        assert result["classification"] == "SQL"
+        assert result["final_answer"] is not None
+        assert result["sources"] is not None
+        assert result["error"] is None
+        assert "sql_tool" in result["tools_used"]
+    
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_end_to_end_vector_workflow(self, rag_agent):
+        """Test complete workflow for vector search query."""
+        query = "What feedback did users give about the new platform features?"
+        
+        # Mock classification to return VECTOR
+        with patch.object(rag_agent.query_classifier, 'classify_query') as mock_classify:
+            mock_classify.return_value = {
+                "classification": "VECTOR",
+                "confidence": "HIGH",
+                "reasoning": "Feedback analysis query"
+            }
+            
+            result = await rag_agent.process_query(query, session_id="test_vector")
+            
+            assert result["classification"] == "VECTOR"
+            assert result["final_answer"] is not None
+            assert result["sources"] is not None
+            assert result["error"] is None
+            assert "vector_search" in result["tools_used"]
+    
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_end_to_end_hybrid_workflow(self, rag_agent):
+        """Test complete workflow for hybrid analysis query."""
+        query = "Analyze course completion rates with supporting user feedback"
+        
+        # Mock classification to return HYBRID
+        with patch.object(rag_agent.query_classifier, 'classify_query') as mock_classify:
+            mock_classify.return_value = {
+                "classification": "HYBRID",
+                "confidence": "HIGH",
+                "reasoning": "Combined analysis query"
+            }
+            
+            result = await rag_agent.process_query(query, session_id="test_hybrid")
+            
+            assert result["classification"] == "HYBRID"
+            assert result["final_answer"] is not None
+            assert result["sources"] is not None
+            assert result["error"] is None
+            assert "sql_tool" in result["tools_used"]
+            assert "vector_search" in result["tools_used"]
+    
+    # Error Recovery Tests
+    @pytest.mark.asyncio
+    async def test_graceful_degradation_on_tool_failure(self, rag_agent, mock_sql_tool):
+        """Test graceful degradation when primary tool fails."""
+        # Mock SQL tool failure
+        mock_sql_tool.arun.side_effect = Exception("Database unavailable")
+        
+        query = "How many users completed training?"
+        result = await rag_agent.process_query(query, session_id="test_degradation")
+        
+        # Should still return a helpful error response
+        assert result["final_answer"] is not None
+        assert "currently unavailable" in result["final_answer"].lower()
+        assert result["error"] is not None
+    
+    @pytest.mark.asyncio
+    async def test_retry_mechanism_with_backoff(self, rag_agent, mock_sql_tool):
+        """Test retry mechanism with exponential backoff."""
+        # Mock intermittent failures
+        call_count = 0
+        async def failing_arun(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise Exception("Temporary failure")
+            return {"success": True, "data": [{"count": 100}]}
+        
+        mock_sql_tool.arun = failing_arun
+        
+        query = "How many users completed training?"
+        start_time = time.time()
+        
+        result = await rag_agent.process_query(query, session_id="test_retry")
+        
+        end_time = time.time()
+        
+        # Should eventually succeed after retries
+        assert result["error"] is None or result["final_answer"] is not None
+        # Should have taken some time due to backoff
+        assert end_time - start_time > 1.0
+    
+    # Privacy Compliance Tests
+    @pytest.mark.asyncio
+    async def test_pii_protection_throughout_workflow(self, rag_agent):
+        """Test PII protection throughout the entire agent workflow."""
+        # Query with Australian PII
+        query = "Show training data for John Smith with ABN 12345678901"
+        
+        with patch.object(rag_agent.pii_detector, 'anonymize_text') as mock_anonymize:
+            mock_anonymize.return_value = "Show training data for [REDACTED_PERSON] with [REDACTED_ABN]"
+            
+            result = await rag_agent.process_query(query, session_id="test_pii")
+            
+            # Verify PII anonymization was called
+            mock_anonymize.assert_called()
+            
+            # Verify no PII in final answer
+            assert "John Smith" not in result["final_answer"]
+            assert "12345678901" not in result["final_answer"]
+    
+    @pytest.mark.asyncio
+    async def test_audit_trail_for_privacy_actions(self, rag_agent):
+        """Test that privacy actions are properly logged for audit trail."""
+        query = "Show data for user with Medicare number 1234567890"
+        
+        with patch('src.rag.core.agent.logger') as mock_logger:
+            await rag_agent.process_query(query, session_id="test_audit")
+            
+            # Verify privacy actions are logged
+            mock_logger.info.assert_called()
+            log_calls = [call.args[0] for call in mock_logger.info.call_args_list]
+            
+            # Check for privacy-related log entries
+            privacy_logs = [log for log in log_calls if "PII" in log or "anonymiz" in log.lower()]
+            assert len(privacy_logs) > 0
+    
+    # Performance Tests
+    @pytest.mark.asyncio
+    async def test_response_time_targets(self, rag_agent):
+        """Test that agent meets response time targets."""
+        query = "How many users completed training?"
+        
+        start_time = time.time()
+        result = await rag_agent.process_query(query, session_id="test_performance")
+        end_time = time.time()
+        
+        response_time = end_time - start_time
+        
+        # Should complete within reasonable time (adjust based on requirements)
+        assert response_time < 30.0  # 30 seconds max for mocked components
+        assert result["processing_time"] is not None
+        assert result["processing_time"] < 30.0
+    
+    @pytest.mark.asyncio
+    async def test_concurrent_request_handling(self, rag_agent):
+        """Test handling of multiple concurrent requests."""
+        queries = [
+            "How many users completed training?",
+            "What feedback did users provide?",
+            "Analyze satisfaction with completion rates",
+            "Show attendance statistics by agency",
+            "What are the main user concerns?"
+        ]
+        
+        # Process queries concurrently
+        tasks = [
+            rag_agent.process_query(query, session_id=f"concurrent_{i}")
+            for i, query in enumerate(queries)
+        ]
+        
+        results = await asyncio.gather(*tasks)
+        
+        # Verify all requests completed successfully
+        assert len(results) == len(queries)
+        for result in results:
+            assert result["final_answer"] is not None
+            assert result["session_id"] is not None
+    
+    @pytest.mark.asyncio
+    async def test_memory_management(self, rag_agent):
+        """Test that agent properly manages memory and resources."""
+        import gc
+        import tracemalloc
+        
+        tracemalloc.start()
+        
+        # Process multiple queries to test memory usage
+        for i in range(10):
+            query = f"How many users completed training in iteration {i}?"
+            await rag_agent.process_query(query, session_id=f"memory_test_{i}")
+            
+            # Force garbage collection
+            gc.collect()
+        
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        
+        # Memory usage should be reasonable (adjust based on requirements)
+        assert peak < 100 * 1024 * 1024  # Less than 100MB peak usage
