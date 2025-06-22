@@ -478,10 +478,8 @@ class RAGAgent:
             import asyncio
             
             async def sql_with_timeout():
-                return await self._sql_tool.execute_query(
-                    query=state["query"],
-                    session_id=state["session_id"]
-                )
+                return await self._sql_tool.process_question(state["query"])
+            
             
             # Execute with timeout
             result = await asyncio.wait_for(
@@ -490,7 +488,7 @@ class RAGAgent:
             )
             
             # Check if result indicates success
-            if result.get("success", True):
+            if result.success:
                 logger.info(f"SQL tool executed successfully, returned {len(str(result))} chars")
                 
                 return {
@@ -553,7 +551,6 @@ class RAGAgent:
             async def vector_with_timeout():
                 return await self._vector_tool.search(
                     query=state["query"],
-                    session_id=state["session_id"],
                     max_results=10  # Configurable limit
                 )
             
@@ -564,8 +561,8 @@ class RAGAgent:
             )
             
             # Validate search results
-            if result and result.get("results"):
-                logger.info(f"Vector search found {len(result['results'])} results")
+            if result and result.results:
+                logger.info(f"Vector search found {len(result.results)} results")
                 
                 return {
                     **state,
@@ -713,10 +710,7 @@ class RAGAgent:
             if not self._sql_tool:
                 raise RuntimeError("SQL tool not initialized")
             
-            return await self._sql_tool.execute_query(
-                query=state["query"],
-                session_id=state["session_id"]
-            )
+            return await self._sql_tool.process_question(state["query"])
         except Exception as e:
             logger.error(f"SQL execution in hybrid failed: {e}")
             return {"error": str(e)}
@@ -729,7 +723,6 @@ class RAGAgent:
             
             return await self._vector_tool.search(
                 query=state["query"],
-                session_id=state["session_id"],
                 max_results=10
             )
         except Exception as e:
