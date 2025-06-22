@@ -53,7 +53,7 @@ class TestQueryClassifier:
     async def pii_detector(self):
         """Create a real PII detector for privacy testing."""
         detector = AustralianPIIDetector()
-        await detector.initialize()
+        await detector.initialise()
         return detector
     
     @pytest_asyncio.fixture
