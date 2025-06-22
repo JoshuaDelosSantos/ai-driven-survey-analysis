@@ -461,8 +461,14 @@ Classification:"""
             # Get LLM response
             response = await self._llm.ainvoke(formatted_prompt)
             
+            # Extract content from AIMessage if needed
+            if hasattr(response, 'content'):
+                response_text = response.content
+            else:
+                response_text = str(response)
+            
             # Parse response
-            return self._parse_llm_response(response, query)
+            return self._parse_llm_response(response_text, query)
             
         except Exception as e:
             logger.error(f"LLM classification failed: {e}")
