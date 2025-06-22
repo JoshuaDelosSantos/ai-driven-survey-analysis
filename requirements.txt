@@ -63,6 +63,7 @@ langchain-google-genai==2.1.5
 langchain-google-vertexai==2.0.24
 langchain-openai==0.3.22
 langchain-text-splitters==0.3.8
+langgraph>=0.0.40
 langcodes==3.5.0
 langsmith==0.3.45
 language_data==1.3.0
