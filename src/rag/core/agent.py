@@ -239,11 +239,8 @@ class RAGAgent:
                 logger.info("PII detection system initialized")
             
             # Initialize query classifier
-            self._query_classifier = QueryClassifier(
-                llm=self._llm,
-                pii_detector=self._pii_detector,
-                max_retries=self.config.max_retries
-            )
+            self._query_classifier = QueryClassifier(llm=self._llm)
+            await self._query_classifier.initialize()
             logger.info("Query classifier initialized")
             
             # Initialize answer generator
