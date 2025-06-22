@@ -15,6 +15,262 @@ Phase 3 Features:
 Security: Read-only database access, mandatory Australian PII protection.
 Performance: Non-blocking async operations with intelligent caching.
 Privacy: Australian Privacy Principles (APP) compliance maintained.
+
+Example Usage:
+    # Basic terminal application with full agent capabilities
+    async def agent_mode_example():
+        from .terminal_app import TerminalApp
+        
+        # Create application with LangGraph agent enabled (default)
+        app = TerminalApp(enable_agent=True)
+        
+        # Run the interactive terminal application
+        await app.run()
+        
+        # User interaction example:
+        # Your question: How many users completed courses in each agency?
+        # 🔄 Processing your question... (ID: a1b2c3d4)
+        # 🧠 Classifying query type...
+        # ✅ Query processed successfully!
+        # 
+        # 🧠 Query Classification: SQL (Confidence: HIGH)
+        # 🔧 Tools Used: sql
+        # 
+        # 📋 Analysis Result:
+        # --------------------------------------------------
+        # Based on the database analysis, here are the course 
+        # completion statistics by agency:
+        # 
+        # • Department of Finance: 87.5% completion rate (240 users)
+        # • Department of Health: 92.1% completion rate (180 users)
+        # • Department of Education: 78.9% completion rate (320 users)
+        # --------------------------------------------------
+        # 📚 Sources: Database Analysis
+        # ⏱️  Agent Processing: 2.145s
+        # ⏱️  Total Time: 2.234s
+        # 📊 SQL Analysis: Database query executed
+        # 
+        # 👍 Was this response helpful? (y/n/skip): y
+        # ✅ Thank you for the positive feedback!
+
+    # Legacy SQL-only mode for backward compatibility
+    async def legacy_mode_example():
+        from .terminal_app import TerminalApp
+        
+        # Create application with agent disabled (legacy SQL-only mode)
+        app = TerminalApp(enable_agent=False)
+        
+        # Run the legacy terminal application
+        await app.run()
+        
+        # User interaction example:
+        # Your question: Show attendance status breakdown by user level
+        # 🔄 Processing your question... (ID: x9y8z7w6)
+        # ✅ Query completed successfully!
+        # 
+        # Generated SQL Query:
+        # ```sql
+        # SELECT level, attendance_status, COUNT(*) as user_count 
+        # FROM users u JOIN attendance a ON u.user_id = a.user_id 
+        # GROUP BY level, attendance_status 
+        # ORDER BY level, attendance_status;
+        # ```
+        # 
+        # Results:
+        # ----------------------------------------
+        # Level 3: Completed (45), In Progress (12), Not Started (8)
+        # Level 4: Completed (38), In Progress (15), Not Started (5)
+        # Level 5: Completed (52), In Progress (18), Not Started (7)
+        # Level 6: Completed (29), In Progress (9), Not Started (3)
+        # ----------------------------------------
+        # Execution time: 0.234s
+        # Total processing time: 1.456s
+        # Rows returned: 12
+
+    # Feedback analysis example with vector search
+    async def feedback_analysis_example():
+        from .terminal_app import TerminalApp
+        
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # Simulate feedback analysis query
+        # User question: "What feedback did users give about virtual learning?"
+        # Expected interaction:
+        # 🔄 Processing your question... (ID: f5e4d3c2)
+        # 🧠 Classifying query type...
+        # ✅ Query processed successfully!
+        # 
+        # 🧠 Query Classification: VECTOR (Confidence: HIGH)
+        # 🔧 Tools Used: vector_search
+        # 
+        # 📋 Analysis Result:
+        # --------------------------------------------------
+        # Based on user feedback analysis, here are the main themes 
+        # regarding virtual learning:
+        # 
+        # Positive Feedback (78% of responses):
+        # • "The virtual learning platform was intuitive and easy to navigate"
+        # • "I appreciated the flexibility to complete modules at my own pace"
+        # • "Overall satisfied with the learning experience and content quality"
+        # 
+        # Areas for Improvement (22% of responses):
+        # • "Some technical issues with video playback on older browsers"
+        # • "Would recommend improvements to the mobile interface"
+        # 
+        # Key Insights:
+        # Users generally appreciate the flexibility and content quality of the 
+        # virtual learning platform, with most feedback being positive. The main 
+        # concerns relate to technical compatibility and mobile experience.
+        # --------------------------------------------------
+        # 📚 Sources: User Feedback
+        # ⏱️  Agent Processing: 1.892s
+        # ⏱️  Total Time: 1.945s
+        # 💬 Vector Search: Feedback analysis performed
+
+    # Hybrid analysis example combining SQL and vector search
+    async def hybrid_analysis_example():
+        from .terminal_app import TerminalApp
+        
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # Simulate hybrid analysis query
+        # User question: "Analyze satisfaction trends with supporting user feedback"
+        # Expected interaction:
+        # 🔄 Processing your question... (ID: h7g6f5e4)
+        # 🧠 Classifying query type...
+        # ✅ Query processed successfully!
+        # 
+        # 🧠 Query Classification: HYBRID (Confidence: HIGH)
+        # 🔧 Tools Used: sql, vector_search
+        # 
+        # 📋 Analysis Result:
+        # --------------------------------------------------
+        # Comprehensive Satisfaction Analysis:
+        # 
+        # Statistical Overview:
+        # • Average satisfaction rating: 4.2/5.0 (450 responses)
+        # • Completion rate: 85.7% (increasing trend over last 6 months)
+        # • Response rate: 78.3% across all agencies
+        # 
+        # Supporting User Feedback:
+        # Most Appreciated Features:
+        # • "The new features significantly improved my productivity"
+        # • "Interface is much more user-friendly than the previous version"
+        # • "Mobile accessibility has greatly improved work flexibility"
+        # 
+        # Areas for Improvement:
+        # • "Still experiencing occasional connectivity issues"
+        # • "Training materials could be more comprehensive"
+        # 
+        # Executive Summary:
+        # Satisfaction trends show positive momentum with both quantitative metrics 
+        # and qualitative feedback supporting strong user adoption. The 4.2/5 
+        # average rating aligns with positive user sentiment, particularly around 
+        # usability improvements and mobile access. Technical stability remains 
+        # the primary area for continued investment.
+        # --------------------------------------------------
+        # 📚 Sources: Database Analysis, User Feedback
+        # ⏱️  Agent Processing: 3.234s
+        # ⏱️  Total Time: 3.891s
+        # 🔄 Hybrid Analysis: Combined SQL and vector search results
+
+    # Interactive clarification example
+    async def clarification_example():
+        from .terminal_app import TerminalApp
+        
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # Simulate ambiguous query requiring clarification
+        # User question: "Show me the data about courses"
+        # Expected interaction:
+        # 🔄 Processing your question... (ID: c9b8a7z6)
+        # 🧠 Classifying query type...
+        # 🤔 Your question needs clarification
+        # 
+        # I can help you with course data in different ways. Please choose:
+        # 
+        # A) Statistical analysis (enrollment numbers, completion rates, demographics)
+        # B) User feedback and experiences (comments, ratings, satisfaction)
+        # C) Comprehensive analysis (combining both statistics and feedback)
+        # 
+        # Your choice (A/B/C or rephrase your question): A
+        # 
+        # 🔄 Processing clarified request: Show me the data about courses - I want statistical summary and numerical breakdown
+        # [Continues with SQL analysis of course statistics...]
+
+    # Session statistics and feedback tracking example
+    async def session_management_example():
+        from .terminal_app import TerminalApp
+        
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # After processing several queries, user can check session stats
+        # User command: stats
+        # Expected output:
+        # 📊 Session Statistics
+        # ==============================
+        # Session ID: a1b2c3d4
+        # Queries Processed: 5
+        # Feedback Collected: 4
+        # Positive Feedback Rate: 75.0%
+        # Agent Mode: Enabled
+        # Model: gemini-2.0-flash
+
+    # Error handling and recovery example
+    async def error_handling_example():
+        from .terminal_app import TerminalApp
+        
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # Simulate error scenario (e.g., database connection issue)
+        # User question: "Show me user statistics"
+        # Expected interaction during error:
+        # 🔄 Processing your question... (ID: e1r2r3o4)
+        # 🧠 Classifying query type...
+        # ❌ Query processing encountered an issue
+        # 
+        # 💡 Guidance:
+        # ------------------------------
+        # I encountered a temporary issue accessing the database. 
+        # This is often resolved quickly. Please try:
+        # 
+        # 1. Rephrasing your question slightly
+        # 2. Waiting a moment and trying again
+        # 3. Using 'help' command for alternative approaches
+        # 
+        # If the issue persists, you can try asking about user 
+        # feedback instead, which uses a different data source.
+        # ------------------------------
+        # 
+        # ⏱️  Processing time: 2.156s
+        # 🔧 Attempted: sql
+
+    # Programmatic usage for integration
+    async def programmatic_usage_example():
+        from .terminal_app import TerminalApp
+        
+        # Create and initialize app
+        app = TerminalApp(enable_agent=True)
+        await app.initialize()
+        
+        # Process single query programmatically
+        await app._process_question("How many users completed training this month?")
+        
+        # Access session information
+        session_id = app.session_id
+        query_count = app.query_count
+        feedback = app.feedback_collected
+        
+        # Clean up resources
+        await app._cleanup()
+        
+        print(f"Session {session_id} processed {query_count} queries")
+        print(f"Collected feedback: {len(feedback)} responses")
 """
 
 import asyncio
