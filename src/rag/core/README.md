@@ -5,7 +5,11 @@ This directory contains the core Retrieval-Augmented Generation functionality fo
 ## Overview
 
 The core module implements the central RAG pipeline with privacy-first design:
+- **LangGraph Agent Orchestration**: Intelligent query routing and processing coordination ✅ **NEW**
 - **Text-to-SQL Translation**: LangChain-powered natural language query understanding and SQL generation
+- **Vector Search Integration**: Semantic search over user feedback with advanced metadata filtering ✅ **NEW**
+- **Query Classification**: Multi-stage intelligent routing between SQL, vector, and hybrid processing ✅ **NEW**
+- **Answer Synthesis**: Advanced multi-modal response generation combining statistical and qualitative insights ✅ **NEW**
 - **Dynamic Schema Management**: Real-time database schema introspection with privacy controls
 - **Australian PII Protection**: Mandatory detection and anonymisation of Australian-specific entities
 - **Query Validation**: Multi-layer SQL injection prevention and complexity analysis
@@ -13,21 +17,34 @@ The core module implements the central RAG pipeline with privacy-first design:
 
 ## Current Architecture
 
-### Status: **Phase 1 Complete + Phase 2 Task 2.1 Complete**
+### Status: **Phase 1 Complete + Phase 2 Complete + Phase 3 Task 3.1 Complete**
 
 ```
 core/
 ├── __init__.py                 # Core module initialisation
+├── agent.py                   # LangGraph agent orchestrator ✅ NEW  
 ├── README.md                  # This documentation
 ├── privacy/                   # Australian PII detection and anonymisation ✅ NEW
 │   ├── __init__.py
 │   ├── README.md             # Privacy module documentation
 │   └── pii_detector.py       # Australian-specific PII detection
-└── text_to_sql/              # Text-to-SQL processing engine
+├── routing/                   # Query classification and routing ✅ NEW
+│   ├── __init__.py
+│   ├── README.md             # Query routing documentation
+│   └── query_classifier.py   # Multi-stage query classification
+├── synthesis/                 # Answer generation and synthesis ✅ NEW
+│   ├── __init__.py
+│   ├── README.md             # Answer synthesis documentation
+│   └── answer_generator.py   # Multi-modal answer generation
+├── text_to_sql/              # Text-to-SQL processing engine
+│   ├── __init__.py
+│   ├── README.md             # Text-to-SQL documentation
+│   ├── schema_manager.py     # Dynamic schema introspection
+│   └── sql_tool.py          # SQL generation and execution
+└── vector_search/            # Vector search and semantic retrieval
     ├── __init__.py
-    ├── README.md             # Text-to-SQL documentation
-    ├── schema_manager.py     # Dynamic schema introspection
-    └── sql_tool.py          # SQL generation and execution
+    ├── README.md             # Vector search documentation
+    └── vector_search_tool.py # Async vector search implementation
 ```
 
 ## Enhanced Data Governance Framework
