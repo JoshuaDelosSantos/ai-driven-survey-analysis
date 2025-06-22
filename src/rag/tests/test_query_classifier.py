@@ -170,7 +170,7 @@ class TestQueryClassifier:
         mock_response = MagicMock()
         mock_response.content = """
         Classification: SQL
-        Confidence: 0.92
+        Confidence: HIGH
         Reasoning: The query explicitly asks for counting users by agency, which requires aggregation from the database.
         """
         classifier._llm.ainvoke.return_value = mock_response
