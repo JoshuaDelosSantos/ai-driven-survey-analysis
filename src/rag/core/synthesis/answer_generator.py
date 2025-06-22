@@ -386,14 +386,11 @@ Comprehensive Answer:
             # Apply PII protection if enabled
             pii_detected = False
             if self.pii_detector:
-                cleaned_answer, pii_info = await self.pii_detector.anonymize_text(
-                    text=answer,
-                    session_id=session_id
-                )
-                if pii_info.get("pii_detected"):
-                    answer = cleaned_answer
+                pii_result = await self.pii_detector.detect_and_anonymise(answer)
+                if pii_result.entities_detected:
+                    answer = pii_result.anonymised_text
                     pii_detected = True
-                    logger.warning(f"PII detected and anonymized in answer for session {session_id}")
+                    logger.warning(f"PII detected and anonymised in answer for session {session_id}")
             
             # Calculate confidence score
             confidence = self._calculate_confidence(sql_result, vector_result, answer_type)
