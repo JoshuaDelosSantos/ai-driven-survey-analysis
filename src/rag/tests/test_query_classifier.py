@@ -82,17 +82,18 @@ class TestQueryClassifier:
                 "List the percentage of users who finished training"
             ],
             'vector_indicators': [
-                "What feedback did users give about virtual learning?",
-                "How do users feel about the new platform?",
-                "What are people saying about the course content?",
-                "Show me user experiences with mobile access",
-                "What concerns do users have about the system?"
+                "What did users say about virtual learning?",
+                "Show me feedback about the new platform?",
+                "What are user experiences with mobile access?",
+                "Show me comments about the course content",
+                "What are people's opinions on the system?"
             ],
             'hybrid_indicators': [
-                "Analyze satisfaction trends with supporting user feedback",
-                "Compare completion rates across agencies with user sentiment",
-                "Show performance metrics and related user comments",
-                "Provide comprehensive analysis of platform adoption"
+                "Analyze satisfaction by agency levels",
+                "Compare feedback across different departments", 
+                "Show comprehensive analysis of user performance",
+                "Provide detailed analysis of training outcomes",
+                "Show both numbers and feedback about completion"
             ],
             'ambiguous': [
                 "Tell me about the platform",
