@@ -100,7 +100,7 @@ import asyncio
 import logging
 import time
 import uuid
-from typing import Dict, Any, Optional, List, Literal
+from typing import Dict, Any, Optional, List, Literal, Union
 from typing_extensions import TypedDict
 from dataclasses import dataclass
 
@@ -109,6 +109,7 @@ from langchain_core.language_models import BaseLanguageModel
 
 from .text_to_sql.sql_tool import AsyncSQLTool
 from .vector_search.vector_search_tool import VectorSearchTool
+from .vector_search.search_result import VectorSearchResponse
 from .privacy.pii_detector import AustralianPIIDetector
 from .routing.query_classifier import QueryClassifier
 from .synthesis.answer_generator import AnswerGenerator
@@ -669,9 +670,16 @@ class RAGAgent:
             if isinstance(vector_result, Exception):
                 logger.warning(f"Vector component of hybrid failed: {vector_result}")
                 tools_used.append("vector_failed")
-            elif vector_result and not vector_result.get("error"):
-                final_state["vector_result"] = vector_result
-                tools_used.append("vector")
+            elif vector_result:
+                # Handle both dict and VectorSearchResponse objects
+                if hasattr(vector_result, 'results'):
+                    # VectorSearchResponse object
+                    final_state["vector_result"] = vector_result
+                    tools_used.append("vector")
+                elif isinstance(vector_result, dict) and not vector_result.get("error"):
+                    # Dict result without error
+                    final_state["vector_result"] = vector_result
+                    tools_used.append("vector")
             
             # Check if at least one tool succeeded
             if not final_state.get("sql_result") and not final_state.get("vector_result"):
@@ -715,7 +723,7 @@ class RAGAgent:
             logger.error(f"SQL execution in hybrid failed: {e}")
             return {"error": str(e)}
     
-    async def _execute_vector_safely(self, state: AgentState) -> Dict[str, Any]:
+    async def _execute_vector_safely(self, state: AgentState) -> Union[Dict[str, Any], VectorSearchResponse]:
         """Execute vector search tool with error handling for hybrid processing."""
         try:
             if not self._vector_tool:
