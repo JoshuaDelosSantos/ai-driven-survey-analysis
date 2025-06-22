@@ -380,8 +380,8 @@ Classification:"""
         """
         try:
             if self._pii_detector:
-                detection_result = await self._pii_detector.detect_pii_async(query)
-                return detection_result.anonymized_text
+                detection_result = await self._pii_detector.detect_and_anonymise(query)
+                return detection_result.anonymised_text
             return query
         except Exception as e:
             logger.warning(f"PII anonymization failed: {e}")
