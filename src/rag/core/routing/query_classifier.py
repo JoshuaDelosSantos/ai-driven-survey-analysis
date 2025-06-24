@@ -174,6 +174,9 @@ class QueryClassifier:
                 self._llm = get_llm()
                 logger.info(f"LLM initialized: {type(self._llm).__name__}")
             
+            # Initialize LLM classifier
+            await self._llm_classifier.initialize()
+            
             # Initialize PII detection
             self._pii_detector = AustralianPIIDetector()
             logger.info("PII detection system initialized")
@@ -690,18 +693,16 @@ class QueryClassifier:
             "state": self._circuit_breaker.state.value,
             "failure_count": self._circuit_breaker.failure_count,
             "last_failure": self._circuit_breaker.last_failure_time.isoformat() if self._circuit_breaker.last_failure_time else None,
-            "half_open_attempts": self._circuit_breaker.half_open_attempts
+            "half_open_calls": self._circuit_breaker.half_open_calls
         }
         
         # Performance metrics
         performance_stats = self._fallback_metrics.get_average_times()
         
-        # Pattern counts
+        # Pattern counts from pattern matcher
         pattern_stats = {
-            "sql_patterns": len(self._sql_patterns),
-            "vector_patterns": len(self._vector_patterns),
-            "hybrid_patterns": len(self._hybrid_patterns),
-            "total_patterns": len(self._sql_patterns) + len(self._vector_patterns) + len(self._hybrid_patterns)
+            "patterns_loaded": "delegated_to_pattern_matcher",
+            "pattern_matcher_active": True
         }
         
         return {
