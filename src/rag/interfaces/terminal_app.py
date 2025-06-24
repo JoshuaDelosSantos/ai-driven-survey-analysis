@@ -1,10 +1,13 @@
 """
 Terminal Application Interface for RAG System with LangGraph Agent
 
-Implements the enhanced terminal application with LangGraph agent integration
-for intelligent query routing between SQL analysis and vector search.
+Implements the production-ready terminal application with modular LangGraph agent 
+integration for intelligent query routing between SQL analysis and vector search.
 
-Phase 3 Features:
+Phase 3 Complete + Modular Refactoring Features:
+- Modular query classification system with 8 specialised components
+- Advanced confidence calibration with multi-dimensional scoring
+- Circuit breaker resilience patterns with exponential backoff
 - LangGraph agent orchestration with intelligent query routing
 - Multi-modal processing (SQL + Vector search + Hybrid)
 - Interactive clarification handling for ambiguous queries  
@@ -15,6 +18,7 @@ Phase 3 Features:
 Security: Read-only database access, mandatory Australian PII protection.
 Performance: Non-blocking async operations with intelligent caching.
 Privacy: Australian Privacy Principles (APP) compliance maintained.
+Architecture: Production-ready modular design with comprehensive testing.
 
 Example Usage:
     # Basic terminal application with full agent capabilities
@@ -404,8 +408,8 @@ class TerminalApp:
         """Display welcome message and instructions."""
         print("=" * 80)
         if self.enable_agent:
-            print("🤖 RAG System with LangGraph Agent - Phase 3 Complete")
-            print("   Intelligent Query Routing & Multi-Modal Analysis")
+            print("🚀 RAG System - Production Ready (Phase 3 Complete + Modular Architecture)")
+            print("   Advanced Query Classification & Multi-Modal Analysis")
         else:
             print("🎓 RAG Text-to-SQL System - Legacy Mode")
             print("   SQL Analysis Only")
@@ -420,7 +424,9 @@ class TerminalApp:
             print("   🔄 Hybrid Processing - for comprehensive insights")
             print()
             print("✨ Enhanced Features:")
-            print("   • Intelligent query classification with confidence scoring")
+            print("   • Modular query classification with 8 specialised components")
+            print("   • Advanced confidence calibration with multi-dimensional scoring")
+            print("   • Circuit breaker resilience with exponential backoff")
             print("   • Interactive clarification for ambiguous questions")
             print("   • Feedback collection to improve system performance")
             print("   • Australian PII protection throughout processing")
