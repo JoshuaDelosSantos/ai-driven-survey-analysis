@@ -368,3 +368,22 @@ class PatternMatcher:
         self.successful_classifications = 0
         
         logger.info("Pattern matcher statistics reset")
+    
+    def get_pattern_stats(self) -> Dict[str, int]:
+        """
+        Get statistics about loaded patterns.
+        
+        Returns:
+            Dictionary with pattern counts for monitoring
+        """
+        stats = {
+            "sql_patterns": len(self.compiled_patterns.get("SQL", [])),
+            "vector_patterns": len(self.compiled_patterns.get("VECTOR", [])),
+            "hybrid_patterns": len(self.compiled_patterns.get("HYBRID", [])),
+            "total_patterns": sum(len(patterns) for patterns in self.compiled_patterns.values()),
+            "weighted_patterns": len(self.compiled_weighted_patterns),
+            "usage_stats": self.pattern_usage_stats,
+            "total_classifications": self.total_classifications,
+            "successful_classifications": self.successful_classifications
+        }
+        return stats
