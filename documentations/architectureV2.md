@@ -464,7 +464,7 @@ DEGRADATION_MESSAGES = {
 
 ---
 
-### 6. Performance Benchmarking & Quality Metrics Framework
+## 6. Performance Benchmarking & Quality Metrics Framework
 
 ### Phase-Specific Performance Criteria
 
@@ -626,3 +626,108 @@ async def test_sql_generation_performance():
 - **Monthly Optimization Sprints**: Focus on worst-performing components
 - **Quarterly Architecture Reviews**: Assess scalability and technology choices
 - **User Feedback Integration**: Incorporate satisfaction data into optimization priorities
+
+---
+
+## 7. Future Enhancement Roadmap
+
+### 7.1 Advanced Query Classification Features
+
+**Objective**: Expand beyond MVP query classification to sophisticated, learning-based systems
+
+#### 7.1.1 Machine Learning-Based Classification
+- **Implementation**: Fine-tuned BERT model trained on Australian Public Service query patterns
+- **Benefits**: Improved accuracy for complex and domain-specific queries beyond rule-based patterns
+- **Timeline**: Phase 4 consideration
+- **Technical Requirements**: Training dataset curation, model fine-tuning infrastructure
+
+#### 7.1.2 Dynamic Pattern Learning
+- **Objective**: Automatically identify and incorporate new classification patterns from usage data
+- **Implementation**: Pattern mining algorithms to extract successful classification signals
+- **Benefits**: Continuous improvement without manual pattern maintenance
+- **Privacy Considerations**: Pattern extraction from anonymised query logs only
+
+#### 7.1.3 Multi-Language Support
+- **Objective**: Support queries in multiple languages relevant to Australian Public Service
+- **Implementation**: Multi-language PII detection and classification with language-specific patterns
+- **Benefits**: Enhanced accessibility for diverse user base
+- **Scope**: Initially focus on English variations, expand to other languages as needed
+
+#### 7.1.4 Advanced Confidence Calibration
+- **Objective**: Sophisticated confidence scoring using ensemble classification methods
+- **Implementation**: Combine multiple classification signals (rule-based, LLM, historical accuracy) with learned weights
+- **Benefits**: More accurate confidence estimation leading to better routing decisions
+- **Approach**: Implement weighted voting system with performance-based weight adjustment
+
+#### 7.1.5 User Feedback Integration
+- **Objective**: Incorporate user feedback to improve classification accuracy through active learning
+- **Implementation**: Feedback collection system integrated with classification results
+- **Benefits**: Continuous improvement based on real user interactions and corrections
+- **Privacy**: Feedback collection with mandatory PII anonymisation
+
+### 7.2 Enhanced Resilience Features
+
+#### 7.2.1 Predictive Failure Detection
+- **Objective**: Predict and prevent classification failures before they occur
+- **Implementation**: Monitor classification patterns and system health metrics
+- **Benefits**: Proactive error prevention rather than reactive error handling
+
+#### 7.2.2 Adaptive Fallback Strategies
+- **Objective**: Intelligently choose fallback mechanisms based on failure type and context
+- **Implementation**: Failure classification system with context-aware fallback selection
+- **Benefits**: More effective error recovery with minimal user impact
+
+#### 7.2.3 Load Balancing and Scaling
+- **Objective**: Distribute classification load across multiple instances for high availability
+- **Implementation**: Microservice architecture with intelligent load distribution
+- **Benefits**: Improved system reliability and performance at scale
+
+### 7.3 Advanced Integration Capabilities
+
+#### 7.3.1 External System Integration
+- **Objective**: Integrate with existing Australian Public Service learning management systems
+- **Implementation**: API-based integration with standardised data exchange formats
+- **Benefits**: Seamless integration with existing workflows and data sources
+
+#### 7.3.2 Real-Time Analytics Dashboard
+- **Objective**: Provide real-time insights into classification performance and system health
+- **Implementation**: Dashboard with live metrics, performance trends, and alert systems
+- **Benefits**: Operational visibility and proactive system management
+
+#### 7.3.3 Federated Learning Capabilities
+- **Objective**: Enable cross-agency learning while maintaining data privacy
+- **Implementation**: Federated learning protocols for shared model improvement
+- **Benefits**: Improved accuracy through collective learning without data sharing
+
+---
+
+## 8. Technical Debt and Maintenance Considerations
+
+### 8.1 Code Quality and Maintainability
+
+#### 8.1.1 Refactoring Priorities
+- **Pattern Management**: Consolidate pattern definitions into configuration-driven system
+- **Error Handling**: Standardise error handling patterns across all classification components
+- **Testing Infrastructure**: Expand test coverage for edge cases and failure scenarios
+
+#### 8.1.2 Performance Optimization
+- **Caching Strategy**: Implement intelligent caching for frequently classified queries
+- **Pattern Compilation**: Optimise regex compilation and matching performance
+- **Memory Management**: Reduce memory footprint through efficient data structures
+
+#### 8.1.3 Documentation and Knowledge Transfer
+- **Architecture Documentation**: Maintain comprehensive technical documentation
+- **Operational Runbooks**: Create detailed operational procedures for common scenarios
+- **Training Materials**: Develop training materials for system administrators and developers
+
+### 8.2 Scalability Considerations
+
+#### 8.2.1 Horizontal Scaling
+- **Stateless Design**: Ensure classification components can scale horizontally
+- **Database Optimization**: Implement efficient database connection pooling and query optimization
+- **API Rate Limiting**: Implement intelligent rate limiting for external service calls
+
+#### 8.2.2 Monitoring and Observability
+- **Health Checks**: Comprehensive health monitoring for all system components
+- **Performance Metrics**: Detailed performance tracking and alerting
+- **Audit Logging**: Complete audit trail for compliance and troubleshooting
