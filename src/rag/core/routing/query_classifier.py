@@ -699,10 +699,7 @@ class QueryClassifier:
         performance_stats = self._fallback_metrics.get_average_times()
         
         # Pattern counts from pattern matcher
-        pattern_stats = {
-            "patterns_loaded": "delegated_to_pattern_matcher",
-            "pattern_matcher_active": True
-        }
+        pattern_stats = self._pattern_matcher.get_pattern_stats()
         
         return {
             "total_classifications": total,
@@ -737,7 +734,7 @@ class QueryClassifier:
                 "max_retries": self._retry_config.max_retries,
                 "base_delay": self._retry_config.base_delay,
                 "max_delay": self._retry_config.max_delay,
-                "backoff_multiplier": self._retry_config.backoff_multiplier,
+                "exponential_base": self._retry_config.exponential_base,
                 "jitter_enabled": self._retry_config.jitter
             },
             "performance": {
