@@ -60,18 +60,9 @@ Example Usage:
 
 import asyncio
 import logging
-import re
 import time
-import random
-import asyncio
-import logging
 import re
-import time
-import random
-from typing import Dict, Any, Optional, List, Literal, Union
-from dataclasses import dataclass, field
-from enum import Enum
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
 
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
@@ -81,180 +72,15 @@ from ...utils.llm_utils import get_llm
 from ...utils.logging_utils import get_logger
 from ...config.settings import get_settings
 
+from .data_structures import ClassificationResult, ClassificationType, ConfidenceLevel, ClassificationMethod
+from .circuit_breaker import CircuitBreaker, FallbackMetrics, RetryConfig, CircuitBreakerState
+from .confidence_calibrator import ConfidenceCalibrator
+from .pattern_matcher import PatternMatcher
+from .aps_patterns import APS_PATTERNS, PATTERN_WEIGHTS
+from .llm_classifier import LLMClassifier
+
 
 logger = get_logger(__name__)
-
-
-# Type definitions
-ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED"]
-ConfidenceLevel = Literal["HIGH", "MEDIUM", "LOW"]
-
-
-@dataclass
-class ClassificationResult:
-    """
-    Result of query classification with confidence and reasoning.
-    
-    Attributes:
-        classification: The determined category (SQL, VECTOR, HYBRID, CLARIFICATION_NEEDED)
-        confidence: Confidence level (HIGH, MEDIUM, LOW)
-        reasoning: Explanation of classification decision
-        processing_time: Time taken for classification in seconds
-        method_used: Which classification method was used (rule_based, llm_based, fallback)
-        anonymized_query: PII-anonymized version of the original query
-    """
-    classification: ClassificationType
-    confidence: ConfidenceLevel
-    reasoning: str
-    processing_time: float
-    method_used: Literal["rule_based", "llm_based", "fallback"]
-    anonymized_query: Optional[str] = None
-
-
-class ClassificationMethod(Enum):
-    """Enumeration of available classification methods."""
-    RULE_BASED = "rule_based"
-    LLM_BASED = "llm_based"
-    FALLBACK = "fallback"
-
-
-class CircuitBreakerState(Enum):
-    """Circuit breaker states for LLM failure management."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # LLM failures detected, bypassing LLM
-    HALF_OPEN = "half_open"  # Testing if LLM is back online
-
-
-@dataclass
-class CircuitBreaker:
-    """
-    Circuit breaker for LLM classification failures.
-    
-    Implements the circuit breaker pattern to prevent cascading failures
-    when the LLM service is unavailable or performing poorly.
-    """
-    failure_threshold: int = 5  # Number of failures before opening circuit
-    recovery_timeout: float = 60.0  # Seconds before attempting recovery
-    half_open_max_calls: int = 3  # Max calls to test in half-open state
-    
-    # State tracking
-    state: CircuitBreakerState = field(default=CircuitBreakerState.CLOSED)
-    failure_count: int = field(default=0)
-    last_failure_time: Optional[datetime] = field(default=None)
-    half_open_attempts: int = field(default=0)
-    
-    def can_execute(self) -> bool:
-        """Check if LLM call should be attempted."""
-        if self.state == CircuitBreakerState.CLOSED:
-            return True
-        elif self.state == CircuitBreakerState.OPEN:
-            # Check if we should move to half-open
-            if (self.last_failure_time and 
-                datetime.now() - self.last_failure_time > timedelta(seconds=self.recovery_timeout)):
-                self.state = CircuitBreakerState.HALF_OPEN
-                self.half_open_attempts = 0
-                logger.info("Circuit breaker moved to HALF_OPEN state")
-                return True
-            return False
-        elif self.state == CircuitBreakerState.HALF_OPEN:
-            return self.half_open_attempts < self.half_open_max_calls
-        return False
-    
-    def record_success(self) -> None:
-        """Record successful LLM call."""
-        if self.state == CircuitBreakerState.HALF_OPEN:
-            self.half_open_attempts += 1
-            if self.half_open_attempts >= self.half_open_max_calls:
-                self.state = CircuitBreakerState.CLOSED
-                self.failure_count = 0
-                logger.info("Circuit breaker moved to CLOSED state (recovery successful)")
-        elif self.state == CircuitBreakerState.CLOSED:
-            self.failure_count = max(0, self.failure_count - 1)  # Gradual recovery
-    
-    def record_failure(self) -> None:
-        """Record failed LLM call."""
-        self.failure_count += 1
-        self.last_failure_time = datetime.now()
-        
-        if self.state == CircuitBreakerState.CLOSED:
-            if self.failure_count >= self.failure_threshold:
-                self.state = CircuitBreakerState.OPEN
-                logger.warning(f"Circuit breaker OPENED after {self.failure_count} failures")
-        elif self.state == CircuitBreakerState.HALF_OPEN:
-            self.state = CircuitBreakerState.OPEN
-            logger.warning("Circuit breaker returned to OPEN state (recovery failed)")
-
-
-@dataclass
-class FallbackMetrics:
-    """Metrics tracking for fallback system performance."""
-    total_attempts: int = 0
-    llm_successes: int = 0
-    llm_failures: int = 0
-    circuit_breaker_blocks: int = 0
-    retry_attempts: int = 0
-    fallback_activations: int = 0
-    
-    # Timing metrics
-    classification_times: List[float] = field(default_factory=list)
-    llm_response_times: List[float] = field(default_factory=list)
-    fallback_response_times: List[float] = field(default_factory=list)
-    
-    def record_attempt(self) -> None:
-        """Record a classification attempt."""
-        self.total_attempts += 1
-    
-    def record_llm_success(self, response_time: float) -> None:
-        """Record successful LLM classification."""
-        self.llm_successes += 1
-        self.llm_response_times.append(response_time)
-    
-    def record_llm_failure(self) -> None:
-        """Record failed LLM classification."""
-        self.llm_failures += 1
-    
-    def record_circuit_breaker_block(self) -> None:
-        """Record circuit breaker preventing LLM call."""
-        self.circuit_breaker_blocks += 1
-    
-    def record_retry(self) -> None:
-        """Record retry attempt."""
-        self.retry_attempts += 1
-    
-    def record_fallback(self, response_time: float) -> None:
-        """Record fallback activation."""
-        self.fallback_activations += 1
-        self.fallback_response_times.append(response_time)
-    
-    def get_llm_success_rate(self) -> float:
-        """Calculate LLM success rate."""
-        total_llm_attempts = self.llm_successes + self.llm_failures
-        return (self.llm_successes / total_llm_attempts * 100) if total_llm_attempts > 0 else 0.0
-    
-    def get_average_times(self) -> Dict[str, float]:
-        """Get average response times for different methods."""
-        return {
-            "llm_avg_time": sum(self.llm_response_times) / len(self.llm_response_times) if self.llm_response_times else 0.0,
-            "fallback_avg_time": sum(self.fallback_response_times) / len(self.fallback_response_times) if self.fallback_response_times else 0.0,
-            "overall_avg_time": sum(self.classification_times) / len(self.classification_times) if self.classification_times else 0.0
-        }
-
-
-@dataclass
-class RetryConfig:
-    """Configuration for exponential backoff retry logic."""
-    max_retries: int = 3
-    base_delay: float = 1.0  # Base delay in seconds
-    max_delay: float = 30.0  # Maximum delay in seconds
-    backoff_multiplier: float = 2.0
-    jitter: bool = True  # Add randomness to prevent thundering herd
-    
-    def get_delay(self, attempt: int) -> float:
-        """Calculate delay for given retry attempt."""
-        delay = min(self.base_delay * (self.backoff_multiplier ** attempt), self.max_delay)
-        if self.jitter:
-            delay *= (0.5 + random.random() * 0.5)  # Add 0-50% jitter
-        return delay
 
 
 class QueryClassifier:
@@ -296,6 +122,9 @@ class QueryClassifier:
             max_delay=getattr(self.settings, 'classification_max_delay', 30.0)
         )
         self._fallback_metrics = FallbackMetrics()
+        
+        # Milestone 3: Sophisticated confidence calibration system
+        self._confidence_calibrator = ConfidenceCalibrator()
         
         # Enhanced classification patterns for rule-based pre-filtering with APS domain knowledge
         self._sql_patterns = [
@@ -589,23 +418,29 @@ Classification:"""
             else:
                 processing_query = query
             
-            # Step 2: Rule-based pre-filtering (fast path)
+            # Step 2: Rule-based pre-filtering (fast path) with confidence calibration
             rule_result = self._rule_based_classification(processing_query)
             if rule_result and rule_result.confidence in ["HIGH", "MEDIUM"]:
                 processing_time = time.time() - start_time
+                
+                # Apply confidence calibration to rule-based result
+                calibrated_result = self._apply_confidence_calibration(
+                    rule_result, processing_query, pattern_matches=rule_result.pattern_matches
+                )
+                
                 self._method_stats["rule_based"] += 1
                 self._fallback_metrics.classification_times.append(processing_time)
                 
                 logger.info(
-                    f"Rule-based classification success: {rule_result.classification} "
-                    f"({processing_time:.3f}s, confidence: {rule_result.confidence}, "
+                    f"Rule-based classification success: {calibrated_result.classification} "
+                    f"({processing_time:.3f}s, confidence: {rule_result.confidence} → {calibrated_result.confidence}, "
                     f"session: {session_id or 'anonymous'})"
                 )
                 
                 return ClassificationResult(
-                    classification=rule_result.classification,
-                    confidence=rule_result.confidence,
-                    reasoning=rule_result.reasoning,
+                    classification=calibrated_result.classification,
+                    confidence=calibrated_result.confidence,
+                    reasoning=f"{rule_result.reasoning}. {calibrated_result.calibration_reasoning}",
                     processing_time=processing_time,
                     method_used="rule_based",
                     anonymized_query=anonymized_query
@@ -618,12 +453,18 @@ Classification:"""
             
             if llm_result:
                 processing_time = time.time() - start_time
+                
+                # Apply confidence calibration to LLM result
+                calibrated_result = self._apply_confidence_calibration(
+                    llm_result, processing_query
+                )
+                
                 self._fallback_metrics.classification_times.append(processing_time)
                 
                 return ClassificationResult(
-                    classification=llm_result.classification,
-                    confidence=llm_result.confidence,
-                    reasoning=llm_result.reasoning,
+                    classification=calibrated_result.classification,
+                    confidence=calibrated_result.confidence,
+                    reasoning=f"{llm_result.reasoning}. {calibrated_result.calibration_reasoning}",
                     processing_time=processing_time,
                     method_used=llm_result.method_used,
                     anonymized_query=anonymized_query
@@ -769,12 +610,20 @@ Classification:"""
         
         reasoning = f"Enhanced rule-based: {', '.join(reasoning_parts)} pattern(s) for {classification} (score: {max_score})"
         
+        # Calculate pattern match counts for confidence calibration
+        pattern_match_counts = {
+            "high_confidence": high_count,
+            "medium_confidence": medium_count,
+            "low_confidence": low_count
+        }
+        
         return ClassificationResult(
             classification=classification,
             confidence=confidence,
             reasoning=reasoning,
             processing_time=0.0,  # Will be set by caller
-            method_used="rule_based"
+            method_used="rule_based",
+            pattern_matches=pattern_match_counts
         )
     
     async def _llm_based_classification(self, query: str) -> ClassificationResult:
@@ -1249,7 +1098,83 @@ Classification:"""
         }
         self._fallback_metrics = FallbackMetrics()
         
+        # Reset confidence calibration data as well
+        self._confidence_calibrator.reset_calibration_data()
+        
         logger.info("Classification metrics reset")
+    
+    def _apply_confidence_calibration(
+        self,
+        result: ClassificationResult,
+        query: str,
+        pattern_matches: Optional[Dict[str, int]] = None
+    ) -> ClassificationResult:
+        """
+        Apply confidence calibration to a classification result.
+        
+        Args:
+            result: Original classification result
+            query: Original query text
+            pattern_matches: Pattern match counts for rule-based classifications
+            
+        Returns:
+            Classification result with calibrated confidence
+        """
+        try:
+            # Perform confidence calibration
+            calibration_result = self._confidence_calibrator.calibrate_confidence(
+                raw_confidence=result.confidence,
+                classification=result.classification,
+                query=query,
+                pattern_matches=pattern_matches,
+                method_used=result.method_used
+            )
+            
+            logger.debug(f"Confidence calibration: {calibration_result.adjustment_reasoning}")
+            
+            # Return updated result with calibrated confidence
+            return ClassificationResult(
+                classification=result.classification,
+                confidence=calibration_result.calibrated_confidence,
+                reasoning=result.reasoning,
+                processing_time=result.processing_time,
+                method_used=result.method_used,
+                anonymized_query=result.anonymized_query,
+                pattern_matches=result.pattern_matches,
+                calibration_reasoning=calibration_result.adjustment_reasoning
+            )
+            
+        except Exception as e:
+            logger.warning(f"Confidence calibration failed: {e}, using original confidence")
+            return result
+    
+    def record_classification_feedback(
+        self,
+        classification: ClassificationType,
+        was_correct: bool,
+        confidence_score: float
+    ) -> None:
+        """
+        Record feedback on classification accuracy for calibration improvement.
+        
+        Args:
+            classification: The classification that was made
+            was_correct: Whether the classification was correct
+            confidence_score: The confidence score that was assigned
+        """
+        self._confidence_calibrator.record_classification_outcome(
+            classification, was_correct, confidence_score
+        )
+        logger.debug(f"Recorded classification feedback: {classification} ({'correct' if was_correct else 'incorrect'})")
+    
+    def get_confidence_calibration_stats(self) -> Dict[str, Any]:
+        """
+        Get confidence calibration statistics.
+        
+        Returns:
+            Dictionary with calibration system statistics
+        """
+        return self._confidence_calibrator.get_calibration_stats()
     
     async def close(self) -> None:
         """Clean up classifier resources."""
@@ -1286,7 +1211,6 @@ if __name__ == "__main__":
     This section provides practical examples of how the enhanced classifier works with
     APS-specific terminology and improved confidence calibration.
     """
-    import asyncio
     
     async def demonstrate_enhanced_classification():
         """
@@ -1321,8 +1245,8 @@ if __name__ == "__main__":
             ("Review training effectiveness with demographic analysis", "HYBRID", "MEDIUM"),
             
             # Edge cases and potential ambiguities
-            ("Tell me about training", None, "LOW"),  # Should return None (too ambiguous)
-            ("Training effectiveness", None, "LOW"),   # Should return None or low confidence
+            ("Tell me about training", "CLARIFICATION_NEEDED", "LOW"),
+            ("Training effectiveness", "HYBRID", "LOW"),
         ]
         
         print("Testing Enhanced Rule-Based Classification:\n")
@@ -1336,7 +1260,8 @@ if __name__ == "__main__":
                 print(f"  Expected: {expected_classification} ({expected_confidence})")
                 print(f"  Method: {result.method_used}")
                 print(f"  Reasoning: {result.reasoning}")
-                print(f"  ✅ Match: {result.classification == expected_classification and result.confidence == expected_confidence}")
+                is_match = result.classification == expected_classification and result.confidence == expected_confidence
+                print(f"  {'✅' if is_match else '❌'} Match")
                 print()
                 
             except Exception as e:
@@ -1356,7 +1281,7 @@ if __name__ == "__main__":
         print(f"LLM success rate: {fallback_metrics['performance']['llm_success_rate']:.1f}%")
         print(f"Average response times: {fallback_metrics['performance']['average_response_times']}")
         
-        if stats['performance']['overall_avg_time'] > 0:
+        if stats['performance'].get('overall_avg_time', 0) > 0:
             print(f"Average classification time: {stats['performance']['overall_avg_time']:.3f}s")
     
     async def test_fallback_mechanisms():
@@ -1366,7 +1291,7 @@ if __name__ == "__main__":
         print("\n=== Fallback Mechanisms Demo ===\n")
         
         # Create classifier with mock LLM for fallback testing
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
         
         mock_llm = AsyncMock()
         classifier = QueryClassifier(llm=mock_llm)
@@ -1547,6 +1472,8 @@ if __name__ == "__main__":
         print("\n" + "=" * 80)
         
         print("Testing Pattern Weighting System...")
+        # To run this, we need an event loop, but asyncio.run creates a new one each time.
+        # For simplicity, we'll just call the function.
         asyncio.run(test_pattern_weighting())
         print("\n" + "=" * 80)
         
@@ -1559,4 +1486,3 @@ if __name__ == "__main__":
         print("\n" + "=" * 80)
         
         print("All demonstrations complete!")
-        print("Milestone 2: Sophisticated Fallback Mechanisms - IMPLEMENTED ✅")
