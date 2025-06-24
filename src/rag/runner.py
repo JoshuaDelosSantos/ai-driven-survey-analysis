@@ -2,14 +2,18 @@
 """
 RAG Module Main Entry Point
 
-Terminal application for the Text-to-SQL MVP.
-This implements a minimal functional slice for querying attendance
-and evaluation data using natural language.
+Production-ready terminal application with modular LangGraph agent.
+This implements the complete Phase 3 system with advanced query 
+classification and multi-modal analysis capabilities.
 
+Features:
+- Modular query classification system with 8 specialised components
+- Advanced confidence calibration and circuit breaker resilience
 - Async-first design with asyncio.run() integration
-- Terminal application with LangGraph SQL workflow
-- Dynamic schema provision and SQL generation
+- LangGraph agent with SQL, Vector, and Hybrid processing
+- Dynamic schema provision and intelligent query routing
 - Secure read-only database access with verification
+- Australian Privacy Principles (APP) compliance
 
 Usage:
     python src/rag/runner.py
@@ -33,11 +37,11 @@ def main():
     """
     Main entry point for RAG module.
     
-    **Phase 1 Complete**: Runs async terminal application with
-    full Text-to-SQL functionality including LangGraph integration.
+    **Phase 3 Complete + Modular Architecture**: Runs async terminal application with
+    full LangGraph agent functionality including modular query classification system.
     """
     print("="*80)
-    print("RAG Module - Text-to-SQL MVP (Phase 1 Complete)")
+    print("RAG Module - Production Ready (Phase 3 Complete + Modular Architecture)")
     print("   Australian Public Service Learning Analytics")
     print("="*80)
     
@@ -62,12 +66,14 @@ def main():
         print(f"    Debug Mode: {settings.debug_mode}")
         
         print("\nStarting terminal application...")
-        print("   Running in async mode with full Phase 1 functionality")
+        print("   Running in async mode with full Phase 3 functionality")
+        print("   Modular query classification with 8 specialised components")
+        print("   Advanced confidence calibration and circuit breaker resilience")
         print("   Secure read-only database access")
-        print("   Dynamic schema provision and SQL generation")
-        print("   LangGraph workflow integration")
+        print("   Dynamic schema provision and intelligent query routing")
+        print("   LangGraph agent with SQL, Vector, and Hybrid processing")
         
-        logger.info("RAG Module Phase 1 MVP starting")
+        logger.info("RAG Module Production Ready (Phase 3 Complete + Modular Architecture) starting")
         logger.info(f"Configuration: Model={settings.llm_model_name}, DB={settings.rag_db_host}")
         
         # Run async terminal application
