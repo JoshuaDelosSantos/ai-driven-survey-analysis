@@ -138,8 +138,9 @@ class QueryClassifier:
         self._pii_detector: Optional[AustralianPIIDetector] = None
         self._classification_prompt: Optional[PromptTemplate] = None
         
-        # Classification patterns for rule-based pre-filtering
+        # Enhanced classification patterns for rule-based pre-filtering with APS domain knowledge
         self._sql_patterns = [
+            # Core statistical patterns (preserved from original)
             r'\b(?:count|how many|number of)\b',
             r'\b(?:average|mean|avg)\b',
             r'\b(?:percentage|percent|%)\b',
@@ -148,10 +149,23 @@ class QueryClassifier:
             r'\b(?:total|sum|aggregate)\b',
             r'\b(?:compare numbers|numerical comparison)\b',
             r'\b(?:completion rate|enrollment rate)\b',
-            r'\b(?:agency breakdown|level breakdown|user level)\b'
+            r'\b(?:agency breakdown|level breakdown|user level)\b',
+            
+            # Enhanced APS-specific statistical patterns
+            r'\b(?:executive level|level [1-6]|EL[12]|APS [1-6])\b.*(?:completion|attendance|performance)',
+            r'\b(?:agency|department|portfolio)\b.*(?:breakdown|comparison|statistics)',
+            r'\b(?:learning pathway|professional development|capability framework)\b.*(?:metrics|data)',
+            r'\b(?:mandatory training|compliance training)\b.*(?:rates|numbers|tracking)',
+            r'\b(?:face-to-face|virtual|blended)\b.*(?:delivery|attendance|completion)',
+            r'\b(?:cost per|budget|resource allocation)\b.*(?:training|learning)',
+            r'\b(?:quarterly|annual|yearly)\b.*(?:training|learning|development)\b.*(?:report|summary)',
+            r'\b(?:participation rate|dropout rate|success rate)\b',
+            r'\b(?:training hours|contact hours|learning hours)\b.*(?:total|average|per)',
+            r'\b(?:geographical|location|state)\b.*(?:breakdown|distribution)'
         ]
         
         self._vector_patterns = [
+            # Core feedback patterns (preserved from original)
             r'\b(?:what did.*say|what.*said)\b',
             r'\b(?:feedback about|comments about|opinions on)\b',
             r'\b(?:experiences with|experience of)\b',
@@ -160,18 +174,105 @@ class QueryClassifier:
             r'\b(?:issues mentioned|problems reported)\b',
             r'\b(?:satisfaction|dissatisfaction)\b',
             r'\b(?:testimonials|reviews|responses)\b',
-            r'\b(?:what people think|user opinions)\b'
+            r'\b(?:what people think|user opinions)\b',
+            
+            # Enhanced APS-specific feedback patterns
+            r'\b(?:participant|delegate|attendee)\b.*(?:experience|reflection|view)',
+            r'\b(?:training quality|course quality|learning experience)\b.*(?:feedback|assessment)',
+            r'\b(?:facilitator|presenter|instructor)\b.*(?:effectiveness|skill|performance)',
+            r'\b(?:venue|location|facilities)\b.*(?:issues|problems|concerns)',
+            r'\b(?:accessibility|inclusion|diversity)\b.*(?:feedback|experience)',
+            r'\b(?:technical issues|platform problems|system difficulties)\b',
+            r'\b(?:relevance to role|workplace application|practical use)\b',
+            r'\b(?:course content|curriculum|material)\b.*(?:feedback|quality|relevance)',
+            r'\b(?:learning outcomes|skill development|capability building)\b.*(?:feedback|experience)',
+            r'\b(?:recommendation|would recommend|likelihood to recommend)\b'
         ]
         
         self._hybrid_patterns = [
+            # Core hybrid patterns (preserved from original)
             r'\b(?:analyze satisfaction|analyze feedback)\b',
             r'\b(?:compare feedback across|feedback trends)\b',
             r'\b(?:sentiment by agency|satisfaction by level)\b',
             r'\b(?:trends in opinions|opinion trends)\b',
             r'\b(?:comprehensive analysis|detailed analysis)\b',
             r'\b(?:both.*and|statistics.*feedback|numbers.*comments)\b',
-            r'\b(?:quantitative.*qualitative|statistical.*sentiment)\b'
+            r'\b(?:quantitative.*qualitative|statistical.*sentiment)\b',
+            
+            # Enhanced APS-specific hybrid patterns
+            r'\b(?:analyse|analyze)\b.*(?:satisfaction|effectiveness)\b.*(?:across|by|between)',
+            r'\b(?:training ROI|return on investment|cost-benefit)\b.*(?:analysis|evaluation)',
+            r'\b(?:performance impact|capability improvement|skill development)\b.*(?:measurement|assessment)',
+            r'\b(?:stakeholder satisfaction|user experience)\b.*(?:metrics|analysis)',
+            r'\b(?:trend analysis|pattern identification|insight generation)\b',
+            r'\b(?:comprehensive|holistic|integrated)\b.*(?:evaluation|assessment|review)',
+            r'\b(?:correlate|correlation)\b.*(?:satisfaction|feedback)\b.*(?:with|and)\b.*(?:completion|performance)',
+            r'\b(?:demographic analysis|cohort analysis)\b.*(?:feedback|satisfaction)'
         ]
+        
+        # Pattern weighting system for improved confidence calibration
+        self._pattern_weights = {
+            "SQL": {
+                "high_confidence": [
+                    r'\b(?:count|how many|number of)\b',
+                    r'\b(?:percentage|percent|%)\b',
+                    r'\b(?:total|sum|aggregate)\b',
+                    r'\b(?:completion rate|enrollment rate)\b',
+                    r'\b(?:executive level|level [1-6]|EL[12]|APS [1-6])\b.*(?:completion|attendance|performance)',
+                    r'\b(?:participation rate|dropout rate|success rate)\b'
+                ],
+                "medium_confidence": [
+                    r'\b(?:breakdown by|group by|categorized by)\b',
+                    r'\b(?:statistics|stats|statistical)\b',
+                    r'\b(?:average|mean|avg)\b',
+                    r'\b(?:agency|department|portfolio)\b.*(?:breakdown|comparison|statistics)',
+                    r'\b(?:training hours|contact hours|learning hours)\b.*(?:total|average|per)'
+                ],
+                "low_confidence": [
+                    r'\b(?:compare numbers|numerical comparison)\b',
+                    r'\b(?:quarterly|annual|yearly)\b.*(?:training|learning|development)\b.*(?:report|summary)',
+                    r'\b(?:geographical|location|state)\b.*(?:breakdown|distribution)'
+                ]
+            },
+            "VECTOR": {
+                "high_confidence": [
+                    r'\b(?:what did.*say|feedback about)\b',
+                    r'\b(?:comments|opinions|thoughts)\b',
+                    r'\b(?:participant|delegate|attendee)\b.*(?:experience|reflection|view)',
+                    r'\b(?:technical issues|platform problems|system difficulties)\b',
+                    r'\b(?:recommendation|would recommend|likelihood to recommend)\b'
+                ],
+                "medium_confidence": [
+                    r'\b(?:experiences with|satisfaction)\b',
+                    r'\b(?:training quality|course quality|learning experience)\b.*(?:feedback|assessment)',
+                    r'\b(?:facilitator|presenter|instructor)\b.*(?:effectiveness|skill|performance)',
+                    r'\b(?:relevance to role|workplace application|practical use)\b'
+                ],
+                "low_confidence": [
+                    r'\b(?:feelings|thoughts)\b',
+                    r'\b(?:venue|location|facilities)\b.*(?:issues|problems|concerns)',
+                    r'\b(?:accessibility|inclusion|diversity)\b.*(?:feedback|experience)'
+                ]
+            },
+            "HYBRID": {
+                "high_confidence": [
+                    r'\b(?:analyze satisfaction|comprehensive analysis)\b',
+                    r'\b(?:training ROI|return on investment|cost-benefit)\b.*(?:analysis|evaluation)',
+                    r'\b(?:correlate|correlation)\b.*(?:satisfaction|feedback)\b.*(?:with|and)\b.*(?:completion|performance)'
+                ],
+                "medium_confidence": [
+                    r'\b(?:trends in|patterns in)\b',
+                    r'\b(?:performance impact|capability improvement|skill development)\b.*(?:measurement|assessment)',
+                    r'\b(?:stakeholder satisfaction|user experience)\b.*(?:metrics|analysis)',
+                    r'\b(?:demographic analysis|cohort analysis)\b.*(?:feedback|satisfaction)'
+                ],
+                "low_confidence": [
+                    r'\b(?:both.*and|detailed analysis)\b',
+                    r'\b(?:comprehensive|holistic|integrated)\b.*(?:evaluation|assessment|review)',
+                    r'\b(?:trend analysis|pattern identification|insight generation)\b'
+                ]
+            }
+        }
         
         # Compile patterns for performance
         self._compiled_patterns = {
@@ -179,6 +280,16 @@ class QueryClassifier:
             "VECTOR": [re.compile(pattern, re.IGNORECASE) for pattern in self._vector_patterns],
             "HYBRID": [re.compile(pattern, re.IGNORECASE) for pattern in self._hybrid_patterns]
         }
+        
+        # Compile weighted patterns for enhanced confidence calculation
+        self._compiled_weighted_patterns = {}
+        for category in ["SQL", "VECTOR", "HYBRID"]:
+            self._compiled_weighted_patterns[category] = {}
+            for confidence_level in ["high_confidence", "medium_confidence", "low_confidence"]:
+                self._compiled_weighted_patterns[category][confidence_level] = [
+                    re.compile(pattern, re.IGNORECASE) 
+                    for pattern in self._pattern_weights[category][confidence_level]
+                ]
         
         # Classification statistics
         self._classification_count = 0
@@ -389,7 +500,10 @@ Classification:"""
     
     def _rule_based_classification(self, query: str) -> Optional[ClassificationResult]:
         """
-        Perform rule-based classification using regex patterns.
+        Perform enhanced rule-based classification using weighted regex patterns.
+        
+        Uses pattern weighting system to provide more accurate confidence scoring
+        based on Australian Public Service domain knowledge.
         
         Args:
             query: Query text to classify
@@ -399,36 +513,74 @@ Classification:"""
         """
         query_lower = query.lower()
         
-        # Count pattern matches for each category
-        matches = {
-            "SQL": sum(1 for pattern in self._compiled_patterns["SQL"] if pattern.search(query_lower)),
-            "VECTOR": sum(1 for pattern in self._compiled_patterns["VECTOR"] if pattern.search(query_lower)),
-            "HYBRID": sum(1 for pattern in self._compiled_patterns["HYBRID"] if pattern.search(query_lower))
-        }
+        # Calculate weighted scores for each category
+        weighted_scores = {}
+        pattern_details = {}
         
-        # Determine classification based on matches
-        max_matches = max(matches.values())
+        for category in ["SQL", "VECTOR", "HYBRID"]:
+            category_score = 0
+            matched_patterns = []
+            
+            # High confidence patterns (weight: 3)
+            for pattern in self._compiled_weighted_patterns[category]["high_confidence"]:
+                if pattern.search(query_lower):
+                    category_score += 3
+                    matched_patterns.append(("high", pattern.pattern))
+            
+            # Medium confidence patterns (weight: 2)
+            for pattern in self._compiled_weighted_patterns[category]["medium_confidence"]:
+                if pattern.search(query_lower):
+                    category_score += 2
+                    matched_patterns.append(("medium", pattern.pattern))
+            
+            # Low confidence patterns (weight: 1)
+            for pattern in self._compiled_weighted_patterns[category]["low_confidence"]:
+                if pattern.search(query_lower):
+                    category_score += 1
+                    matched_patterns.append(("low", pattern.pattern))
+            
+            weighted_scores[category] = category_score
+            pattern_details[category] = matched_patterns
         
-        if max_matches == 0:
-            return None  # No clear pattern match
+        # Find the category with highest weighted score
+        max_score = max(weighted_scores.values())
         
-        # Find categories with maximum matches
-        top_categories = [cat for cat, count in matches.items() if count == max_matches]
+        if max_score == 0:
+            return None  # No pattern matches found
+        
+        # Find categories with maximum score
+        top_categories = [cat for cat, score in weighted_scores.items() if score == max_score]
         
         if len(top_categories) > 1:
             return None  # Ambiguous - multiple categories tied
         
         classification = top_categories[0]
         
-        # Determine confidence based on match strength
-        if max_matches >= 3:
+        # Enhanced confidence determination based on weighted scores
+        if max_score >= 6:  # Multiple high-confidence patterns or mix of high+medium
             confidence = "HIGH"
-        elif max_matches >= 2:
+        elif max_score >= 3:  # At least one high-confidence pattern or multiple medium
             confidence = "MEDIUM"
-        else:
-            confidence = "HIGH" if max_matches == 1 else "MEDIUM"
+        elif max_score >= 2:  # Medium confidence pattern
+            confidence = "MEDIUM"
+        else:  # Only low confidence patterns
+            confidence = "LOW"
         
-        reasoning = f"Rule-based: {max_matches} pattern match(es) for {classification}"
+        # Create detailed reasoning with pattern information
+        matched_patterns = pattern_details[classification]
+        high_count = sum(1 for level, _ in matched_patterns if level == "high")
+        medium_count = sum(1 for level, _ in matched_patterns if level == "medium")
+        low_count = sum(1 for level, _ in matched_patterns if level == "low")
+        
+        reasoning_parts = []
+        if high_count > 0:
+            reasoning_parts.append(f"{high_count} high-confidence")
+        if medium_count > 0:
+            reasoning_parts.append(f"{medium_count} medium-confidence")
+        if low_count > 0:
+            reasoning_parts.append(f"{low_count} low-confidence")
+        
+        reasoning = f"Enhanced rule-based: {', '.join(reasoning_parts)} pattern(s) for {classification} (score: {max_score})"
         
         return ClassificationResult(
             classification=classification,
@@ -624,3 +776,119 @@ async def create_query_classifier(llm: Optional[BaseLanguageModel] = None) -> Qu
     classifier = QueryClassifier(llm)
     await classifier.initialize()
     return classifier
+
+
+# Example usage and testing for enhanced query classification
+if __name__ == "__main__":
+    """
+    Example use cases demonstrating enhanced Australian Public Service query classification.
+    
+    This section provides practical examples of how the enhanced classifier works with
+    APS-specific terminology and improved confidence calibration.
+    """
+    import asyncio
+    
+    async def demonstrate_enhanced_classification():
+        """
+        Demonstrate enhanced classification capabilities with APS-specific queries.
+        """
+        print("=== Enhanced Query Classification Demo ===\n")
+        
+        # Initialize classifier
+        classifier = QueryClassifier()
+        await classifier.initialize()
+        
+        # Test cases covering different APS scenarios
+        test_queries = [
+            # High-confidence SQL queries
+            ("How many Executive Level 1 participants completed mandatory training across all agencies this quarter?", "SQL", "HIGH"),
+            ("What's the completion rate for virtual learning by agency?", "SQL", "HIGH"),
+            ("Show me participation rates for Level 4-6 staff in professional development", "SQL", "HIGH"),
+            
+            # High-confidence VECTOR queries
+            ("What feedback did participants give about the virtual learning platform?", "VECTOR", "HIGH"),
+            ("What technical issues were mentioned by attendees?", "VECTOR", "HIGH"),
+            ("How did delegates rate the facilitator effectiveness?", "VECTOR", "HIGH"),
+            
+            # High-confidence HYBRID queries
+            ("Analyze satisfaction trends across agencies with supporting participant feedback", "HYBRID", "HIGH"),
+            ("Compare training ROI between face-to-face and virtual delivery with cost-benefit analysis", "HYBRID", "HIGH"),
+            ("Correlate completion rates with participant satisfaction feedback", "HYBRID", "HIGH"),
+            
+            # Medium-confidence queries
+            ("What are the quarterly training statistics by department?", "SQL", "MEDIUM"),
+            ("How do participants feel about the course content?", "VECTOR", "MEDIUM"),
+            ("Review training effectiveness with demographic analysis", "HYBRID", "MEDIUM"),
+            
+            # Edge cases and potential ambiguities
+            ("Tell me about training", None, "LOW"),  # Should return None (too ambiguous)
+            ("Training effectiveness", None, "LOW"),   # Should return None or low confidence
+        ]
+        
+        print("Testing Enhanced Rule-Based Classification:\n")
+        
+        for i, (query, expected_classification, expected_confidence) in enumerate(test_queries, 1):
+            try:
+                result = await classifier.classify_query(query, anonymize_query=False)
+                
+                print(f"Test {i}: {query}")
+                print(f"  Result: {result.classification} ({result.confidence})")
+                print(f"  Expected: {expected_classification} ({expected_confidence})")
+                print(f"  Method: {result.method_used}")
+                print(f"  Reasoning: {result.reasoning}")
+                print(f"  ✅ Match: {result.classification == expected_classification and result.confidence == expected_confidence}")
+                print()
+                
+            except Exception as e:
+                print(f"Test {i} failed: {e}")
+                print()
+        
+        # Demonstrate classification statistics
+        print("=== Classification Statistics ===")
+        stats = classifier.get_classification_stats()
+        print(f"Total classifications: {stats['total_classifications']}")
+        print(f"Method distribution: {stats['method_distribution']}")
+        print(f"Confidence distribution: {stats['confidence_distribution']}")
+        if stats['classification_times']:
+            avg_time = sum(stats['classification_times']) / len(stats['classification_times'])
+            print(f"Average classification time: {avg_time:.3f}s")
+        
+    async def test_pattern_weighting():
+        """
+        Test the pattern weighting system with specific examples.
+        """
+        print("\n=== Pattern Weighting System Demo ===\n")
+        
+        classifier = QueryClassifier()
+        
+        # Test queries with different pattern weights
+        test_cases = [
+            ("How many EL1 staff completed training?", "Should be HIGH confidence due to high-weight SQL patterns"),
+            ("What's the quarterly training report summary?", "Should be MEDIUM/LOW confidence due to low-weight SQL patterns"),
+            ("Participants gave feedback about technical issues", "Should be HIGH confidence due to high-weight VECTOR patterns"),
+            ("Venue concerns were mentioned", "Should be LOW confidence due to low-weight VECTOR patterns"),
+            ("Analyze satisfaction with cost-benefit analysis", "Should be HIGH confidence due to high-weight HYBRID patterns"),
+            ("Comprehensive review of training", "Should be LOW confidence due to low-weight HYBRID patterns"),
+        ]
+        
+        for query, description in test_cases:
+            result = classifier._rule_based_classification(query)
+            if result:
+                print(f"Query: {query}")
+                print(f"Classification: {result.classification} ({result.confidence})")
+                print(f"Reasoning: {result.reasoning}")
+                print(f"Expected: {description}")
+                print()
+            else:
+                print(f"Query: {query}")
+                print("No classification (no pattern matches)")
+                print(f"Expected: {description}")
+                print()
+    
+    # Run demonstrations
+    if __name__ == "__main__":
+        print("Starting Enhanced Query Classifier Demonstrations...")
+        asyncio.run(demonstrate_enhanced_classification())
+        print("\nTesting Pattern Weighting...")
+        asyncio.run(test_pattern_weighting())
+        print("Demonstrations complete!")
