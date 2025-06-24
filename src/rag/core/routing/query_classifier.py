@@ -67,6 +67,9 @@ from typing import Optional, Dict, Any
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
 
+# Import data structures
+from .data_structures import ClassificationResult, ConfidenceLevel
+
 # Handle imports for both direct execution and module usage
 try:
     # Try relative imports first (when used as module)
@@ -74,8 +77,6 @@ try:
     from ...utils.llm_utils import get_llm
     from ...utils.logging_utils import get_logger
     from ...config.settings import get_settings
-    
-    from .data_structures import ClassificationResult, ClassificationType, ConfidenceLevel
 except ImportError:
     # Fallback to absolute imports (when run directly)
     import sys
@@ -86,8 +87,6 @@ except ImportError:
     from src.rag.utils.llm_utils import get_llm
     from src.rag.utils.logging_utils import get_logger
     from src.rag.config.settings import get_settings
-    
-    from data_structures import ClassificationResult, ClassificationType, ConfidenceLevel
 
 # Import extracted modules
 from .circuit_breaker import CircuitBreaker, FallbackMetrics, RetryConfig, CircuitBreakerState
@@ -609,7 +608,7 @@ class QueryClassifier:
         keyword_scores: Dict[str, int],
         complexity: str,
         context: str
-    ) -> ClassificationType:
+    ) -> str:
         """Combine multiple fallback strategies for final classification."""
         # Find category with highest keyword score
         max_score = max(keyword_scores.values())
@@ -815,7 +814,7 @@ class QueryClassifier:
     
     def record_classification_feedback(
         self,
-        classification: ClassificationType,
+        classification: str,
         was_correct: bool,
         confidence_score: float
     ) -> None:
