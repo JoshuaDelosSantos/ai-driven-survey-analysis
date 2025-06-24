@@ -11,6 +11,7 @@ import asyncio
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from ...utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -31,6 +32,29 @@ class RetryConfig:
     max_delay: float = 30.0  # Maximum delay in seconds
     exponential_base: float = 2.0  # Base for exponential backoff
     jitter: bool = True  # Add random jitter to prevent thundering herd
+    
+    def get_delay(self, attempt: int) -> float:
+        """
+        Calculate delay for retry attempt with exponential backoff.
+        
+        Args:
+            attempt: The attempt number (0-based)
+            
+        Returns:
+            Delay in seconds
+        """
+        # Calculate exponential backoff
+        delay = min(
+            self.base_delay * (self.exponential_base ** attempt),
+            self.max_delay
+        )
+        
+        # Add jitter if enabled
+        if self.jitter:
+            import random
+            delay = delay * (0.5 + random.random() * 0.5)
+        
+        return delay
 
 
 class CircuitBreaker:
@@ -63,7 +87,7 @@ class CircuitBreaker:
         # State tracking
         self.state = CircuitBreakerState.CLOSED
         self.failure_count = 0
-        self.last_failure_time = 0.0
+        self.last_failure_time: Optional[datetime] = None
         self.half_open_calls = 0
         
         # Metrics
@@ -88,7 +112,8 @@ class CircuitBreaker:
         
         elif self.state == CircuitBreakerState.OPEN:
             # Check if recovery timeout has passed
-            if current_time - self.last_failure_time >= self.recovery_timeout:
+            if (self.last_failure_time and 
+                current_time - self.last_failure_time.timestamp() >= self.recovery_timeout):
                 self.state = CircuitBreakerState.HALF_OPEN
                 self.half_open_calls = 0
                 logger.info("Circuit breaker transitioning to HALF_OPEN state")
@@ -123,7 +148,7 @@ class CircuitBreaker:
         self.total_calls += 1
         self.failed_calls += 1
         self.failure_count += 1
-        self.last_failure_time = time.time()
+        self.last_failure_time = datetime.now()
         
         if self.state == CircuitBreakerState.HALF_OPEN:
             # Failure in half-open state immediately opens circuit
@@ -156,7 +181,7 @@ class CircuitBreaker:
         self.state = CircuitBreakerState.CLOSED
         self.failure_count = 0
         self.half_open_calls = 0
-        self.last_failure_time = 0.0
+        self.last_failure_time = None
         logger.info("Circuit breaker reset to CLOSED state")
 
 
