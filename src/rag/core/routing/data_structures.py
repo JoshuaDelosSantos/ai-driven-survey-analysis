@@ -4,6 +4,43 @@ Data structures and type definitions for query classification system.
 This module contains all the data classes, enums, and type definitions used
 throughout the query classification system. Centralizing these definitions
 improves maintainability and provides clear contracts between modules.
+
+Example Usage:
+    # Create a classification result
+    result = ClassificationResult(
+        classification="SQL",
+        confidence="HIGH",
+        reasoning="High-confidence SQL patterns detected",
+        processing_time=0.025,
+        method_used="rule_based",
+        pattern_matches={"sql_high": 3, "sql_medium": 1}
+    )
+    
+    # Create query complexity analysis
+    complexity = QueryComplexityAnalysis(
+        word_count=8,
+        keyword_density=0.375,
+        domain_specificity_score=0.9,
+        ambiguity_indicators=[],
+        structural_complexity=0.6,
+        overall_complexity_score=0.7
+    )
+    
+    # Use confidence calibration result
+    calibration = ConfidenceCalibrationResult(
+        original_confidence="MEDIUM",
+        calibrated_confidence="HIGH",
+        adjustment_reasoning="High pattern strength and domain specificity",
+        confidence_score=0.85,
+        complexity_analysis=complexity
+    )
+    
+    # Track classification statistics
+    stats = ClassificationStatistics(
+        total_attempts=100,
+        successful_classifications=95,
+        accuracy_by_confidence={"HIGH": 0.98, "MEDIUM": 0.92, "LOW": 0.75}
+    )
 """
 
 from typing import Dict, Any, Optional, List, Literal

@@ -4,6 +4,33 @@ LLM-based query classification with structured prompts.
 This module handles LLM-based classification for complex queries that
 cannot be reliably handled by rule-based patterns. It provides sophisticated
 prompt engineering and response parsing for accurate classification.
+
+Example Usage:
+    # Initialize LLM classifier
+    llm_classifier = LLMClassifier()
+    await llm_classifier.initialize()
+    
+    # Classify complex queries requiring semantic understanding
+    result = await llm_classifier.classify_query(
+        "I need insights on training effectiveness across different demographics"
+    )
+    print(f"Classification: {result.classification}")  # HYBRID
+    print(f"Confidence: {result.confidence}")          # MEDIUM/HIGH
+    print(f"Reasoning: {result.reasoning}")            # LLM explanation
+    
+    # Handle ambiguous queries
+    result = await llm_classifier.classify_query(
+        "Show me something about user engagement patterns"
+    )
+    print(f"Classification: {result.classification}")  # VECTOR or HYBRID
+    print(f"Method: {result.method_used}")             # llm_based
+    
+    # Process queries with contextual nuances
+    result = await llm_classifier.classify_query(
+        "Compare participation rates while considering participant feedback quality"
+    )
+    print(f"Classification: {result.classification}")  # HYBRID
+    print(f"Processing time: {result.processing_time:.3f}s")
 """
 
 import time

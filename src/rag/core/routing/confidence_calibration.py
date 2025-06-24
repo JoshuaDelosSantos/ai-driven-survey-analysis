@@ -6,6 +6,29 @@ This module provides multi-dimensional confidence scoring based on:
 2. Historical accuracy tracking per classification type
 3. Pattern strength and reliability metrics
 4. Contextual factors (APS domain specificity, ambiguity markers)
+
+Example Usage:
+    # Analyze query complexity
+    complexity = analyze_query_complexity("How many Level 6 users completed training?")
+    print(f"Complexity score: {complexity.overall_complexity_score}")
+    print(f"Domain specificity: {complexity.domain_specificity_score}")
+    
+    # Calibrate confidence based on multiple factors
+    calibration = calibrate_confidence_score(
+        raw_confidence="HIGH",
+        classification="SQL",
+        pattern_matches={"sql_high": 3, "sql_medium": 1},
+        query_complexity=complexity,
+        method_used="rule_based"
+    )
+    
+    print(f"Calibrated confidence: {calibration.calibrated_confidence}")
+    print(f"Confidence score: {calibration.confidence_score}")
+    print(f"Reasoning: {calibration.adjustment_reasoning}")
+    
+    # Get domain knowledge for pattern weighting
+    domain_info = aps_domain_knowledge.get_domain_indicators()
+    print(f"APS terms: {domain_info['aps_specific_terms'][:5]}")
 """
 
 from typing import Dict, Any, Optional

@@ -4,6 +4,35 @@ Rule-based pattern matching for query classification.
 This module provides sophisticated rule-based classification using
 weighted regex patterns specific to the Australian Public Service
 learning analytics domain.
+
+Example Usage:
+    # Initialize pattern matcher
+    matcher = PatternMatcher()
+    
+    # Classify queries using APS-specific patterns
+    result = matcher.classify_query("How many Level 6 users completed training?")
+    if result:
+        print(f"Classification: {result.classification}")  # SQL
+        print(f"Confidence: {result.confidence}")          # HIGH
+        print(f"Reasoning: {result.reasoning}")            # Pattern match details
+    
+    # Check feedback-related queries
+    result = matcher.classify_query("What did participants say about the course?")
+    if result:
+        print(f"Classification: {result.classification}")  # VECTOR
+        print(f"Confidence: {result.confidence}")          # HIGH
+    
+    # Test hybrid analytical queries
+    result = matcher.classify_query("Analyze satisfaction trends across agencies")
+    if result:
+        print(f"Classification: {result.classification}")  # HYBRID
+        print(f"Confidence: {result.confidence}")          # MEDIUM/HIGH
+    
+    # Get pattern statistics
+    stats = matcher.get_pattern_stats()
+    print(f"Total patterns loaded: {stats['total_patterns']}")
+    print(f"SQL patterns: {stats['sql_patterns']}")
+    print(f"VECTOR patterns: {stats['vector_patterns']}")
 """
 
 import re

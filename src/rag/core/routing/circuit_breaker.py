@@ -4,6 +4,48 @@ Circuit Breaker Pattern Implementation for Query Classification.
 This module implements the Circuit Breaker pattern to provide resilience
 and fault tolerance for LLM-based query classification. It includes
 retry logic, exponential backoff, and comprehensive metrics collection.
+
+Example Usage:
+    # Initialize circuit breaker with custom thresholds
+    circuit_breaker = CircuitBreaker(
+        failure_threshold=5,
+        recovery_timeout=60.0,
+        half_open_max_calls=3
+    )
+    
+    # Check if operation can proceed
+    if circuit_breaker.can_execute():
+        try:
+            # Attempt LLM classification
+            result = await llm_classify(query)
+            circuit_breaker.record_success()
+        except Exception as e:
+            circuit_breaker.record_failure()
+            # Handle failure appropriately
+    
+    # Configure retry logic
+    retry_config = RetryConfig(
+        max_retries=3,
+        base_delay=1.0,
+        max_delay=30.0,
+        exponential_base=2.0,
+        jitter=True
+    )
+    
+    # Calculate delay for retry attempts
+    for attempt in range(retry_config.max_retries):
+        delay = retry_config.get_delay(attempt)
+        await asyncio.sleep(delay)
+        # Retry operation
+    
+    # Monitor fallback metrics
+    metrics = FallbackMetrics()
+    metrics.record_attempt()
+    metrics.record_llm_failure()
+    metrics.record_circuit_breaker_block()
+    
+    print(f"LLM success rate: {metrics.get_llm_success_rate():.1f}%")
+    print(f"Average times: {metrics.get_average_times()}")
 """
 
 import time

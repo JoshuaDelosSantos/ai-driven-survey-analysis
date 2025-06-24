@@ -6,6 +6,44 @@ This module implements sophisticated resilience patterns including:
 - Exponential backoff with jitter for retry logic
 - Real-time metrics collection and monitoring
 - Graceful degradation when LLM is unavailable
+
+Example Usage:
+    # Initialize circuit breaker with monitoring
+    circuit_breaker = CircuitBreaker(
+        failure_threshold=5,
+        recovery_timeout=60.0
+    )
+    
+    # Configure retry strategy
+    retry_config = RetryConfig(
+        max_retries=3,
+        base_delay=1.0,
+        exponential_base=2.0,
+        jitter=True
+    )
+    
+    # Implement resilient LLM calls
+    async def resilient_llm_classify(query: str):
+        if not circuit_breaker.can_execute():
+            return fallback_classification(query)
+        
+        for attempt in range(retry_config.max_retries + 1):
+            try:
+                result = await llm_classify(query)
+                circuit_breaker.record_success()
+                return result
+            except Exception as e:
+                if attempt < retry_config.max_retries:
+                    delay = retry_config.get_delay(attempt)
+                    await asyncio.sleep(delay)
+                else:
+                    circuit_breaker.record_failure()
+                    return fallback_classification(query)
+    
+    # Monitor system health
+    metrics = FallbackMetrics()
+    print(f"Circuit breaker state: {circuit_breaker.state}")
+    print(f"Success rate: {metrics.get_llm_success_rate():.1f}%")
 """
 
 import asyncio

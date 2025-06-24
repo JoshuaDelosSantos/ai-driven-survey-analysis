@@ -12,6 +12,35 @@ Key Features:
 - Dynamic confidence threshold adjustment
 - Real-time calibration statistics and monitoring
 
+Example Usage:
+    # Initialize confidence calibrator
+    calibrator = ConfidenceCalibrator()
+    
+    # Calibrate confidence for a classification result
+    calibration = calibrator.calibrate_confidence(
+        raw_confidence="HIGH",
+        classification="SQL",
+        query="How many Level 6 users completed training?",
+        pattern_matches={"sql_high": 3, "sql_medium": 1},
+        method_used="rule_based"
+    )
+    print(f"Calibrated confidence: {calibration.calibrated_confidence}")
+    print(f"Adjustment reasoning: {calibration.adjustment_reasoning}")
+    
+    # Record feedback for learning
+    calibrator.record_classification_outcome(
+        classification="SQL",
+        was_correct=True,
+        confidence_score=0.9
+    )
+    
+    # Get calibration statistics
+    stats = calibrator.get_calibration_stats()
+    print(f"Total classifications: {stats['total_calibrations']}")
+    print(f"SQL accuracy: {stats['accuracy_by_type']['SQL']:.2f}")
+    
+    # Reset calibration data for fresh start
+    calibrator.reset_calibration_data()
 """
 
 from typing import Dict, Any, Optional, List, Literal

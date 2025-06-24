@@ -4,6 +4,35 @@ APS-specific patterns and weights for rule-based query classification.
 This module contains all the Australian Public Service domain-specific 
 patterns and their associated weights for accurate query classification
 in the learning analytics context.
+
+Example Usage:
+    # Access compiled patterns
+    patterns = aps_patterns.compiled_patterns
+    sql_patterns = patterns["SQL"]
+    vector_patterns = patterns["VECTOR"]
+    hybrid_patterns = patterns["HYBRID"]
+    
+    # Get weighted patterns for confidence scoring
+    weighted_patterns = aps_pattern_weights.get_all_weighted_patterns()
+    
+    # Test a query against SQL patterns
+    query = "How many Level 6 users completed training?"
+    matches = []
+    for pattern in sql_patterns:
+        if pattern.search(query.lower()):
+            matches.append(pattern.pattern)
+    
+    # Check pattern weights
+    sql_weights = aps_pattern_weights.get_sql_weights()
+    high_weight_patterns = [p for p, w in sql_weights.items() if w == "high"]
+    
+    # Get all pattern statistics
+    total_patterns = (
+        len(patterns["SQL"]) + 
+        len(patterns["VECTOR"]) + 
+        len(patterns["HYBRID"])
+    )
+    print(f"Total APS patterns loaded: {total_patterns}")
 """
 
 import re
