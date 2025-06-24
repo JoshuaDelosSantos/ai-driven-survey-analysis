@@ -62,9 +62,16 @@ import asyncio
 import logging
 import re
 import time
-from typing import Dict, Any, Optional, List, Literal
-from dataclasses import dataclass
+import random
+import asyncio
+import logging
+import re
+import time
+import random
+from typing import Dict, Any, Optional, List, Literal, Union
+from dataclasses import dataclass, field
 from enum import Enum
+from datetime import datetime, timedelta
 
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
@@ -111,6 +118,145 @@ class ClassificationMethod(Enum):
     FALLBACK = "fallback"
 
 
+class CircuitBreakerState(Enum):
+    """Circuit breaker states for LLM failure management."""
+    CLOSED = "closed"      # Normal operation
+    OPEN = "open"          # LLM failures detected, bypassing LLM
+    HALF_OPEN = "half_open"  # Testing if LLM is back online
+
+
+@dataclass
+class CircuitBreaker:
+    """
+    Circuit breaker for LLM classification failures.
+    
+    Implements the circuit breaker pattern to prevent cascading failures
+    when the LLM service is unavailable or performing poorly.
+    """
+    failure_threshold: int = 5  # Number of failures before opening circuit
+    recovery_timeout: float = 60.0  # Seconds before attempting recovery
+    half_open_max_calls: int = 3  # Max calls to test in half-open state
+    
+    # State tracking
+    state: CircuitBreakerState = field(default=CircuitBreakerState.CLOSED)
+    failure_count: int = field(default=0)
+    last_failure_time: Optional[datetime] = field(default=None)
+    half_open_attempts: int = field(default=0)
+    
+    def can_execute(self) -> bool:
+        """Check if LLM call should be attempted."""
+        if self.state == CircuitBreakerState.CLOSED:
+            return True
+        elif self.state == CircuitBreakerState.OPEN:
+            # Check if we should move to half-open
+            if (self.last_failure_time and 
+                datetime.now() - self.last_failure_time > timedelta(seconds=self.recovery_timeout)):
+                self.state = CircuitBreakerState.HALF_OPEN
+                self.half_open_attempts = 0
+                logger.info("Circuit breaker moved to HALF_OPEN state")
+                return True
+            return False
+        elif self.state == CircuitBreakerState.HALF_OPEN:
+            return self.half_open_attempts < self.half_open_max_calls
+        return False
+    
+    def record_success(self) -> None:
+        """Record successful LLM call."""
+        if self.state == CircuitBreakerState.HALF_OPEN:
+            self.half_open_attempts += 1
+            if self.half_open_attempts >= self.half_open_max_calls:
+                self.state = CircuitBreakerState.CLOSED
+                self.failure_count = 0
+                logger.info("Circuit breaker moved to CLOSED state (recovery successful)")
+        elif self.state == CircuitBreakerState.CLOSED:
+            self.failure_count = max(0, self.failure_count - 1)  # Gradual recovery
+    
+    def record_failure(self) -> None:
+        """Record failed LLM call."""
+        self.failure_count += 1
+        self.last_failure_time = datetime.now()
+        
+        if self.state == CircuitBreakerState.CLOSED:
+            if self.failure_count >= self.failure_threshold:
+                self.state = CircuitBreakerState.OPEN
+                logger.warning(f"Circuit breaker OPENED after {self.failure_count} failures")
+        elif self.state == CircuitBreakerState.HALF_OPEN:
+            self.state = CircuitBreakerState.OPEN
+            logger.warning("Circuit breaker returned to OPEN state (recovery failed)")
+
+
+@dataclass
+class FallbackMetrics:
+    """Metrics tracking for fallback system performance."""
+    total_attempts: int = 0
+    llm_successes: int = 0
+    llm_failures: int = 0
+    circuit_breaker_blocks: int = 0
+    retry_attempts: int = 0
+    fallback_activations: int = 0
+    
+    # Timing metrics
+    classification_times: List[float] = field(default_factory=list)
+    llm_response_times: List[float] = field(default_factory=list)
+    fallback_response_times: List[float] = field(default_factory=list)
+    
+    def record_attempt(self) -> None:
+        """Record a classification attempt."""
+        self.total_attempts += 1
+    
+    def record_llm_success(self, response_time: float) -> None:
+        """Record successful LLM classification."""
+        self.llm_successes += 1
+        self.llm_response_times.append(response_time)
+    
+    def record_llm_failure(self) -> None:
+        """Record failed LLM classification."""
+        self.llm_failures += 1
+    
+    def record_circuit_breaker_block(self) -> None:
+        """Record circuit breaker preventing LLM call."""
+        self.circuit_breaker_blocks += 1
+    
+    def record_retry(self) -> None:
+        """Record retry attempt."""
+        self.retry_attempts += 1
+    
+    def record_fallback(self, response_time: float) -> None:
+        """Record fallback activation."""
+        self.fallback_activations += 1
+        self.fallback_response_times.append(response_time)
+    
+    def get_llm_success_rate(self) -> float:
+        """Calculate LLM success rate."""
+        total_llm_attempts = self.llm_successes + self.llm_failures
+        return (self.llm_successes / total_llm_attempts * 100) if total_llm_attempts > 0 else 0.0
+    
+    def get_average_times(self) -> Dict[str, float]:
+        """Get average response times for different methods."""
+        return {
+            "llm_avg_time": sum(self.llm_response_times) / len(self.llm_response_times) if self.llm_response_times else 0.0,
+            "fallback_avg_time": sum(self.fallback_response_times) / len(self.fallback_response_times) if self.fallback_response_times else 0.0,
+            "overall_avg_time": sum(self.classification_times) / len(self.classification_times) if self.classification_times else 0.0
+        }
+
+
+@dataclass
+class RetryConfig:
+    """Configuration for exponential backoff retry logic."""
+    max_retries: int = 3
+    base_delay: float = 1.0  # Base delay in seconds
+    max_delay: float = 30.0  # Maximum delay in seconds
+    backoff_multiplier: float = 2.0
+    jitter: bool = True  # Add randomness to prevent thundering herd
+    
+    def get_delay(self, attempt: int) -> float:
+        """Calculate delay for given retry attempt."""
+        delay = min(self.base_delay * (self.backoff_multiplier ** attempt), self.max_delay)
+        if self.jitter:
+            delay *= (0.5 + random.random() * 0.5)  # Add 0-50% jitter
+        return delay
+
+
 class QueryClassifier:
     """
     Multi-stage query classification system for RAG agent.
@@ -128,7 +274,7 @@ class QueryClassifier:
     
     def __init__(self, llm: Optional[BaseLanguageModel] = None):
         """
-        Initialize query classifier.
+        Initialize query classifier with sophisticated fallback mechanisms.
         
         Args:
             llm: Language model for LLM-based classification. If None, will use get_llm()
@@ -137,6 +283,19 @@ class QueryClassifier:
         self.settings = get_settings()
         self._pii_detector: Optional[AustralianPIIDetector] = None
         self._classification_prompt: Optional[PromptTemplate] = None
+        
+        # Sophisticated fallback system components
+        self._circuit_breaker = CircuitBreaker(
+            failure_threshold=getattr(self.settings, 'classification_failure_threshold', 5),
+            recovery_timeout=getattr(self.settings, 'classification_recovery_timeout', 60.0),
+            half_open_max_calls=getattr(self.settings, 'classification_half_open_calls', 3)
+        )
+        self._retry_config = RetryConfig(
+            max_retries=getattr(self.settings, 'classification_max_retries', 3),
+            base_delay=getattr(self.settings, 'classification_base_delay', 1.0),
+            max_delay=getattr(self.settings, 'classification_max_delay', 30.0)
+        )
+        self._fallback_metrics = FallbackMetrics()
         
         # Enhanced classification patterns for rule-based pre-filtering with APS domain knowledge
         self._sql_patterns = [
@@ -375,43 +534,72 @@ Classification:"""
         anonymize_query: bool = True
     ) -> ClassificationResult:
         """
-        Classify a user query using multi-stage approach.
+        Classify query using sophisticated multi-stage approach with advanced fallback mechanisms.
+        
+        Enhanced Classification Pipeline:
+        1. Input validation and PII anonymization
+        2. Rule-based pre-filtering (fast path with pattern weighting)
+        3. LLM-based classification (with circuit breaker and retry logic)
+        4. Sophisticated fallback system (graceful degradation)
+        5. Comprehensive error handling and recovery
+        
+        Resilience Features:
+        - Circuit breaker pattern for LLM failure protection
+        - Exponential backoff with jitter for retry logic
+        - Multiple fallback strategies with confidence degradation
+        - Real-time metrics collection and monitoring
         
         Args:
             query: User query to classify
             session_id: Optional session identifier for tracking
-            anonymize_query: Whether to anonymize query before LLM processing
+            anonymize_query: Whether to anonymize PII before LLM processing
             
         Returns:
-            ClassificationResult with category, confidence, and reasoning
-            
-        Raises:
-            ValueError: If query is empty or invalid
+            ClassificationResult with detailed confidence and reasoning
         """
-        if not query or not query.strip():
-            raise ValueError("Query cannot be empty")
-        
-        self._classification_count += 1
         start_time = time.time()
+        anonymized_query = None
         
         try:
-            # Step 1: PII anonymization if requested
-            anonymized_query = None
+            # Metrics tracking
+            self._fallback_metrics.record_attempt()
+            self._classification_count += 1
+            
+            logger.debug(
+                f"Starting classification for query length {len(query)} "
+                f"(session: {session_id or 'anonymous'})"
+            )
+            
+            # Step 1: Input validation and PII anonymization
+            if not query or not query.strip():
+                return self._create_error_result(
+                    "Empty or invalid query",
+                    start_time,
+                    anonymized_query
+                )
+            
             if anonymize_query and self._pii_detector:
-                anonymized_query = await self._anonymize_query(query)
-                processing_query = anonymized_query
+                try:
+                    anonymized_query = await self._anonymize_query(query)
+                    processing_query = anonymized_query
+                    logger.debug(f"Query anonymized (session: {session_id or 'anonymous'})")
+                except Exception as e:
+                    logger.warning(f"PII anonymization failed: {e}, proceeding with original query")
+                    processing_query = query
             else:
                 processing_query = query
             
             # Step 2: Rule-based pre-filtering (fast path)
             rule_result = self._rule_based_classification(processing_query)
-            if rule_result:
+            if rule_result and rule_result.confidence in ["HIGH", "MEDIUM"]:
                 processing_time = time.time() - start_time
                 self._method_stats["rule_based"] += 1
+                self._fallback_metrics.classification_times.append(processing_time)
                 
                 logger.info(
-                    f"Rule-based classification: {rule_result.classification} "
-                    f"({processing_time:.3f}s, session: {session_id or 'anonymous'})"
+                    f"Rule-based classification success: {rule_result.classification} "
+                    f"({processing_time:.3f}s, confidence: {rule_result.confidence}, "
+                    f"session: {session_id or 'anonymous'})"
                 )
                 
                 return ClassificationResult(
@@ -423,60 +611,59 @@ Classification:"""
                     anonymized_query=anonymized_query
                 )
             
-            # Step 3: LLM-based classification (comprehensive analysis)
-            try:
-                llm_result = await self._llm_based_classification(processing_query)
+            # Step 3: LLM-based classification with sophisticated fallback
+            llm_result = await self._llm_classification_with_fallback(
+                processing_query, session_id
+            )
+            
+            if llm_result:
                 processing_time = time.time() - start_time
-                self._method_stats["llm_based"] += 1
-                
-                logger.info(
-                    f"LLM-based classification: {llm_result.classification} "
-                    f"({processing_time:.3f}s, session: {session_id or 'anonymous'})"
-                )
+                self._fallback_metrics.classification_times.append(processing_time)
                 
                 return ClassificationResult(
                     classification=llm_result.classification,
                     confidence=llm_result.confidence,
                     reasoning=llm_result.reasoning,
                     processing_time=processing_time,
-                    method_used="llm_based",
+                    method_used=llm_result.method_used,
                     anonymized_query=anonymized_query
                 )
-                
-            except Exception as e:
-                logger.warning(f"LLM classification failed: {e}")
-                
-                # Step 4: Fallback to rule-based with low confidence
-                fallback_result = self._fallback_classification(processing_query)
-                processing_time = time.time() - start_time
-                self._method_stats["fallback"] += 1
-                
-                logger.info(
-                    f"Fallback classification: {fallback_result.classification} "
-                    f"({processing_time:.3f}s, session: {session_id or 'anonymous'})"
-                )
-                
-                return ClassificationResult(
-                    classification=fallback_result.classification,
-                    confidence="LOW",
-                    reasoning=f"Fallback classification due to LLM error: {fallback_result.reasoning}",
-                    processing_time=processing_time,
-                    method_used="fallback",
-                    anonymized_query=anonymized_query
-                )
-                
-        except Exception as e:
-            processing_time = time.time() - start_time
-            logger.error(f"Query classification failed: {e}")
             
-            # Last resort: return clarification needed
+            # Step 4: Final fallback - enhanced rule-based with low confidence
+            fallback_result = self._enhanced_fallback_classification(processing_query)
+            processing_time = time.time() - start_time
+            self._method_stats["fallback"] += 1
+            self._fallback_metrics.record_fallback(time.time() - start_time)
+            self._fallback_metrics.classification_times.append(processing_time)
+            
+            logger.warning(
+                f"Using final fallback classification: {fallback_result.classification} "
+                f"({processing_time:.3f}s, session: {session_id or 'anonymous'})"
+            )
+            
             return ClassificationResult(
-                classification="CLARIFICATION_NEEDED",
+                classification=fallback_result.classification,
                 confidence="LOW",
-                reasoning=f"Classification failed due to error: {str(e)}",
+                reasoning=f"Final fallback: {fallback_result.reasoning}",
                 processing_time=processing_time,
                 method_used="fallback",
                 anonymized_query=anonymized_query
+            )
+                
+        except Exception as e:
+            processing_time = time.time() - start_time
+            self._fallback_metrics.classification_times.append(processing_time)
+            
+            logger.error(
+                f"Query classification completely failed: {e} "
+                f"({processing_time:.3f}s, session: {session_id or 'anonymous'})"
+            )
+            
+            # Absolute last resort
+            return self._create_error_result(
+                f"Complete classification failure: {str(e)}",
+                start_time,
+                anonymized_query
             )
     
     async def _anonymize_query(self, query: str) -> str:
@@ -727,29 +914,342 @@ Classification:"""
             method_used="fallback"
         )
     
+    async def _llm_classification_with_fallback(
+        self,
+        query: str,
+        session_id: Optional[str] = None
+    ) -> Optional[ClassificationResult]:
+        """
+        Perform LLM classification with sophisticated fallback mechanisms.
+        
+        Features:
+        - Circuit breaker pattern to prevent cascading failures
+        - Exponential backoff with jitter for retry logic
+        - Real-time failure tracking and recovery
+        - Graceful degradation when LLM is unavailable
+        
+        Args:
+            query: Query to classify
+            session_id: Optional session identifier
+            
+        Returns:
+            ClassificationResult if successful, None if all attempts failed
+        """
+        # Check circuit breaker before attempting LLM call
+        if not self._circuit_breaker.can_execute():
+            self._fallback_metrics.record_circuit_breaker_block()
+            logger.info(
+                f"Circuit breaker OPEN - skipping LLM classification "
+                f"(session: {session_id or 'anonymous'})"
+            )
+            return None
+        
+        # Attempt LLM classification with retry logic
+        for attempt in range(self._retry_config.max_retries + 1):
+            try:
+                if attempt > 0:
+                    # Apply exponential backoff
+                    delay = self._retry_config.get_delay(attempt - 1)
+                    logger.info(f"Retrying LLM classification after {delay:.2f}s delay (attempt {attempt + 1})")
+                    await asyncio.sleep(delay)
+                    self._fallback_metrics.record_retry()
+                
+                # Attempt LLM classification
+                llm_start_time = time.time()
+                llm_result = await self._llm_based_classification(query)
+                llm_response_time = time.time() - llm_start_time
+                
+                # Success - record metrics and reset circuit breaker
+                self._circuit_breaker.record_success()
+                self._fallback_metrics.record_llm_success(llm_response_time)
+                self._method_stats["llm_based"] += 1
+                
+                logger.info(
+                    f"LLM classification success: {llm_result.classification} "
+                    f"(attempt {attempt + 1}, {llm_response_time:.3f}s, "
+                    f"session: {session_id or 'anonymous'})"
+                )
+                
+                return llm_result
+                
+            except Exception as e:
+                # Record failure
+                self._circuit_breaker.record_failure()
+                self._fallback_metrics.record_llm_failure()
+                
+                logger.warning(
+                    f"LLM classification attempt {attempt + 1} failed: {e} "
+                    f"(session: {session_id or 'anonymous'})"
+                )
+                
+                # If this was the last attempt, we'll fall through
+                if attempt == self._retry_config.max_retries:
+                    logger.error(
+                        f"All LLM classification attempts exhausted "
+                        f"(session: {session_id or 'anonymous'})"
+                    )
+                    break
+        
+        # All LLM attempts failed
+        return None
+    
+    def _enhanced_fallback_classification(self, query: str) -> ClassificationResult:
+        """
+        Enhanced fallback classification with multiple strategies.
+        
+        This method provides sophisticated fallback classification when both
+        rule-based and LLM-based methods fail or are unavailable. It uses
+        multiple heuristic strategies with confidence degradation.
+        
+        Args:
+            query: Query text to classify
+            
+        Returns:
+            ClassificationResult with fallback classification
+        """
+        query_lower = query.lower()
+        
+        # Strategy 1: Enhanced keyword analysis with APS domain knowledge
+        classification_scores = self._calculate_keyword_scores(query_lower)
+        
+        # Strategy 2: Query length and complexity analysis
+        complexity_hint = self._analyze_query_complexity(query)
+        
+        # Strategy 3: Contextual pattern analysis
+        context_hint = self._analyze_contextual_patterns(query_lower)
+        
+        # Combine strategies for final classification
+        final_classification = self._combine_fallback_strategies(
+            classification_scores, complexity_hint, context_hint
+        )
+        
+        reasoning_parts = [
+            f"keyword analysis: {classification_scores}",
+            f"complexity: {complexity_hint}",
+            f"context: {context_hint}"
+        ]
+        
+        return ClassificationResult(
+            classification=final_classification,
+            confidence="LOW",
+            reasoning=f"Enhanced fallback using {', '.join(reasoning_parts)}",
+            processing_time=0.0,  # Will be set by caller
+            method_used="fallback"
+        )
+    
+    def _calculate_keyword_scores(self, query: str) -> Dict[str, int]:
+        """Calculate classification scores based on enhanced keyword analysis."""
+        # Enhanced keyword sets with APS domain knowledge
+        sql_keywords = [
+            "count", "many", "number", "total", "sum", "average", "percentage", "breakdown",
+            "statistics", "completion rate", "level", "agency", "department", "quarterly",
+            "annual", "participation", "enrollment", "training hours", "cost", "budget"
+        ]
+        
+        vector_keywords = [
+            "feedback", "comment", "opinion", "experience", "say", "think", "feel",
+            "participant", "delegate", "quality", "facilitator", "venue", "technical issues",
+            "accessibility", "recommendation", "satisfaction", "testimonial", "review"
+        ]
+        
+        hybrid_keywords = [
+            "analyze", "analysis", "comprehensive", "trends", "correlation", "impact",
+            "effectiveness", "ROI", "cost-benefit", "stakeholder", "demographic",
+            "compare", "evaluate", "assessment", "holistic", "integrated"
+        ]
+        
+        scores = {
+            "SQL": sum(1 for keyword in sql_keywords if keyword in query),
+            "VECTOR": sum(1 for keyword in vector_keywords if keyword in query),
+            "HYBRID": sum(1 for keyword in hybrid_keywords if keyword in query)
+        }
+        
+        return scores
+    
+    def _analyze_query_complexity(self, query: str) -> str:
+        """Analyze query complexity to provide classification hints."""
+        word_count = len(query.split())
+        
+        if word_count < 5:
+            return "simple"
+        elif word_count > 15:
+            return "complex"
+        else:
+            return "moderate"
+    
+    def _analyze_contextual_patterns(self, query: str) -> str:
+        """Analyze contextual patterns in the query."""
+        if any(word in query for word in ["what", "how", "show", "tell"]):
+            return "interrogative"
+        elif any(word in query for word in ["analyze", "compare", "evaluate"]):
+            return "analytical"
+        elif any(word in query for word in ["list", "give", "provide"]):
+            return "informational"
+        else:
+            return "unclear"
+    
+    def _combine_fallback_strategies(
+        self,
+        keyword_scores: Dict[str, int],
+        complexity: str,
+        context: str
+    ) -> ClassificationType:
+        """Combine multiple fallback strategies for final classification."""
+        # Find category with highest keyword score
+        max_score = max(keyword_scores.values())
+        
+        if max_score == 0:
+            # No keywords matched - use context and complexity
+            if context == "analytical" or complexity == "complex":
+                return "HYBRID"
+            elif context == "interrogative":
+                return "VECTOR"
+            else:
+                return "CLARIFICATION_NEEDED"
+        
+        # Find categories with max score
+        top_categories = [cat for cat, score in keyword_scores.items() if score == max_score]
+        
+        if len(top_categories) == 1:
+            return top_categories[0]
+        
+        # Tie-breaking logic using context
+        if "HYBRID" in top_categories and context == "analytical":
+            return "HYBRID"
+        elif "VECTOR" in top_categories and context == "interrogative":
+            return "VECTOR"
+        elif "SQL" in top_categories and complexity == "simple":
+            return "SQL"
+        
+        # Default to most common category in tie
+        return top_categories[0]
+    
+    def _create_error_result(
+        self,
+        error_message: str,
+        start_time: float,
+        anonymized_query: Optional[str]
+    ) -> ClassificationResult:
+        """Create standardized error result."""
+        processing_time = time.time() - start_time
+        
+        return ClassificationResult(
+            classification="CLARIFICATION_NEEDED",
+            confidence="LOW",
+            reasoning=error_message,
+            processing_time=processing_time,
+            method_used="fallback",
+            anonymized_query=anonymized_query
+        )
+    
     def get_classification_stats(self) -> Dict[str, Any]:
         """
-        Get classification statistics for monitoring and debugging.
+        Get comprehensive classification statistics for monitoring and debugging.
         
         Returns:
-            Dictionary with classification method usage statistics
+            Dictionary with enhanced classification method usage statistics,
+            fallback system metrics, and performance data
         """
         total = self._classification_count
+        
+        # Basic method usage stats
+        method_stats = {
+            method: {
+                "count": count,
+                "percentage": (count / total * 100) if total > 0 else 0
+            }
+            for method, count in self._method_stats.items()
+        }
+        
+        # Enhanced fallback system metrics
+        fallback_stats = {
+            "total_attempts": self._fallback_metrics.total_attempts,
+            "llm_successes": self._fallback_metrics.llm_successes,
+            "llm_failures": self._fallback_metrics.llm_failures,
+            "llm_success_rate": self._fallback_metrics.get_llm_success_rate(),
+            "circuit_breaker_blocks": self._fallback_metrics.circuit_breaker_blocks,
+            "retry_attempts": self._fallback_metrics.retry_attempts,
+            "fallback_activations": self._fallback_metrics.fallback_activations
+        }
+        
+        # Circuit breaker status
+        circuit_breaker_stats = {
+            "state": self._circuit_breaker.state.value,
+            "failure_count": self._circuit_breaker.failure_count,
+            "last_failure": self._circuit_breaker.last_failure_time.isoformat() if self._circuit_breaker.last_failure_time else None,
+            "half_open_attempts": self._circuit_breaker.half_open_attempts
+        }
+        
+        # Performance metrics
+        performance_stats = self._fallback_metrics.get_average_times()
+        
+        # Pattern counts
+        pattern_stats = {
+            "sql_patterns": len(self._sql_patterns),
+            "vector_patterns": len(self._vector_patterns),
+            "hybrid_patterns": len(self._hybrid_patterns),
+            "total_patterns": len(self._sql_patterns) + len(self._vector_patterns) + len(self._hybrid_patterns)
+        }
+        
         return {
             "total_classifications": total,
-            "method_usage": {
-                method: {
-                    "count": count,
-                    "percentage": (count / total * 100) if total > 0 else 0
-                }
-                for method, count in self._method_stats.items()
-            },
-            "rule_patterns": {
-                "sql_patterns": len(self._sql_patterns),
-                "vector_patterns": len(self._vector_patterns),
-                "hybrid_patterns": len(self._hybrid_patterns)
+            "method_usage": method_stats,
+            "fallback_system": fallback_stats,
+            "circuit_breaker": circuit_breaker_stats,
+            "performance": performance_stats,
+            "rule_patterns": pattern_stats,
+            "system_health": {
+                "is_healthy": self._circuit_breaker.state == CircuitBreakerState.CLOSED,
+                "uptime_percentage": ((self._fallback_metrics.llm_successes / max(1, self._fallback_metrics.total_attempts)) * 100) if self._fallback_metrics.total_attempts > 0 else 100,
+                "classification_efficiency": (self._method_stats["rule_based"] / max(1, total)) * 100 if total > 0 else 0
             }
         }
+    
+    def get_fallback_metrics(self) -> Dict[str, Any]:
+        """
+        Get detailed fallback system metrics for monitoring.
+        
+        Returns:
+            Dictionary with detailed fallback system performance metrics
+        """
+        return {
+            "circuit_breaker": {
+                "state": self._circuit_breaker.state.value,
+                "failure_threshold": self._circuit_breaker.failure_threshold,
+                "recovery_timeout": self._circuit_breaker.recovery_timeout,
+                "current_failures": self._circuit_breaker.failure_count,
+                "last_failure": self._circuit_breaker.last_failure_time.isoformat() if self._circuit_breaker.last_failure_time else None
+            },
+            "retry_config": {
+                "max_retries": self._retry_config.max_retries,
+                "base_delay": self._retry_config.base_delay,
+                "max_delay": self._retry_config.max_delay,
+                "backoff_multiplier": self._retry_config.backoff_multiplier,
+                "jitter_enabled": self._retry_config.jitter
+            },
+            "performance": {
+                "llm_success_rate": self._fallback_metrics.get_llm_success_rate(),
+                "average_response_times": self._fallback_metrics.get_average_times(),
+                "total_retries": self._fallback_metrics.retry_attempts,
+                "circuit_breaker_interventions": self._fallback_metrics.circuit_breaker_blocks
+            }
+        }
+    
+    def reset_metrics(self) -> None:
+        """
+        Reset all classification and fallback metrics.
+        
+        Useful for testing or periodic metric resets.
+        """
+        self._classification_count = 0
+        self._method_stats = {
+            "rule_based": 0,
+            "llm_based": 0,
+            "fallback": 0
+        }
+        self._fallback_metrics = FallbackMetrics()
+        
+        logger.info("Classification metrics reset")
     
     async def close(self) -> None:
         """Clean up classifier resources."""
@@ -844,14 +1344,167 @@ if __name__ == "__main__":
                 print()
         
         # Demonstrate classification statistics
-        print("=== Classification Statistics ===")
+        print("=== Enhanced Classification Statistics ===")
         stats = classifier.get_classification_stats()
         print(f"Total classifications: {stats['total_classifications']}")
-        print(f"Method distribution: {stats['method_distribution']}")
-        print(f"Confidence distribution: {stats['confidence_distribution']}")
-        if stats['classification_times']:
-            avg_time = sum(stats['classification_times']) / len(stats['classification_times'])
-            print(f"Average classification time: {avg_time:.3f}s")
+        print(f"Method usage: {stats['method_usage']}")
+        print(f"System health: {stats['system_health']}")
+        print(f"Circuit breaker status: {stats['circuit_breaker']['state']}")
+        
+        # Demonstrate fallback metrics
+        fallback_metrics = classifier.get_fallback_metrics()
+        print(f"LLM success rate: {fallback_metrics['performance']['llm_success_rate']:.1f}%")
+        print(f"Average response times: {fallback_metrics['performance']['average_response_times']}")
+        
+        if stats['performance']['overall_avg_time'] > 0:
+            print(f"Average classification time: {stats['performance']['overall_avg_time']:.3f}s")
+    
+    async def test_fallback_mechanisms():
+        """
+        Demonstrate sophisticated fallback mechanisms with circuit breaker and retry logic.
+        """
+        print("\n=== Fallback Mechanisms Demo ===\n")
+        
+        # Create classifier with mock LLM for fallback testing
+        from unittest.mock import AsyncMock, MagicMock
+        
+        mock_llm = AsyncMock()
+        classifier = QueryClassifier(llm=mock_llm)
+        await classifier.initialize()
+        
+        print("1. Testing Circuit Breaker Pattern:")
+        
+        # Simulate LLM failures to trigger circuit breaker
+        mock_llm.ainvoke.side_effect = Exception("Simulated LLM failure")
+        
+        test_query = "What technical issues were mentioned by participants?"
+        
+        # Make multiple failed attempts to open the circuit breaker
+        for i in range(6):  # Exceed the failure threshold
+            try:
+                result = await classifier.classify_query(test_query, anonymize_query=False)
+                print(f"  Attempt {i+1}: {result.classification} via {result.method_used}")
+            except Exception as e:
+                print(f"  Attempt {i+1}: Failed - {e}")
+        
+        # Check circuit breaker status
+        stats = classifier.get_classification_stats()
+        print(f"  Circuit breaker state: {stats['circuit_breaker']['state']}")
+        print(f"  Failure count: {stats['circuit_breaker']['failure_count']}")
+        
+        print("\n2. Testing Enhanced Fallback Classification:")
+        
+        # Test enhanced fallback with various query types
+        fallback_test_queries = [
+            "How many users completed training last month?",  # Should use enhanced SQL fallback
+            "What feedback did people give about the course?",  # Should use enhanced VECTOR fallback
+            "Analyze satisfaction trends with demographic data",  # Should use enhanced HYBRID fallback
+            "Training information please"  # Should require clarification
+        ]
+        
+        for query in fallback_test_queries:
+            result = classifier._enhanced_fallback_classification(query)
+            print(f"  Query: {query}")
+            print(f"  Fallback result: {result.classification} ({result.confidence})")
+            print(f"  Reasoning: {result.reasoning}")
+            print()
+        
+        print("3. Testing Exponential Backoff Strategy:")
+        
+        # Show exponential backoff delays
+        retry_config = classifier._retry_config
+        print(f"  Max retries: {retry_config.max_retries}")
+        print(f"  Base delay: {retry_config.base_delay}s")
+        print(f"  Backoff multiplier: {retry_config.backoff_multiplier}")
+        print(f"  Jitter enabled: {retry_config.jitter}")
+        
+        print("  Calculated delays:")
+        for attempt in range(retry_config.max_retries):
+            delay = retry_config.get_delay(attempt)
+            print(f"    Attempt {attempt + 2}: {delay:.2f}s delay")
+        
+        print("\n4. Testing Metrics Collection:")
+        
+        fallback_metrics = classifier.get_fallback_metrics()
+        print(f"  Circuit breaker failures: {fallback_metrics['circuit_breaker']['current_failures']}")
+        print(f"  Retry configuration: {fallback_metrics['retry_config']}")
+        print(f"  Performance metrics: {fallback_metrics['performance']}")
+    
+    async def demonstrate_resilience_features():
+        """
+        Demonstrate the resilience features of the enhanced classification system.
+        """
+        print("\n=== Resilience Features Demo ===\n")
+        
+        classifier = QueryClassifier()
+        await classifier.initialize()
+        
+        print("1. APS-Specific Enhanced Pattern Matching:")
+        
+        # Test APS-specific patterns with various confidence levels
+        aps_queries = [
+            ("How many EL1 staff completed mandatory training?", "HIGH confidence SQL"),
+            ("What feedback about virtual delivery did participants provide?", "HIGH confidence VECTOR"),
+            ("Analyze cost-benefit of training ROI across departments", "HIGH confidence HYBRID"),
+            ("Show quarterly training statistics summary", "MEDIUM confidence SQL"),
+            ("Participants mentioned venue accessibility concerns", "MEDIUM confidence VECTOR"),
+            ("Review comprehensive training effectiveness", "LOW confidence HYBRID")
+        ]
+        
+        for query, expected in aps_queries:
+            result = classifier._rule_based_classification(query)
+            if result:
+                print(f"  Query: {query}")
+                print(f"  Result: {result.classification} ({result.confidence})")
+                print(f"  Expected: {expected}")
+                print(f"  Pattern details: {result.reasoning}")
+                print()
+            else:
+                print(f"  Query: {query}")
+                print(f"  No rule-based match (would go to LLM or fallback)")
+                print()
+        
+        print("2. Multi-Strategy Fallback System:")
+        
+        # Test the combination of multiple fallback strategies
+        ambiguous_queries = [
+            "training data analysis",
+            "user satisfaction evaluation", 
+            "course performance metrics",
+            "stakeholder feedback review"
+        ]
+        
+        for query in ambiguous_queries:
+            result = classifier._enhanced_fallback_classification(query)
+            print(f"  Query: {query}")
+            print(f"  Fallback classification: {result.classification}")
+            print(f"  Strategy details: {result.reasoning}")
+            print()
+        
+        print("3. System Health Monitoring:")
+        
+        # Show system health metrics
+        stats = classifier.get_classification_stats()
+        health = stats['system_health']
+        
+        print(f"  System healthy: {health['is_healthy']}")
+        print(f"  Uptime percentage: {health['uptime_percentage']:.1f}%")
+        print(f"  Classification efficiency: {health['classification_efficiency']:.1f}%")
+        print(f"  Total patterns loaded: {stats['rule_patterns']['total_patterns']}")
+        
+        print("\n4. Performance Optimization:")
+        
+        # Test rule-based performance
+        start_time = time.time()
+        for _ in range(100):  # Run 100 classifications
+            classifier._rule_based_classification("How many users completed training?")
+        end_time = time.time()
+        
+        avg_time = (end_time - start_time) / 100
+        print(f"  Rule-based classification performance: {avg_time*1000:.2f}ms average")
+        print(f"  Performance target (<100ms): {'✅ PASS' if avg_time < 0.1 else '❌ FAIL'}")
+        
+        await classifier.close()
         
     async def test_pattern_weighting():
         """
@@ -887,8 +1540,23 @@ if __name__ == "__main__":
     
     # Run demonstrations
     if __name__ == "__main__":
-        print("Starting Enhanced Query Classifier Demonstrations...")
+        print("Starting Enhanced Query Classifier with Sophisticated Fallback Mechanisms...")
+        print("=" * 80)
+        
         asyncio.run(demonstrate_enhanced_classification())
-        print("\nTesting Pattern Weighting...")
+        print("\n" + "=" * 80)
+        
+        print("Testing Pattern Weighting System...")
         asyncio.run(test_pattern_weighting())
-        print("Demonstrations complete!")
+        print("\n" + "=" * 80)
+        
+        print("Testing Sophisticated Fallback Mechanisms...")
+        asyncio.run(test_fallback_mechanisms())
+        print("\n" + "=" * 80)
+        
+        print("Demonstrating Resilience Features...")
+        asyncio.run(demonstrate_resilience_features())
+        print("\n" + "=" * 80)
+        
+        print("All demonstrations complete!")
+        print("Milestone 2: Sophisticated Fallback Mechanisms - IMPLEMENTED ✅")
