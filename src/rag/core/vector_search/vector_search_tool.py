@@ -26,7 +26,7 @@ Usage Example:
     response = await tool.search(
         query="feedback about technical issues",
         max_results=10,
-        similarity_threshold=0.75
+        similarity_threshold=0.65
     )
     
     # Search with metadata filtering
@@ -77,7 +77,7 @@ class SearchParameters:
     """Configuration parameters for vector search operations."""
     query: str
     max_results: int = 10
-    similarity_threshold: float = 0.75
+    similarity_threshold: float = 0.65
     filters: Optional[Dict[str, Any]] = None
     field_names: Optional[List[str]] = None
     
@@ -97,7 +97,7 @@ class VectorSearchInput(BaseModel):
     """Input schema for VectorSearchTool."""
     query: str = Field(description="Natural language query for semantic search")
     max_results: int = Field(default=10, description="Maximum number of results to return (1-100)")
-    similarity_threshold: float = Field(default=0.75, description="Minimum similarity score (0.0-1.0)")
+    similarity_threshold: float = Field(default=0.65, description="Minimum similarity score (0.0-1.0)")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters for search refinement")
 
 
@@ -193,7 +193,7 @@ class VectorSearchTool(BaseTool):
         self,
         query: str,
         max_results: int = 10,
-        similarity_threshold: float = 0.75,
+        similarity_threshold: float = 0.65,
         filters: Optional[Dict[str, Any]] = None,
         field_names: Optional[List[str]] = None
     ) -> VectorSearchResponse:
