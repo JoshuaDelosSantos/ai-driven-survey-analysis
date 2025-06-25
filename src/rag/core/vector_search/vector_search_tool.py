@@ -288,10 +288,10 @@ class VectorSearchTool(BaseTool):
         """Anonymize query using PII detection for privacy compliance."""
         try:
             result = await self._pii_detector.detect_and_anonymise(query)
-            anonymized_query = result.get('anonymised_text', query)
+            anonymized_query = result.anonymised_text if result.anonymised_text else query
             
-            if result.get('pii_types'):
-                logger.info(f"PII detected and anonymized in query: {result['pii_types']}")
+            if result.entities_detected:
+                logger.info(f"PII detected and anonymized in query: {[e.get('entity_type', 'unknown') for e in result.entities_detected]}")
             
             return anonymized_query
             
