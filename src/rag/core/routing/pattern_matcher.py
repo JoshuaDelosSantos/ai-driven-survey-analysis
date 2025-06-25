@@ -135,21 +135,23 @@ class PatternMatcher:
         
         classification = top_categories[0]
         
-        # Enhanced confidence determination based on weighted scores
-        if max_score >= 6:  # Multiple high-confidence patterns or mix of high+medium
-            confidence = "HIGH"
-        elif max_score >= 3:  # At least one high-confidence pattern or multiple medium
-            confidence = "MEDIUM"
-        elif max_score >= 2:  # Medium confidence pattern
-            confidence = "MEDIUM"
-        else:  # Only low confidence patterns
-            confidence = "LOW"
-        
-        # Create detailed reasoning with pattern information
+        # Enhanced confidence determination based on weighted scores and pattern mix
         matched_patterns = pattern_details[classification]
         high_count = sum(1 for level, _ in matched_patterns if level == "high")
         medium_count = sum(1 for level, _ in matched_patterns if level == "medium")
         low_count = sum(1 for level, _ in matched_patterns if level == "low")
+        
+        # Prioritize presence of high-confidence patterns
+        if high_count > 0:
+            confidence = "HIGH"  # Any high-confidence pattern should give HIGH confidence
+        elif max_score >= 6:  # Multiple medium-confidence patterns
+            confidence = "HIGH"
+        elif max_score >= 3:  # At least one medium-confidence pattern or multiple low
+            confidence = "MEDIUM"
+        elif max_score >= 2:  # Single medium or multiple low confidence patterns
+            confidence = "MEDIUM"
+        else:  # Only low confidence patterns
+            confidence = "LOW"
         
         reasoning_parts = []
         if high_count > 0:
