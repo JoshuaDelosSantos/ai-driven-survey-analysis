@@ -286,6 +286,8 @@ import uuid
 
 from ..core.agent import RAGAgent, AgentConfig, create_rag_agent
 from ..core.text_to_sql.sql_tool import AsyncSQLTool
+from ..core.synthesis.feedback_collector import FeedbackCollector, FeedbackData
+from ..core.synthesis.feedback_analytics import FeedbackAnalytics
 from ..utils.llm_utils import get_llm
 from ..utils.logging_utils import get_logger
 from ..config.settings import get_settings
@@ -319,6 +321,10 @@ class TerminalApp:
         self.agent: Optional[RAGAgent] = None
         self.sql_tool: Optional[AsyncSQLTool] = None  # Fallback for legacy mode
         self.session_id = str(uuid.uuid4())[:8]
+        
+        # Feedback system components
+        self.feedback_collector = FeedbackCollector()
+        self.feedback_analytics = FeedbackAnalytics()
         
         # Enhanced features
         self.query_count = 0
@@ -465,6 +471,7 @@ class TerminalApp:
         print("   - Type 'help' for more information")
         if self.enable_agent:
             print("   - Type 'stats' to see session statistics")
+        print("   - Type '/feedback-stats' to view feedback analytics")
         print("   - Type 'quit' or 'exit' to leave")
         print("   - Press Ctrl+C to exit")
         print()
@@ -492,6 +499,9 @@ class TerminalApp:
                     continue
                 elif question.lower() == 'stats' and self.enable_agent:
                     await self._show_session_stats()
+                    continue
+                elif question.lower() == '/feedback-stats':
+                    await self._show_feedback_stats()
                     continue
                 
                 # Process the question
@@ -725,30 +735,110 @@ class TerminalApp:
             return original_question
     
     async def _collect_feedback(self, query_id: str, result: Dict[str, Any]) -> None:
-        """Collect user feedback on the response quality."""
+        """
+        Collect detailed user feedback using the enhanced feedback system.
+        
+        Uses 1-5 scale rating with optional comments and database storage.
+        """
         try:
+            # Check if feedback collection is enabled
+            if not self.settings.enable_feedback_collection:
+                return
+                
             print()
-            feedback_response = input("👍 Was this response helpful? (y/n/skip): ").strip().lower()
+            print("📝 Help us improve! Please rate your experience:")
+            print("   1⭐ - Very poor    2⭐ - Poor       3⭐ - Average")
+            print("   4⭐ - Good         5⭐ - Excellent")
+            print()
             
-            if feedback_response in ['y', 'yes', '👍']:
-                self.feedback_collected[query_id] = {'helpful': True, 'rating': 'positive'}
-                print("✅ Thank you for the positive feedback!")
-                
-            elif feedback_response in ['n', 'no', '👎']:
-                self.feedback_collected[query_id] = {'helpful': False, 'rating': 'negative'}
-                print("💡 Thank you for the feedback. We'll use it to improve the system.")
-                
-                # Optional: collect specific feedback
-                specific_feedback = input("🔧 What could be improved? (optional): ").strip()
-                if specific_feedback:
-                    self.feedback_collected[query_id]['details'] = specific_feedback
+            # Get rating
+            while True:
+                try:
+                    rating_input = input("Rate this response (1-5, or 'skip'): ").strip().lower()
                     
-            # Log feedback for analytics
-            if query_id in self.feedback_collected:
-                logger.info(f"User feedback collected for query {query_id}: {self.feedback_collected[query_id]}")
+                    if rating_input == 'skip':
+                        print("⏭️  Skipping feedback collection...")
+                        return
+                        
+                    rating = int(rating_input)
+                    if 1 <= rating <= 5:
+                        break
+                    else:
+                        print("Please enter a number between 1 and 5, or 'skip'")
+                        
+                except ValueError:
+                    print("Please enter a number between 1 and 5, or 'skip'")
+            
+            # Get optional comment
+            print()
+            comment = input("Optional comment (press Enter to skip): ").strip()
+            if not comment:
+                comment = None
+            
+            # Determine query and response texts from result
+            query_text = result.get('query', 'Unknown query')
+            if isinstance(query_text, dict):
+                query_text = str(query_text)
+                
+            response_text = result.get('answer', result.get('result', 'Unknown response'))
+            if isinstance(response_text, (list, dict)):
+                response_text = str(response_text)
+            
+            # Extract sources if available
+            sources = result.get('sources', [])
+            if isinstance(sources, str):
+                sources = [sources]
+            elif not isinstance(sources, list):
+                sources = []
+            
+            # Create feedback data
+            feedback_data = FeedbackData(
+                session_id=self.session_id,
+                query_id=query_id,
+                query_text=query_text,
+                response_text=response_text,
+                rating=rating,
+                comment=comment,
+                response_sources=sources
+            )
+            
+            # Store feedback in database if enabled
+            success = False
+            if self.settings.feedback_database_enabled:
+                try:
+                    success = await self.feedback_collector.collect_feedback(feedback_data)
+                except Exception as e:
+                    logger.error(f"Database feedback storage failed: {e}")
+                    success = False
+            
+            # Store in local session tracking regardless
+            self.feedback_collected[query_id] = {
+                'rating': rating,
+                'comment': comment,
+                'helpful': rating >= 4,  # 4-5 considered helpful
+                'stored_in_db': success
+            }
+            
+            # Provide user feedback
+            if rating >= 4:
+                print("✅ Thank you for the positive feedback!")
+            elif rating >= 3:
+                print("📝 Thank you for the feedback. We'll work to improve!")
+            else:
+                print("🔧 Thank you for the feedback. We take this seriously and will improve!")
+            
+            if success:
+                print("💾 Feedback stored for analysis and improvements.")
+            elif self.settings.feedback_database_enabled:
+                print("⚠️  Feedback stored locally but database storage failed.")
+                
+            logger.info(f"Feedback collected for query {query_id}: rating={rating}, stored_in_db={success}")
                 
         except KeyboardInterrupt:
             print("\n⏭️  Skipping feedback collection...")
+        except Exception as e:
+            logger.error(f"Feedback collection error: {e}")
+            print("⚠️  Feedback collection encountered an issue, but continuing...")
     
     async def _show_session_stats(self) -> None:
         """Display session statistics for agent mode."""
@@ -768,102 +858,46 @@ class TerminalApp:
         print(f"Model: {self.settings.llm_model_name}")
         print()
     
-    async def _display_success_result(self, result, processing_time: float) -> None:
-        """Display successful query result (legacy SQL mode)."""
-        print("✅ Query completed successfully!")
-        print()
-        print("Generated SQL Query:")
-        print("```sql")
-        print(result.query)
-        print("```")
-        print()
-        print("Results:")
-        print("-" * 40)
-        
-        # Display result with formatting
-        if result.result:
-            # Try to format result nicely
-            result_str = str(result.result)
-            lines = result_str.split('\n')
-            
-            # Limit output length for terminal
-            if len(lines) > 20:
-                for line in lines[:20]:
-                    print(line)
-                print(f"... ({len(lines) - 20} more rows)")
-            else:
-                print(result_str)
-        else:
-            print("(No results returned)")
-        
-        print("-" * 40)
-        print(f"Execution time: {result.execution_time:.3f}s")
-        print(f"Total processing time: {processing_time:.3f}s")
-        if result.row_count is not None:
-            print(f"Rows returned: {result.row_count}")
-    
-    async def _display_error_result(self, result, processing_time: float) -> None:
-        """Display error result (legacy SQL mode)."""
-        print("❌ Query failed")
-        print()
-        if result.query:
-            print("Generated SQL Query:")
-            print("```sql")
-            print(result.query)
-            print("```")
+    async def _show_feedback_stats(self) -> None:
+        """Display feedback analytics and statistics."""
+        try:
             print()
-        
-        print("Error Details:")
-        print(f"   {result.error}")
-        print()
-        print(f"Processing time: {processing_time:.3f}s")
-        print()
-        print("💡 Suggestions:")
-        print("   - Try rephrasing your question")
-        print("   - Be more specific about what data you want")
-        print("   - Use terms like 'count', 'show', 'list', or 'breakdown'")
-        print("   - Refer to 'users', 'courses', 'attendance', or 'agencies'")
-    
-    async def _show_help(self) -> None:
-        """Display help information."""
-        print()
-        print("RAG Text-to-SQL Help")
-        print("=" * 30)
-        print()
-        print("How it works:")
-        print("   1. You ask a question in natural language")
-        print("   2. The system converts it to a SQL query")
-        print("   3. The query is executed against the database")
-        print("   4. Results are displayed in a readable format")
-        print()
-        print("Available data:")
-        print("   • Users: APS staff with levels and agencies")
-        print("   • Learning Content: Courses, videos, live sessions")
-        print("   • Attendance: Participation records and completion status")
-        print()
-        print("Question types that work well:")
-        print("   • Counting: 'How many users...', 'Count of courses...'")
-        print("   • Grouping: 'Breakdown by agency', 'Statistics by level'")
-        print("   • Filtering: 'Completed courses', 'Level 6 users'")
-        print("   • Top/Bottom: 'Highest enrollment', 'Most popular courses'")
-        print()
-        print("What doesn't work:")
-        print("   • Data modification (INSERT, UPDATE, DELETE)")
-        print("   • Questions about specific individuals")
-        print("   • Real-time or future predictions")
-        print("   • Data outside the learning analytics domain")
-    
-    async def _show_examples(self) -> None:
-        """Display example questions."""
-        print()
-        print("Example Questions")
-        print("=" * 25)
-        print()
-        for i, example in enumerate(self.example_queries, 1):
-            print(f"{i:2}. {example}")
-        print()
-        print("Feel free to ask variations of these questions!")
-        print("   The system can handle different phrasings and filters.")
+            print("📊 Feedback Analytics")
+            print("=" * 50)
+            
+            # Check if analytics are enabled
+            if not self.settings.feedback_database_enabled:
+                print("⚠️  Database feedback storage is disabled.")
+                print("   Enable FEEDBACK_DATABASE_ENABLED in settings to use analytics.")
+                print()
+                return
+            
+            # Get feedback statistics
+            try:
+                # Default to last 30 days of feedback
+                stats = await self.feedback_analytics.get_feedback_stats(days_back=30)
+                
+                if stats.total_count == 0:
+                    print("📭 No feedback data available yet.")
+                    print("   Feedback will appear here after users provide ratings.")
+                    print()
+                    return
+                
+                # Display formatted analytics
+                formatted_stats = self.feedback_analytics.format_stats_for_display(stats)
+                print(formatted_stats)
+                
+            except Exception as e:
+                logger.error(f"Failed to retrieve feedback stats: {e}")
+                print("❌ Unable to retrieve feedback statistics from database.")
+                print(f"   Error: {str(e)}")
+                print()
+                
+        except Exception as e:
+            logger.error(f"Feedback stats display error: {e}")
+            print("⚠️  Error displaying feedback statistics.")
+
+    # ...existing code...
     
     async def _cleanup(self) -> None:
         """Clean up resources."""
