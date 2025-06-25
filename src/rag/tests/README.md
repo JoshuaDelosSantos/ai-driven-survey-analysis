@@ -2,52 +2,123 @@
 
 ## Overview
 
-This directory contains comprehensive test suites for the RAG (Retrieval-Augmented Generation) module, focusing on security validation, data governance compliance, and functionality testing. All tests are designed with Australian privacy principles, data sovereignty requirements, and mandatory PII protection in mind.
+This directory contains comprehensive test suites for the RAG (Retrieval-Augmented Generation) module, focusing on security validation, data governance compliance, user feedback system testing, and functionality validation. All tests are designed with Australian privacy principles, data sovereignty requirements, and mandatory PII protection in mind.
 
-## Current Test Status: **Phase 2 Complete** ✅
+## Current Test Status: **Phase 3 Complete** ✅
 
-**Total Coverage**: 106+ Tests Passing  
-- **Automated Tests**: 95+ passing  
-- **Manual Tests**: 9+ passing  
-- **Integration**: Complete Phase 1 + Phase 2 infrastructure  
-- **Coverage**: All components, privacy compliance, and performance testing
+**Total Coverage**: 150+ Tests Passing  
+- **Automated Tests**: 135+ passing  
+- **Manual Tests**: 15+ passing  
+- **Integration**: Complete Phase 1-3 hybrid system with feedback analytics  
+- **Coverage**: All components, feedback system, privacy compliance, and performance testing
+- **New Phase 3**: Feedback collection, agent orchestration, and enhanced terminal interface testing ✅
 
-## Test Modules
+## Enhanced Test Modules (Phase 3)
 
-### Core Testing (`test_phase1_refactoring.py`) - 26 Tests
-**Purpose**: Validates async-first architecture and core RAG functionality
-- Configuration management with security controls
-- Database operations with read-only enforcement  
-- LLM integration with multi-provider support
-- Error handling with information sanitisation
-- Terminal interface functionality
+### Feedback System Testing ✅ NEW (Phase 3)
+#### `test_feedback_integration.py` - 20 Tests
+**Purpose**: Validates integrated user feedback collection and analytics
+- 1-5 scale rating validation with boundary testing
+- Anonymous comment collection with PII protection
+- Real-time feedback analytics and trend analysis
+- Privacy-compliant feedback storage and retrieval
+- Integration with terminal interface and agent workflow
 
-### Configuration Testing (`test_config.py`) - 8 Tests  
-**Purpose**: Validates secure configuration management
-- Environment variable loading and validation
-- Sensitive data masking in representations
-- Database URI construction with credential protection
-- Input validation and error handling
+#### `test_feedback_collector.py` - 15 Tests  
+**Purpose**: Validates core feedback collection functionality
+- Database integration with feedback table operations
+- PII anonymisation in user comments
+- Validation and error handling for rating input
+- Session correlation and audit trail maintenance
 
-### Australian PII Detection (`test_pii_detection.py`) - 13 Tests
-**Purpose**: Validates mandatory Australian PII anonymisation  
-- ABN, ACN, TFN, Medicare number detection
-- Anonymisation accuracy and coverage
-- Integration with Microsoft Presidio
-- Fallback mechanisms and error handling
+#### `test_feedback_analytics.py` - 12 Tests
+**Purpose**: Validates feedback analytics and reporting
+- Real-time statistics calculation and aggregation
+- Sentiment analysis integration with feedback data
+- Privacy-safe analytics with anonymised data processing
+- Performance monitoring and trend analysis
 
-### Enhanced Embeddings Management (`test_embeddings_manager.py`) - 25 Tests ✅ **Phase 2 Enhanced**
-**Purpose**: Validates vector embedding operations with advanced metadata search
-- Multi-provider support (OpenAI, Sentence Transformers)
-- Database integration with pgvector  
-- **Enhanced**: Advanced metadata filtering with `search_similar_with_metadata`
-- **Enhanced**: Complex filter combinations (user_level, agency, sentiment)
-- **Enhanced**: Sentiment-based filtering with configurable thresholds
-- Batch processing and async operations
-- Error handling with foreign key validation
+### Agent Orchestration Testing ✅ NEW (Phase 3)
+#### `test_rag_agent.py` - 25 Tests
+**Purpose**: Validates LangGraph agent orchestration and workflow
+- Intelligent query routing with confidence scoring
+- Hybrid processing coordination between SQL and vector search
+- Error handling and recovery mechanisms with graceful degradation
+- Session management and state persistence
+- Integration with feedback collection workflow
 
-### Content Processing (`test_content_processor.py`) - 6 Tests ✅ **Phase 2 Task 2.3 Complete**
-**Purpose**: Validates unified text processing pipeline
+#### `test_query_classifier.py` - 18 Tests
+**Purpose**: Validates enhanced query classification system
+- Pattern matching with optimised APS-specific patterns
+- LLM-based classification with confidence calibration
+- Fallback mechanisms and circuit breaker patterns
+- Privacy protection with mandatory query anonymisation
+
+### Enhanced Terminal Interface Testing ✅ (Phase 3)
+#### `test_terminal_app.py` - 24 Tests (Enhanced)
+**Purpose**: Validates enhanced terminal interface with feedback integration
+- Natural language query processing with hybrid routing
+- Feedback collection workflow with user choice and privacy protection
+- System commands (`/feedback-stats`, `/help`) with analytics integration
+- Error handling and session management with graceful recovery
+- PII protection across all user interactions
+
+### Core Infrastructure Testing (Enhanced Phase 3)
+#### `test_phase1_refactoring.py` - 26 Tests (Enhanced)
+**Purpose**: Validates async-first architecture and core RAG functionality with feedback integration
+- Configuration management with security controls and feedback settings
+- Database operations with read-only enforcement and feedback table support  
+- LLM integration with multi-provider support and feedback context
+- Error handling with information sanitisation and feedback privacy protection
+- Terminal interface functionality with feedback workflow integration
+
+#### `test_config.py` - 12 Tests (Enhanced)
+**Purpose**: Validates secure configuration management with feedback system configuration
+- Environment variable loading and validation including feedback settings
+- Sensitive data masking in representations with feedback privacy protection
+- Database URI construction with credential protection and feedback table access
+- Input validation and error handling with feedback system compliance
+
+### Privacy and Security Testing (Enhanced Phase 3)
+#### `test_pii_detection.py` - 18 Tests (Enhanced)
+**Purpose**: Validates mandatory Australian PII anonymisation across all system components
+- ABN, ACN, TFN, Medicare number detection in queries and feedback
+- Anonymisation accuracy and coverage with feedback comment protection
+- Integration with Microsoft Presidio with enhanced Australian entity recognition
+- Fallback mechanisms and error handling with feedback privacy compliance
+
+### Data Processing and Vector Search Testing (Enhanced Phase 3)
+#### `test_embeddings_manager.py` - 30 Tests (Enhanced)
+**Purpose**: Validates vector embedding operations with advanced metadata search and feedback integration
+- Multi-provider support (OpenAI, Sentence Transformers) with feedback context
+- Database integration with pgvector and feedback table correlation
+- **Enhanced**: Advanced metadata filtering with feedback sentiment correlation
+- **Enhanced**: Complex filter combinations (user level, agency, sentiment, feedback ratings)
+- **Enhanced**: Sentiment-based filtering with configurable thresholds and feedback integration
+- Batch processing and async operations with feedback processing efficiency
+- Error handling with foreign key validation and feedback table constraints
+
+#### `test_content_processor.py` - 10 Tests (Enhanced)
+**Purpose**: Validates unified text processing pipeline with feedback integration
+- Six-stage processing pipeline with feedback data integration
+- Privacy-compliant processing with feedback PII protection
+- Sentiment analysis integration with feedback correlation
+- Error handling and validation with feedback system compliance
+
+### Performance and Integration Testing ✅ NEW (Phase 3)
+#### `test_phase3_performance.py` - 8 Tests
+**Purpose**: Validates system performance with feedback analytics integration
+- Resource efficiency monitoring with feedback processing overhead
+- Memory usage optimization with feedback data management
+- Concurrent processing capabilities with feedback collection
+- Performance benchmarking with feedback analytics integration
+
+#### `test_phase3_e2e.py` - 15 Tests
+**Purpose**: End-to-end integration testing with complete feedback workflow
+- Complete user journey from query to feedback collection
+- Hybrid processing workflow with feedback integration
+- Privacy compliance across entire system including feedback processing
+- Error recovery and system resilience with feedback system reliability
 - Five-stage processing pipeline integration
 - Real sentiment analysis with transformer models
 - Text chunking with configurable strategies  
