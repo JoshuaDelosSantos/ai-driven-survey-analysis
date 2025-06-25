@@ -236,8 +236,24 @@ class TextChunker:
         Returns:
             List of TextChunk objects with metadata
         """
-        if not text or len(text.strip()) < self.min_chunk_size:
+        if not text or len(text.strip()) == 0:
             return []
+            
+        # For very short text, create a single chunk if it has meaningful content
+        text_stripped = text.strip()
+        if len(text_stripped) < self.min_chunk_size:
+            # Still create a chunk if it's a complete sentence or meaningful phrase
+            if any(punct in text_stripped for punct in '.!?') or len(text_stripped.split()) >= 3:
+                return [TextChunk(
+                    text=text_stripped,
+                    index=0,
+                    original_length=len(text_stripped),
+                    start_position=0,
+                    end_position=len(text_stripped),
+                    metadata={"chunking_strategy": self.strategy, "short_text": True}
+                )]
+            else:
+                return []
         
         chunks = []
         
@@ -444,7 +460,7 @@ class ContentProcessor:
             # Get all evaluation record IDs
             query = """
                 SELECT response_id 
-                FROM "Learning Content Evaluation" 
+                FROM evaluation 
                 WHERE response_id >= $1
                 ORDER BY response_id
             """
@@ -568,10 +584,15 @@ class ContentProcessor:
                 if field_name not in evaluation_data or not evaluation_data[field_name]:
                     continue
                 
+                # Skip NaN values from CSV/pandas processing
+                field_value = evaluation_data[field_name]
+                if isinstance(field_value, str) and field_value.strip().lower() in ['nan', 'null', 'none', '']:
+                    continue
+                
                 field_result = await self._process_text_field(
                     response_id=response_id,
                     field_name=field_name,
-                    text=evaluation_data[field_name],
+                    text=field_value,
                     evaluation_metadata=evaluation_data if include_metadata else {}
                 )
                 
@@ -639,7 +660,7 @@ class ContentProcessor:
                     user_id,
                     course_delivery_type,
                     agency
-                FROM "Learning Content Evaluation"
+                FROM evaluation
                 WHERE response_id = $1
             """
             
