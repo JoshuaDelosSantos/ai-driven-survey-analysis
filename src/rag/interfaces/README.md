@@ -285,3 +285,71 @@ pytest tests/test_interfaces/test_monitoring_compliance.py -v
 **Privacy Compliance**: APP Aligned  
 **Data Governance**: Comprehensive  
 **Last Updated**: 11 June 2025
+
+## Feedback System Integration
+
+### User Feedback Collection & Analytics
+
+The terminal application includes a comprehensive feedback system for collecting user ratings and improving system quality over time.
+
+#### Features
+- **1-5 Scale Rating Collection**: Professional rating system with clear user prompts
+- **Optional Comments**: Users can provide detailed feedback with automatic PII anonymisation
+- **Database Storage**: Secure storage in `rag_user_feedback` table with Australian Privacy Principles compliance
+- **On-Demand Analytics**: `/feedback-stats` command provides comprehensive feedback analysis
+- **Privacy Protection**: Automatic detection and anonymisation of emails, phone numbers, and names
+- **Configurable**: Easy enable/disable via environment variables
+
+#### User Experience Flow
+```
+📝 Help us improve! Please rate your experience:
+   1⭐ - Very poor    2⭐ - Poor       3⭐ - Average
+   4⭐ - Good         5⭐ - Excellent
+
+Rate this response (1-5, or 'skip'): 4
+Optional comment (press Enter to skip): Very helpful analysis
+
+✅ Thank you for the positive feedback!
+💾 Feedback stored for analysis and improvements.
+```
+
+#### Analytics Display
+```
+📊 Feedback Analysis (30 days)
+==================================================
+Total responses: 25
+Average rating: 4.2/5.0
+
+📈 Rating Distribution:
+  1⭐:   1 ( 4.0%) 
+  2⭐:   2 ( 8.0%) █
+  3⭐:   5 (20.0%) ████
+  4⭐:  12 (48.0%) █████████
+  5⭐:   5 (20.0%) ████
+
+💬 Recent Comments (5):
+  1. "Great system, very accurate results"
+  2. "Could be faster but very helpful"  
+  3. "Excellent analysis of the data"
+```
+
+#### Commands Available
+- **Standard queries**: Natural language questions processed by RAG system
+- **`examples`**: Display example queries for different analysis types
+- **`help`**: Show available commands and usage information
+- **`stats`**: Display session statistics (agent mode only)
+- **`/feedback-stats`**: View comprehensive feedback analytics
+- **`quit`/`exit`**: Exit the application
+
+#### Configuration
+```python
+# Environment Variables
+ENABLE_FEEDBACK_COLLECTION=true      # Master enable/disable switch
+FEEDBACK_DATABASE_ENABLED=true       # Control database storage
+```
+
+#### Privacy & Security
+- **Australian Privacy Principles Compliant**: All feedback handling follows APP guidelines
+- **PII Anonymisation**: Automatic detection and masking of sensitive information
+- **Error Resilience**: Feedback failures don't impact query processing
+- **Data Minimisation**: Only necessary data is collected and stored
