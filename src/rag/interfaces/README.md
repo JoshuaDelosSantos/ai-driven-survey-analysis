@@ -1,83 +1,105 @@
 # User Interfaces
 
-This directory contains secure user interfaces for the RAG system, implementing comprehensive data governance controls for user interactions and external service integration.
+This directory contains secure user interfaces for the RAG system, implementing comprehensive data governance controls, user feedback collection, and privacy-first interaction design.
 
 ## Overview
 
 The interfaces module provides secure, compliant user interaction capabilities:
-- **Terminal Application**: Phase 1 MVP terminal interface for Text-to-SQL queries  
-- **Database Interface**: Read-only database connectivity with audit controls
+- **Enhanced Terminal Application**: Phase 3 complete terminal interface with feedback integration and hybrid query processing
+- **Feedback Collection Interface**: 1-5 scale rating system with anonymous comment collection and PII protection
+- **Database Interface**: Read-only database connectivity with feedback table support and audit controls
 - **LLM API Interface**: Secure multi-provider LLM integration with data sovereignty considerations
-- **Monitoring Interface**: Audit logging and compliance monitoring integration
+- **Analytics Interface**: Real-time feedback analytics and system performance monitoring
 
 ## Current Architecture
 
-### Status: **Phase 1 Complete**
+### Status: **Phase 3 Complete - Production Ready with User Feedback Analytics**
 
 ```
 interfaces/
 ├── __init__.py                 # Interface module initialisation
 ├── README.md                  # This documentation
-└── terminal_app.py            # Terminal MVP application (Phase 1)
+└── terminal_app.py            # Enhanced terminal application with feedback system (Phase 3)
 ```
 
 ## Implementation Status
 
-### Phase 1: Terminal MVP Application (Complete)
+### Phase 3: Enhanced Terminal Application with Feedback System (Complete)
 
-#### Terminal Application (`terminal_app.py`)
-- **`TerminalApp`**: Async terminal interface for natural language queries
-- **`run_terminal_app()`**: Main entry point with asyncio event loop integration
-- **Session Management**: UUID-based session tracking for audit purposes
-- **Error Handling**: Secure error messages without credential exposure
-- **Query Processing**: Integration with Text-to-SQL pipeline
+#### Enhanced Terminal Application (`terminal_app.py`)
+- **`TerminalApp`**: Async terminal interface with hybrid query processing and feedback collection
+- **`FeedbackComponent`**: Integrated 1-5 scale rating system with optional anonymous comments ✅ NEW
+- **`run_terminal_app()`**: Main entry point with feedback analytics and system commands ✅ Enhanced
+- **Session Management**: Enhanced UUID-based session tracking with feedback correlation for audit purposes
+- **Error Handling**: Robust error recovery with graceful degradation and user guidance ✅ Enhanced
+- **Query Processing**: Integration with LangGraph agent for hybrid Text-to-SQL and vector search ✅ Enhanced
 
-#### Key Features Implemented
+#### Key Features Implemented (Phase 3)
 ```python
-# Current implementation highlights
+# Enhanced implementation highlights
 class TerminalApp:
-    """Terminal application for RAG Text-to-SQL system with async-first design."""
+    """Enhanced terminal application for hybrid RAG system with feedback analytics."""
     
+    def __init__(self):
+        """Initialize with feedback collection and analytics integration."""
+        self.feedback_component = FeedbackComponent()  # NEW: Feedback integration
+        self.agent = RAGAgent()  # NEW: Hybrid agent integration
+        
     async def run(self):
-        """Main terminal loop with natural language query processing."""
-        # Async event loop with proper resource management
-        # Integration with AsyncSQLTool for Text-to-SQL processing
-        # Secure error handling and result formatting
+        """Main terminal loop with feedback collection and system commands."""
+        # Enhanced async event loop with feedback integration
+        # System commands: /feedback-stats, /help
+        # Graceful error handling with user guidance
         
     async def process_query(self, question: str) -> None:
-        """Process natural language question with comprehensive audit trail."""
-        # Query validation and sanitisation
-        # Integration with LLM-powered SQL generation
-        # Result formatting with privacy protection
+        """Process query with hybrid routing and optional feedback collection."""
+        # LangGraph agent integration with intelligent routing
+        # Automatic PII anonymisation across all processing stages
+        # Optional post-query feedback collection with privacy protection
+        
+class FeedbackComponent:
+    """User feedback collection with privacy protection and analytics."""
+    
+    async def collect_feedback(self, session_id: str, response_id: str) -> bool:
+        """Collect 1-5 scale rating with optional anonymous comments."""
+        # Automatic PII detection and anonymisation in comments
+        # Validation and error handling for rating input
+        # Privacy-first storage with audit compliance
 ```
 
-#### Security Architecture
-- **Read-Only Access**: Terminal operations limited to database SELECT queries
-- **Session Isolation**: Each terminal session isolated with unique identifiers
-- **Input Sanitisation**: All user input validated before processing
-- **Output Protection**: No sensitive data exposed in terminal output
-- **Audit Trail**: Complete logging of terminal sessions and queries
+#### Enhanced Security Architecture (Phase 3)
+- **Read-Only Access**: Terminal operations limited to database SELECT queries with feedback table support
+- **Session Isolation**: Each terminal session isolated with unique identifiers and feedback correlation
+- **Input Sanitisation**: All user input (queries and feedback) validated and anonymised before processing ✅ Enhanced
+- **Output Protection**: No sensitive data exposed in terminal output with feedback privacy compliance ✅ Enhanced
+- **Audit Trail**: Complete logging of terminal sessions, queries, and feedback with privacy protection ✅ Enhanced
+- **Feedback Privacy**: All user comments automatically anonymised with Australian entity detection ✅ NEW
+- **Error Recovery**: Graceful degradation with user guidance and session continuity ✅ NEW
 
 ## Data Governance Framework
 
 ### Current Security Controls
 
-#### Terminal Interface Security
-- **Read-Only Enforcement**: All terminal operations use read-only database credentials
-- **Session Management**: UUID-based session tracking with comprehensive audit logging
-- **Input Validation**: Natural language query sanitisation and validation
-- **Output Protection**: Query results sanitised to prevent PII exposure
-- **Resource Limits**: Query timeout and result size limits enforced
+#### Enhanced Terminal Interface Security (Phase 3)
+- **Read-Only Enforcement**: All terminal operations use read-only database credentials with feedback table access
+- **Session Management**: UUID-based session tracking with feedback correlation and comprehensive audit logging ✅ Enhanced
+- **Input Validation**: Natural language query and feedback comment sanitisation and validation ✅ Enhanced
+- **Output Protection**: Query results and feedback analytics sanitised to prevent PII exposure ✅ Enhanced
+- **Resource Limits**: Query timeout and result size limits enforced with feedback collection efficiency ✅ Enhanced
+- **Feedback Privacy**: Automatic PII detection and anonymisation in all user feedback ✅ NEW
+- **System Commands**: Secure access to feedback analytics through `/feedback-stats` command ✅ NEW
 
-#### Integrated External Services
-- **Database Interface**: Read-only database access through text_to_sql module
-- **LLM API Interface**: Multi-provider LLM integration (OpenAI/Anthropic/Gemini)
-- **Schema Interface**: Privacy-safe database schema provision to LLMs
-- **Audit Interface**: Comprehensive logging with PII sanitisation
+#### Enhanced Integrated External Services (Phase 3)
+- **LangGraph Agent Interface**: Hybrid query processing with intelligent routing and confidence scoring ✅ NEW
+- **Feedback Analytics Interface**: Real-time feedback trend analysis and sentiment classification ✅ NEW
+- **Database Interface**: Read-only database access with feedback table support through core modules ✅ Enhanced
+- **LLM API Interface**: Multi-provider LLM integration (OpenAI/Anthropic/Gemini) with feedback context ✅ Enhanced
+- **Schema Interface**: Privacy-safe database schema provision to LLMs with feedback table metadata ✅ Enhanced
+- **Audit Interface**: Comprehensive logging with PII sanitisation and feedback system compliance ✅ Enhanced
 
-### Privacy Compliance Implementation
+### Enhanced Privacy Compliance Implementation (Phase 3)
 
-#### Australian Privacy Principles (APP) Compliance
+#### Australian Privacy Principles (APP) Compliance with Feedback System
 
 **APP 3 (Collection of Personal Information)**
 - **Terminal Input**: Only natural language queries collected, no personal identification
