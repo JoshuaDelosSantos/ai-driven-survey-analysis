@@ -1,53 +1,61 @@
 # Answer Synthesis & Generation Module
 
-**Purpose**: Intelligent multi-modal answer synthesis combining SQL and vector search results  
+**Purpose**: Intelligent multi-modal answer synthesis with user feedback integration  
 **Implementation**: LLM-powered synthesis with specialised templates and Australian PII protection  
-**Security Status**: Production-ready with comprehensive privacy controls and audit compliance
+**Security Status**: Phase 3 Complete - Production-ready with feedback analytics and comprehensive privacy controls
 
 ---
 
 ## Module Overview
 
-The `src/rag/core/synthesis` module implements **sophisticated answer generation** that combines results from SQL analysis and vector search into coherent, comprehensive responses. This module ensures high-quality answer synthesis while maintaining strict Australian data governance and mandatory PII protection throughout the generation process.
+The `src/rag/core/synthesis` module implements **sophisticated answer generation** that combines results from SQL analysis and vector search into coherent, comprehensive responses with integrated user feedback collection. This module ensures high-quality answer synthesis while maintaining strict Australian data governance and mandatory PII protection throughout the generation process.
 
-### Synthesis Architecture
+### Enhanced Synthesis Architecture (Phase 3)
 
-#### Multi-Modal Answer Generation
-- **Statistical Integration**: Intelligent combination of database analysis results
-- **Qualitative Synthesis**: Comprehensive feedback theme analysis and summarisation
-- **Hybrid Processing**: Seamless integration of quantitative and qualitative insights
-- **Privacy Protection**: Mandatory PII detection and anonymisation in generated responses
+#### Multi-Modal Answer Generation with Feedback Integration
+- **Statistical Integration**: Intelligent combination of database analysis results with feedback context
+- **Qualitative Synthesis**: Comprehensive feedback theme analysis and summarisation with sentiment integration
+- **Hybrid Processing**: Seamless integration of quantitative and qualitative insights with user satisfaction monitoring
+- **Privacy Protection**: Mandatory PII detection and anonymisation in generated responses and feedback processing
+- **Quality Monitoring**: Integrated feedback collection for continuous answer quality improvement ✅ NEW
 
-#### Implementation Status
-- **Production Ready**: Full async implementation with comprehensive error handling
-- **Privacy Compliant**: Australian PII detection integrated at all synthesis stages
-- **Quality Optimised**: LLM-powered generation with specialised prompt templates
-- **Audit Ready**: Complete logging with privacy-safe synthesis tracking
+#### Implementation Status - Phase 3 Complete
+- **Production Ready**: Full async implementation with comprehensive error handling and feedback integration
+- **Privacy Compliant**: Australian PII detection integrated at all synthesis and feedback stages
+- **Quality Optimised**: LLM-powered generation with specialised prompt templates and feedback-driven improvement
+- **Analytics Ready**: Complete logging with privacy-safe synthesis tracking and feedback analytics
+- **User Experience Enhanced**: Seamless feedback collection with 1-5 scale rating and optional comments ✅ NEW
 
 ---
 
 ## Core Components
 
-### `answer_generator.py` - Advanced Answer Synthesis Engine
+### `answer_generator.py` - Enhanced Answer Synthesis Engine (Phase 3)
 
 **Primary Class**: `AnswerGenerator`
-- **Async Architecture**: Non-blocking processing with configurable timeouts
-- **Multi-Provider Support**: Compatible with OpenAI, Anthropic, and Google LLMs
-- **Template-Based Generation**: Specialised prompts for different synthesis strategies
-- **PII Protection**: Mandatory anonymisation of generated responses
+- **Async Architecture**: Non-blocking processing with configurable timeouts and feedback integration
+- **Multi-Provider Support**: Compatible with OpenAI, Anthropic, and Google LLMs with feedback context
+- **Template-Based Generation**: Specialised prompts for different synthesis strategies with quality monitoring
+- **PII Protection**: Mandatory anonymisation of generated responses and feedback processing
+- **Quality Analytics**: Integrated feedback collection for continuous improvement and system monitoring ✅ NEW
 
-**Key Methods**:
+**Enhanced Key Methods (Phase 3)**:
 ```python
 async def synthesize_answer(query: str, sql_result: Optional[Dict], 
-                          vector_result: Optional[Dict], session_id: str) -> SynthesisResult
+                          vector_result: Optional[Dict], session_id: str, 
+                          collect_feedback: bool = True) -> SynthesisResult  # Enhanced
 async def _generate_statistical_answer(query: str, sql_result: Dict, context: str) -> str
 async def _generate_feedback_answer(query: str, vector_result: Dict, context: str) -> str
 async def _generate_hybrid_answer(query: str, sql_result: Dict, 
                                 vector_result: Dict, context: str) -> str
+async def collect_user_feedback(session_id: str, response_id: str, 
+                              rating: int, comment: Optional[str] = None) -> bool  # NEW
 ```
 
-**Supporting Classes**:
-- **`AnswerType`**: Enumeration of synthesis strategies (Statistical, Feedback, Hybrid, Error)
+**Enhanced Supporting Classes (Phase 3)**:
+- **`AnswerType`**: Enhanced enumeration including feedback-driven synthesis strategies
+- **`SynthesisResult`**: Enhanced result object with feedback collection metadata and quality metrics ✅ NEW
+- **`FeedbackContext`**: Context object for user feedback integration and analytics ✅ NEW
 - **`SynthesisResult`**: Comprehensive result object with metadata and quality metrics
 
 ### Answer Synthesis Strategies
