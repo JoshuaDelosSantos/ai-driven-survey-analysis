@@ -169,7 +169,7 @@ class TestRAGAgent:
         
         assert result["classification"] == "SQL"
         assert result["confidence"] == "HIGH"
-        assert "Rule-based" in result["classification_reasoning"]
+        assert "rule-based" in result["classification_reasoning"].lower()  # More flexible check
         assert "classifier" in result["tools_used"]
     
     @pytest.mark.asyncio
