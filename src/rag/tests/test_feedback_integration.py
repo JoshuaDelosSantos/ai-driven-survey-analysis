@@ -128,5 +128,36 @@ def test_imports():
     except ImportError as e:
         pytest.fail(f"Import test failed: {e}")
 
+def test_pii_anonymisation():
+    """Test PII anonymisation functionality."""
+    
+    from src.rag.core.synthesis.feedback_collector import FeedbackCollector
+    
+    collector = FeedbackCollector()
+    
+    # Test cases for different PII patterns
+    test_cases = [
+        {
+            'input': 'Contact john.smith@example.com for more info',
+            'should_contain': '[EMAIL]',
+            'should_not_contain': 'john.smith@example.com'
+        },
+        {
+            'input': 'Call me at 0412345678 or 0398765432',
+            'should_contain': '[PHONE]',
+            'should_not_contain': '0412345678'
+        },
+        {
+            'input': 'My name is John Smith and I work here',
+            'should_contain': '[NAME]',
+            'should_not_contain': 'John Smith'
+        }
+    ]
+    
+    for case in test_cases:
+        anonymised = collector._anonymise_text(case['input'])
+        assert case['should_contain'] in anonymised, f"Expected {case['should_contain']} in anonymised text"
+        assert case['should_not_contain'] not in anonymised, f"Original PII still present in anonymised text"
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
