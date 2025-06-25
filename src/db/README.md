@@ -1,117 +1,82 @@
 # Database Utilities Module
 
-This directory contains standalone Python scripts for managing and manipulating the PostgreSQL database used by the AI-Driven Analysis project.
+This directory contains standalone Python scripts for managing the PostgreSQL database used by the AI-Driven Analysis project, including comprehensive table creation, data loading, and privacy-compliant user feedback collection.
 
 ## Overview
 
-- Centralises all database-related operations in one place.
-- Provides connection utilities, table creation, and data loading functions.
-- Designed to be invoked independently or as part of larger workflows.
+- Centralises all database-related operations with privacy-first design and Australian governance compliance
+- Provides connection utilities, table creation, data loading, and feedback analytics functions
+- Includes comprehensive RAG embeddings infrastructure with pgVector support
+- User feedback system with 1-5 scale ratings and anonymous comment collection
+- Designed for independent invocation or integration with larger workflows
+- Implements read-only access controls for secure RAG system integration
 
 
-## Files
+## Core Database Files
 
+### Connection and Security Management
 - **db_connector.py**  
-  Reusable functions for connecting to and interacting with PostgreSQL:
-  - `get_db_connection()` — establish a connection using `.env` credentials.
-  - `close_db_connection(connection, cursor=None)` — safely close resources.
-  - `fetch_data(query, params=None, connection=None)` — run `SELECT` statements.
-  - `execute_query(query, params=None, connection=None)` — run `INSERT`/`UPDATE`/`DELETE` with transaction support.
-  - `batch_insert_data(query, data_list, connection=None)` — efficiently insert multiple rows.
-  - `table_exists(table_name, connection=None)` — check if a table exists in the database.
-  - `test_database_operations()` — self-test: create, insert, fetch, and drop a sample table.
-
-- **create_users_table.py**  
-  Checks for and creates the `users` table:
-  - If the table exists, logs its schema.
-  - Otherwise, defines and creates the table with columns (`user_id`, `user_level`, `agency`, `created_at`).
-
-- **load_user_data.py**  
-  Loads user data from `src/csv/user.csv` into the `users` table:
-  1. Reads CSV via Pandas.
-  2. Validates required columns (`user_id`, `user_level`, `agency`).
-  3. Converts and batches rows into the database.
-
-- **create_learning_content_table.py**  
-  Checks for and creates the `learning_content` table:
-  - If the table exists, logs its schema.
-  - Otherwise, defines and creates the table with columns (`surrogate_key`, `name`, `content_id`, `content_type`, `target_level`, `governing_bodies`, `created_at`).
-
-- **load_learning_content_data.py**  
-  Loads learning content data from `src/csv/learning_content.csv` into the `learning_content` table:
-  1. Reads CSV via Pandas.
-  2. Validates required columns and checks for duplicate surrogate_keys.
-  3. Converts and batches rows into the database with comprehensive logging.
-
-- **create_attendance_table.py**  
-  Checks for and creates the `attendance` table:
-  - If the table exists, logs its schema.
-  - Otherwise, defines and creates the table with columns (`attendance_id`, `user_id`, `learning_content_surrogate_key`, `date_effective`, `status`).
-  - Includes foreign key constraints to `users` and `learning_content` tables.
-
-- **load_attendance_data.py**  
-  Loads attendance data from `src/csv/attendance.csv` into the `attendance` table:
-  1. Reads CSV via Pandas.
-  2. Validates required columns and checks for duplicate attendance_ids.
-  3. Converts and batches rows into the database with joins to display related data.
-
-- **create_evaluation_table.py**  
-  Checks for and creates the `evaluation` table:
-  - If the table exists, logs its schema.
-  - Otherwise, defines and creates the table with the columns defined in `data-dictionary.json`.
-  - Includes foreign key constraints to `users` and `learning_content` tables.
-
-- **load_evaluation_data.py**  
-  Loads evaluation data from `src/csv/evaluation.csv` into the `evaluation` table:
-  1. Reads CSV via Pandas.
-  2. Validates required columns and checks for duplicate response_ids.
-  3. Converts and batches rows into the database with joins to display related data.
-
-- **create_sentiment_table.py**  
-  Checks for and creates the `evaluation_sentiment` table:
-  - If the table exists, logs status and skips creation.
-  - Otherwise, creates `evaluation_sentiment` with columns (`response_id`, `column_name`, `neg`, `neu`, `pos`, `created_at`) and foreign key to `evaluation(response_id)`.
+  Enhanced reusable functions for PostgreSQL connection management:
+  - `get_db_connection()` — establish connections using environment credentials with security validation
+  - `close_db_connection(connection, cursor=None)` — safely close resources with cleanup verification
+  - `fetch_data(query, params=None, connection=None)` — run SELECT statements with result sanitisation
+  - `execute_query(query, params=None, connection=None)` — run INSERT/UPDATE/DELETE with transaction support
+  - `batch_insert_data(query, data_list, connection=None)` — efficiently insert multiple rows with validation
+  - `table_exists(table_name, connection=None)` — check table existence with schema validation
+  - `test_database_operations()` — comprehensive self-test with security validation
 
 - **create_rag_readonly_role.py**  
-  Creates a dedicated read-only PostgreSQL role for the RAG (Retrieval-Augmented Generation) module:
-  - Creates or updates `rag_user_readonly` role with minimal required permissions.
-  - Grants SELECT-only access to `attendance`, `users`, `learning_content`, and `evaluation` tables.
-  - Explicitly denies INSERT, UPDATE, DELETE, TRUNCATE, and CREATE permissions.
-  - Validates security constraints and documents compliance with Australian Privacy Principles (APP).
-  - Implements defence-in-depth security for the Text-to-SQL functionality.
+  Creates dedicated read-only PostgreSQL role for secure RAG system access:
+  - Creates or updates `rag_user_readonly` role with minimal required permissions
+  - Grants SELECT-only access to core tables plus feedback table support
+  - Explicitly denies INSERT, UPDATE, DELETE, TRUNCATE, and CREATE permissions
+  - Validates security constraints and documents Australian Privacy Principles (APP) compliance
+  - Implements defence-in-depth security for hybrid Text-to-SQL and vector search functionality
 
+### Core Data Tables
+- **create_users_table.py** — User profiles with agency and level information
+- **load_user_data.py** — User data loading from CSV with validation
+- **create_learning_content_table.py** — Learning content metadata and classification
+- **load_learning_content_data.py** — Content data loading with duplicate detection
+- **create_attendance_table.py** — Attendance tracking with foreign key constraints
+- **load_attendance_data.py** — Attendance data loading with relationship validation
+- **create_evaluation_table.py** — Course evaluation responses with comprehensive feedback fields
+- **load_evaluation_data.py** — Evaluation data loading with data integrity checks
+- **create_sentiment_table.py** — Sentiment analysis results storage (legacy support)
+
+### RAG System Infrastructure
 - **create_rag_embeddings_table.py**  
-  Creates the `rag_embeddings` table for vector embeddings storage in the RAG system:
-  - Enables the pgvector extension if not already active.
-  - Creates the table with configurable vector dimensions (384 for local models, 1536 for OpenAI).
-  - Includes foreign key constraint to `evaluation(response_id)` for data integrity.
-  - Creates optimised indexes for vector similarity search (ivfflat) and metadata filtering (GIN).
-  - Supports multiple embedding model versions and comprehensive metadata storage.
+  Creates the `rag_embeddings` table for vector embeddings storage:
+  - Enables pgvector extension with configurable vector dimensions (384 for local, 1536 for OpenAI)
+  - Includes foreign key constraints to evaluation table for data integrity
+  - Creates optimised indexes for vector similarity search (ivfflat) and metadata filtering (GIN)
+  - Supports multiple embedding model versions with comprehensive metadata storage
+  - Privacy-compliant design with anonymised text chunk storage
 
-- **create_rag_user_feedback_table.py**  
-  Creates the `rag_user_feedback` table for storing user feedback on RAG system responses:
-  - Creates table for 1-5 scale ratings with optional text comments.
-  - Includes query and response context storage for analysis and improvement.
-  - Implements PII anonymisation fields for privacy compliance.
-  - Creates optimised indexes for session tracking, rating analysis, and temporal queries.
-  - Supports feedback analytics and system quality monitoring.
-  - Follows existing project patterns for table creation and logging.
+- **create_rag_user_feedback_table.py** ✅ NEW (Phase 3)
+  Creates the `rag_user_feedback` table for user satisfaction monitoring:
+  - Stores 1-5 scale ratings with optional anonymous text comments
+  - Includes query and response context for analytics and system improvement
+  - Implements PII anonymisation fields for privacy compliance and Australian governance
+  - Creates optimised indexes for session tracking, rating analysis, and temporal queries
+  - Supports real-time feedback analytics and system quality monitoring
+  - Follows project patterns for table creation, logging, and security validation
 
+### Testing and Validation
 - **tests/test_rag_connection.py**  
-  Validates the RAG read-only database connection and security constraints:
-  - Tests successful connection with the `rag_user_readonly` role.
-  - Verifies SELECT operations work on all required tables.
-  - Confirms write operations (INSERT, UPDATE, DELETE, CREATE) are properly blocked.
-  - Tests complex JOIN queries to ensure analytical capabilities.
-  - Uses pytest framework for automated testing and validation.
+  Validates RAG read-only database security:
+  - Tests connection success with `rag_user_readonly` role
+  - Verifies SELECT operations work on all required tables including feedback table
+  - Confirms write operations are properly blocked for security compliance
+  - Tests complex JOIN queries for analytical capabilities
+  - Pytest framework integration for automated validation
 
 - **tests/test_create_rag_embeddings_table.py**  
-  Comprehensive testing for RAG embeddings table creation and configuration:
-  - Tests pgvector extension enablement and vector column configuration.
-  - Validates table structure, foreign key constraints, and index creation.
-  - Verifies configurable vector dimensions work correctly.
-  - Tests compatibility with both local and cloud embedding models.
-  - Pytest-compatible with standalone execution options.
+  Comprehensive RAG embeddings infrastructure testing:
+  - Tests pgvector extension and vector column configuration
+  - Validates table structure, constraints, and index creation
+  - Verifies configurable vector dimensions and model compatibility
+  - Tests privacy-compliant design and data integrity features
 
 ## Prerequisites
 
