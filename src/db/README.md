@@ -88,6 +88,15 @@ This directory contains standalone Python scripts for managing and manipulating 
   - Creates optimised indexes for vector similarity search (ivfflat) and metadata filtering (GIN).
   - Supports multiple embedding model versions and comprehensive metadata storage.
 
+- **create_rag_user_feedback_table.py**  
+  Creates the `rag_user_feedback` table for storing user feedback on RAG system responses:
+  - Creates table for 1-5 scale ratings with optional text comments.
+  - Includes query and response context storage for analysis and improvement.
+  - Implements PII anonymisation fields for privacy compliance.
+  - Creates optimised indexes for session tracking, rating analysis, and temporal queries.
+  - Supports feedback analytics and system quality monitoring.
+  - Follows existing project patterns for table creation and logging.
+
 - **tests/test_rag_connection.py**  
   Validates the RAG read-only database connection and security constraints:
   - Tests successful connection with the `rag_user_readonly` role.
@@ -193,6 +202,11 @@ python create_rag_readonly_role.py          # creates secure read-only role for 
 python create_rag_embeddings_table.py       # creates table for vector embeddings in RAG
 ```
 
+### Create RAG User Feedback Table
+```bash
+python create_rag_user_feedback_table.py    # creates table for RAG system user feedback
+```
+
 ### Test RAG Database Connection and Security
 ```bash
 cd tests
@@ -216,6 +230,7 @@ python load_evaluation_data.py             # load evaluation data from CSV
 python create_sentiment_table.py           # create 'evaluation_sentiment' table
 python create_rag_readonly_role.py          # create secure read-only role for RAG module
 python create_rag_embeddings_table.py       # creates table for vector embeddings in RAG
+python create_rag_user_feedback_table.py    # creates table for RAG system user feedback
 ```
 
 ## Security and Testing
@@ -259,5 +274,5 @@ python db_connector.py
 - **Vector Dimensions**: Configure `EMBEDDING_DIMENSION` appropriately for your embedding provider before creating the RAG embeddings table.
 
 ---
-**Last Updated**: 17 June 2025
+**Last Updated**: 25 June 2025
 
