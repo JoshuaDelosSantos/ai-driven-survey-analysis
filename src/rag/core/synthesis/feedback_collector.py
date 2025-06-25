@@ -42,7 +42,7 @@ from pathlib import Path
 
 # Import using relative path to db module
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-import db.db_connector as db_connector
+from ....db import db_connector
 
 logger = logging.getLogger(__name__)
 
