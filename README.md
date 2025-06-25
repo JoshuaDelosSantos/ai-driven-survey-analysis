@@ -1,9 +1,9 @@
 # AI-Enhanced Survey Analysis
 
 ## 1. Overview
-This project aims to augment our survey-analysis workflow by applying modern AI techniques to free-text feedback. Instead of manually reviewing thousands of open-ended comments, stakeholders will be able to query an AI system and receive context-aware summaries, sentiment trends, and actionable insights.
+This project implements a privacy-compliant, AI-powered survey analysis system using RAG (Retrieval-Augmented Generation) technology to analyse Australian Public Service learning evaluations and attendance data with robust governance frameworks.
 
-**Status**: Phase 2 Complete - Production-ready RAG infrastructure with Australian data governance compliance established.
+**Status**: Phase 3 Complete - Production-ready hybrid RAG system with user feedback analytics, privacy-first design, and comprehensive Australian data governance compliance.
 
 ## 2. Problem Statement
 - We collect a variety of data (course information, user profiles, attendance, completions, and course evaluation from surveys), but most of our qualitative insights are buried in multiple Excel files.
@@ -12,56 +12,82 @@ This project aims to augment our survey-analysis workflow by applying modern AI 
 
 ## 3. Implemented Solution
 
-### Phase 2: RAG Infrastructure & Data Governance (✅ Complete)
+## 3. Implemented Solution
 
-#### 3.1 Australian PII Detection & Anonymisation
-- **Comprehensive Protection**: Mandatory detection and anonymisation of Australian entities (ABN, ACN, TFN, Medicare numbers)
-- **Privacy-First Processing**: All text processing occurs after PII anonymisation using Microsoft Presidio
+### Phase 3: Hybrid RAG System with User Feedback Analytics (✅ Complete)
+
+#### 3.1 LangGraph Orchestration & Query Routing
+- **Intelligent Query Classification**: Advanced pattern matching with confidence scoring for optimal routing
+- **Hybrid Processing**: Seamless combination of Text-to-SQL and vector search capabilities
+- **Agent Architecture**: Graph-based workflow orchestration with error recovery and performance monitoring
+- **Privacy-Safe Routing**: All query classification occurs after mandatory PII anonymisation
+
+#### 3.2 User Feedback System & Analytics
+- **1-5 Scale Feedback**: Integrated user satisfaction rating system with response quality assessment
+- **Anonymous Comments**: Optional free-text feedback collection with automatic PII protection
+- **Real-Time Analytics**: Comprehensive feedback trend analysis with sentiment classification
+- **Privacy-First Storage**: All feedback data anonymised and secured with audit compliance
+
+#### 3.3 Enhanced Terminal Interface
+- **Natural Language Queries**: Intuitive command interface with comprehensive error handling
+- **Feedback Integration**: Seamless post-query feedback collection with user choice
+- **System Commands**: Built-in analytics commands (`/feedback-stats`, `/help`) with performance monitoring
+- **Session Recovery**: Robust error handling with graceful degradation and user guidance
+
+#### 3.4 Australian PII Detection & Anonymisation (Enhanced)
+- **Comprehensive Protection**: Detection of Australian entities (ABN, ACN, TFN, Medicare) plus international PII
+- **Query Anonymisation**: Mandatory anonymisation before all processing (classification, embedding, SQL generation)
+- **Feedback Privacy**: Automatic PII detection in user comments with secure anonymisation
 - **Audit Compliance**: Complete logging with privacy-protected analytics for governance requirements
 
-#### 3.2 Vector Embeddings Infrastructure  
-- **pgVector Database**: Production-ready PostgreSQL with vector similarity search capabilities
-- **Multi-Provider Embeddings**: Support for OpenAI and Sentence Transformers with configurable switching
-- **Async Architecture**: Non-blocking operations designed for high-concurrency environments
+#### 3.5 Vector Embeddings Infrastructure (Enhanced)  
+- **pgVector Database**: Production-ready PostgreSQL with optimised vector similarity search capabilities
+- **Multi-Provider Embeddings**: Support for OpenAI and Sentence Transformers with runtime switching
+- **Async Architecture**: High-performance non-blocking operations for concurrent query processing
+- **Advanced Metadata Filtering**: Search by user level, agency, sentiment scores, delivery type with privacy protection
 
-#### 3.3 Unified Text Processing Pipeline
-- **Five-Stage Processing**: Extract → Anonymise → Analyse → Chunk → Store with mandatory privacy controls
-- **Real Sentiment Analysis**: Integrated transformer models (cardiffnlp/twitter-roberta-base-sentiment)
-- **Batch Processing**: Efficient handling of large evaluation datasets with configurable batch sizes
+#### 3.6 Unified Text Processing Pipeline (Enhanced)
+- **Six-Stage Processing**: Extract → Anonymise → Classify → Analyse → Chunk → Store with mandatory privacy controls
+- **Real Sentiment Analysis**: Production transformer models (cardiffnlp/twitter-roberta-base-sentiment)
+- **Batch Processing**: Efficient handling of large datasets with configurable performance tuning
+- **Feedback Integration**: Automated processing of user feedback with sentiment analysis and PII protection
 
-#### 3.4 Vector Search Tool & LangChain Integration
-- **LangChain Compatibility**: Native `BaseTool` implementation for agent orchestration
-- **Advanced Metadata Filtering**: Search by user level, agency, sentiment scores, delivery type
-- **Privacy-Protected Queries**: Automatic query anonymisation before embedding generation
-- **Performance Monitoring**: Built-in metrics with processing time analysis
-
-#### 3.5 Comprehensive Testing Framework
-- **106+ Tests**: Comprehensive coverage including privacy compliance, integration, and performance testing
-- **Real Model Validation**: Testing with actual transformer models and database connections
-- **Australian Compliance**: Automated validation of PII detection and privacy-safe operations
+#### 3.7 Comprehensive Testing Framework (Enhanced)
+- **150+ Tests**: Complete coverage including agent workflows, feedback systems, and performance validation
+- **Real Model Validation**: Testing with actual LLMs, transformers, and database connections
+- **Privacy Compliance**: Automated validation of PII detection across all system components
+- **Performance Testing**: Resource efficiency monitoring with Australian data residency compliance
 
 ## 4. Key Benefits (Implemented)
-- **Privacy-First Architecture**: Mandatory Australian PII detection and anonymisation before any processing
-- **Semantic Search Capabilities**: Vector similarity search with advanced metadata filtering for precise feedback analysis
-- **Real-Time Sentiment Analysis**: Automated sentiment classification using production transformer models
-- **LangChain Integration**: Ready for agent-based workflows and intelligent query routing
-- **Scalable Infrastructure**: Async-first design with efficient database connection pooling and batch processing
+- **Hybrid RAG Intelligence**: Optimal query routing between Text-to-SQL and vector search with confidence-based classification
+- **User Feedback Analytics**: Integrated 1-5 scale feedback system with real-time analytics and sentiment analysis
+- **Privacy-First Architecture**: Mandatory Australian PII detection and anonymisation across all system components
+- **Semantic Search Capabilities**: Advanced vector similarity search with metadata filtering for precise feedback analysis
+- **Agent Orchestration**: Graph-based workflow management with error recovery and performance optimisation
+- **Production Interface**: Intuitive terminal application with comprehensive error handling and system commands
 - **Audit Compliance**: Comprehensive logging and monitoring aligned with Australian data governance requirements
+- **Scalable Infrastructure**: Async-first design with efficient resource management and concurrent processing
 
 ## 5. Current Technical Architecture
 
 ### 5.1 Implemented Infrastructure
-1. **Database (PostgreSQL + pgvector) ✅**  
-   - Production pgvector schema with optimised vector similarity indexing
-   - Foreign key integrity with evaluation data and cascade deletion support
-   - Efficient metadata filtering using GIN indexes on JSONB fields
-   - Read-only database roles for secure search operations
+1. **Hybrid RAG System (PostgreSQL + pgvector + LangGraph) ✅**  
+   - Production LangGraph agent with intelligent query routing and confidence scoring
+   - Optimised vector similarity indexing with advanced metadata filtering capabilities
+   - Text-to-SQL integration with read-only database roles for secure analytical operations
+   - Foreign key integrity with cascade deletion support and efficient GIN indexes
 
-2. **Privacy & Data Governance ✅**  
-   - **Australian PII Detection**: Comprehensive detection of ABN, ACN, TFN, Medicare numbers
-   - **Mandatory Anonymisation**: All text processing occurs after PII anonymisation
-   - **Privacy-Safe Logging**: Automatic masking of detected entities in audit logs
-   - **Data Sovereignty**: Local processing with controlled external API usage
+2. **User Feedback System ✅**  
+   - **1-5 Scale Rating**: Integrated satisfaction measurement with response quality assessment
+   - **Anonymous Comments**: Optional feedback collection with automatic PII protection
+   - **Real-Time Analytics**: Comprehensive trend analysis with sentiment classification
+   - **Privacy-First Storage**: All feedback data anonymised and secured with audit compliance
+
+3. **Privacy & Data Governance (Enhanced) ✅**  
+   - **Australian PII Detection**: Comprehensive detection across all system components (queries, feedback, responses)
+   - **Mandatory Anonymisation**: All processing occurs after PII anonymisation with zero data exposure
+   - **Privacy-Safe Logging**: Automatic masking of detected entities in audit logs and analytics
+   - **Data Sovereignty**: Local processing with controlled external API usage and residency compliance
 
 3. **Vector Embeddings System ✅**  
    - **Multi-Provider Support**: OpenAI and Sentence Transformers with configurable switching
@@ -74,55 +100,73 @@ This project aims to augment our survey-analysis workflow by applying modern AI 
    - **Confidence Scoring**: Detailed sentiment scores with positive/negative/neutral classification
    - **Metadata Integration**: Sentiment scores stored with vector embeddings for advanced filtering
 
-5. **Vector Search Tool ✅**  
-   - **LangChain Integration**: Native `BaseTool` implementation for agent workflows
-   - **Advanced Filtering**: Multi-dimensional search by user level, agency, sentiment, delivery type
-   - **Privacy Protection**: Automatic query anonymisation before embedding generation
-   - **Performance Monitoring**: Built-in response time tracking and similarity score analysis
+4. **LangGraph Agent & Query Classification ✅**  
+   - **Intelligent Routing**: Advanced pattern matching with confidence scoring for optimal query processing
+   - **Graph Orchestration**: Node-based workflow management with error recovery and performance monitoring
+   - **Privacy Integration**: All classification occurs after mandatory query anonymisation
+   - **Performance Optimisation**: Resource-efficient processing with concurrent operation support
+
+5. **Terminal Interface & User Experience ✅**  
+   - **Natural Language Processing**: Intuitive query interface with comprehensive error handling
+   - **Feedback Integration**: Seamless post-query feedback collection with user choice and privacy protection
+   - **System Commands**: Built-in analytics (`/feedback-stats`) and help commands with real-time monitoring
+   - **Session Management**: Robust error recovery with graceful degradation and user guidance
 
 ### 5.2 Production-Ready Components
-- **Data Processing**: Complete ETL pipeline with privacy-first text processing and sentiment analysis
-- **Vector Storage**: Optimised pgvector database with efficient similarity search and metadata filtering  
-- **Search Interface**: LangChain-compatible async tool with comprehensive privacy controls
-- **Testing Framework**: 106+ tests covering functionality, privacy compliance, and performance validation
-- **Configuration Management**: Environment-based settings with secure credential handling
+- **Hybrid RAG Processing**: Complete agent orchestration with intelligent query routing and confidence-based classification
+- **User Feedback Analytics**: Real-time feedback collection, sentiment analysis, and trend monitoring with privacy protection
+- **Data Processing**: Enhanced ETL pipeline with six-stage processing and mandatory PII anonymisation
+- **Vector Storage**: Optimised pgvector database with efficient similarity search and advanced metadata filtering  
+- **Search Interface**: LangGraph-compatible async agent with comprehensive privacy controls and error recovery
+- **Testing Framework**: 150+ tests covering agent workflows, feedback systems, privacy compliance, and performance validation
+- **Configuration Management**: Environment-based settings with secure credential handling and runtime configuration
 
 ### 5.3 Usage Examples
 
-#### Basic Vector Search
+#### Terminal Application
+```bash
+# Start the interactive RAG system
+python src/rag/runner.py
+
+# Example queries with automatic routing
+"How many users completed courses in each agency?"  # Routes to Text-to-SQL
+"What did people say about virtual learning?"       # Routes to Vector Search
+
+# System commands
+/feedback-stats  # View feedback analytics
+/help           # Display available commands
+```
+
+#### Hybrid RAG Agent
 ```python
-from src.rag.core.vector_search import VectorSearchTool
+from src.rag.core.agent import RAGAgent
 
-# Initialize and use vector search tool
-tool = VectorSearchTool()
-await tool.initialize()
+# Initialize hybrid agent
+agent = RAGAgent()
+await agent.initialize()
 
-# Basic semantic search with privacy protection
-response = await tool.search(
-    query="feedback about technical issues",  # Auto-anonymised
-    max_results=10,
-    similarity_threshold=0.75
+# Process queries with intelligent routing
+response = await agent.process_query(
+    "feedback about technical issues",  # Auto-anonymised and classified
+    session_id="user_123"
 )
 
-# Advanced metadata filtering
-response = await tool.search(
-    query="senior staff feedback on virtual learning",
-    filters={
-        "user_level": ["Level 5", "Level 6", "Exec Level 1"],
-        "agency": "Department of Finance",
-        "sentiment": {"type": "negative", "min_score": 0.6}
-    }
+# Collect user feedback
+feedback = await agent.collect_feedback(
+    session_id="user_123",
+    rating=4,
+    comment="Very helpful analysis"  # Auto-anonymised
 )
 ```
 
-#### LangChain Tool Integration
+#### Advanced Analytics
 ```python
-# Use as LangChain tool in agent workflows
-result = await tool.ainvoke({
-    "query": "What challenges did participants face with course materials?",
-    "max_results": 15,
-    "filters": {"course_delivery_type": "Virtual"}
-})
+# Feedback analytics with privacy protection
+from src.rag.core.feedback_analytics import FeedbackAnalytics
+
+analytics = FeedbackAnalytics()
+stats = await analytics.get_feedback_stats()
+# Returns: average_rating, total_feedback, sentiment_distribution, etc.
 ```
 
 ---
@@ -146,48 +190,51 @@ We implement a comprehensive, "defence-in-depth" approach aligned with Australia
    - Configurable embedding providers (local Sentence Transformers vs external OpenAI)
    - Australian data residency compliance for all stored content
 
-### 6.2 Access Controls & Security
+### 6.2 Access Controls & Security (Enhanced)
 1. **Database Security**  
-   - Read-only roles for search operations with minimal privileges
-   - Foreign key constraints ensuring data integrity
-   - Encrypted connections and credential management
+   - Read-only roles for search operations with minimal privileges and secure connection handling
+   - Foreign key constraints ensuring data integrity with cascade deletion for feedback lifecycle management
+   - Encrypted connections and secure credential management with environment-based configuration
 
-2. **Audit & Compliance**  
-   - Complete operation logging with privacy-protected analytics
-   - Performance monitoring without exposing sensitive content
-   - Structured audit trail for governance requirements
+2. **Audit & Compliance (Enhanced)**  
+   - Complete operation logging with privacy-protected analytics and feedback trend monitoring
+   - Performance monitoring without exposing sensitive content with resource efficiency tracking
+   - Structured audit trail for governance requirements with feedback system compliance
 
-3. **Data Lifecycle Management**  
-   - Foreign key cascade deletion for data consistency
-   - Model versioning for embedding migration and audit compliance
-   - Privacy-safe error handling and monitoring
+3. **Data Lifecycle Management (Enhanced)**  
+   - Foreign key cascade deletion for data consistency across feedback and analytics systems
+   - Model versioning for embedding migration and audit compliance with feedback model tracking
+   - Privacy-safe error handling and monitoring with comprehensive session management
 
-### 6.3 Regulatory Alignment
-- **Australian Privacy Principles (APP)**: Comprehensive PII protection and data minimisation
-- **Data Sovereignty**: Local processing capabilities with controlled external dependencies
-- **Audit Requirements**: Complete logging framework with privacy-protected analytics
-- **Access Control**: Role-based permissions with least-privilege principles
+### 6.3 Regulatory Alignment (Enhanced)
+- **Australian Privacy Principles (APP)**: Comprehensive PII protection with feedback system privacy compliance
+- **Data Sovereignty**: Local processing capabilities with controlled external dependencies and analytics residency
+- **Audit Requirements**: Complete logging framework with privacy-protected analytics and feedback monitoring
+- **Access Control**: Role-based permissions with least-privilege principles and session-based security
+- **User Consent**: Explicit feedback collection with clear privacy notices and optional participation
 
 ---
 
 ## 7. Development Status & Next Steps
 
-### Phase 2 Completion Status ✅
-- [x] **Task 2.1**: Australian PII Detection & Anonymisation
-- [x] **Task 2.2**: pgVector Infrastructure & Schema Design  
-- [x] **Task 2.3**: Unified Text Processing & Ingestion Pipeline
-- [x] **Task 2.4**: Content Processor Integration
-- [x] **Task 2.5**: Vector Search Tool & LangChain Integration
+### Phase 3 Completion Status ✅
+- [x] **Task 3.1**: LangGraph Agent Development with intelligent query routing
+- [x] **Task 3.2**: User Feedback System with 1-5 scale ratings and analytics
+- [x] **Task 3.3**: Terminal Interface Enhancement with feedback integration
+- [x] **Task 3.4**: Query Classification with pattern matching and confidence scoring
+- [x] **Task 3.5**: Privacy-Enhanced Feedback Collection with automatic anonymisation
+- [x] **Task 3.6**: Comprehensive Testing with 150+ tests and performance validation
 
-### Phase 3 Roadmap
-- **LangGraph Agent Development**: Intelligent query routing and conversation management
-- **Advanced Analytics**: Search pattern analysis and recommendation engine
-- **Performance Optimisation**: Large-scale vector search tuning and caching strategies
-- **User Interface**: Stakeholder-friendly dashboard for semantic search and sentiment analysis
+### Phase 4 Roadmap
+- **Production Web Service**: RESTful API deployment with authentication and rate limiting
+- **Advanced Dashboard**: Stakeholder-friendly web interface with real-time analytics visualisation
+- **Machine Learning Enhancement**: Feedback-driven model improvement and recommendation systems
+- **Scalability Optimisation**: Large-scale deployment tuning with distributed processing capabilities
 
 ### Ready for Production
-The RAG infrastructure is now production-ready with:
-- ✅ **Comprehensive Testing**: 106+ tests covering all functionality and privacy compliance
-- ✅ **Australian Data Governance**: Complete PII protection and audit compliance
-- ✅ **Scalable Architecture**: Async-first design with efficient resource management
-- ✅ **LangChain Integration**: Ready for agent-based workflows and intelligent automation
+The hybrid RAG system is now production-ready with:
+- ✅ **Comprehensive Testing**: 150+ tests covering agent workflows, feedback systems, and privacy compliance
+- ✅ **Australian Data Governance**: Complete PII protection with feedback system compliance and audit trails
+- ✅ **Scalable Architecture**: Async-first design with efficient resource management and concurrent processing
+- ✅ **User Experience**: Intuitive interface with feedback analytics and comprehensive error handling
+- ✅ **Hybrid Intelligence**: Optimal query routing with confidence-based classification and performance monitoring
