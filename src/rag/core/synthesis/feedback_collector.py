@@ -40,9 +40,8 @@ from dataclasses import dataclass
 from typing import Optional, List
 from pathlib import Path
 
-# Import using relative path to db module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from ....db import db_connector
+# Import using absolute path from project structure
+from db import db_connector
 
 logger = logging.getLogger(__name__)
 
