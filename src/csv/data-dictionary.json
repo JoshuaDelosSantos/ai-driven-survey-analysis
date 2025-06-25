@@ -415,5 +415,92 @@
         "isFreeText": false
       }
     ]
+  },
+  "rag_user_feedback": {
+    "description": "Stores user feedback and ratings for RAG system responses to enable continuous improvement and performance monitoring. Captures both quantitative ratings and qualitative comments with privacy protection.",
+    "source_file": "Generated from terminal application user interactions",
+    "columns": [
+      {
+        "name": "feedback_id",
+        "dataType": "SERIAL",
+        "description": "Unique identifier for the feedback record.",
+        "isPrimaryKey": true,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "session_id",
+        "dataType": "VARCHAR(50)",
+        "description": "Session identifier for grouping related queries and feedback within a user session.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "query_id",
+        "dataType": "VARCHAR(50)",
+        "description": "Unique identifier for the specific query that this feedback relates to.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "query_text",
+        "dataType": "TEXT",
+        "description": "The original user question or query that was processed. PII-anonymised before storage.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "response_text",
+        "dataType": "TEXT",
+        "description": "The system's response to the query. Truncated if very long to preserve database performance.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "rating",
+        "dataType": "INTEGER",
+        "description": "User satisfaction rating on a 1-5 scale (1=Very poor, 2=Poor, 3=Average, 4=Good, 5=Excellent).",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "comment",
+        "dataType": "TEXT",
+        "description": "Optional free-text comment from the user explaining their rating or providing suggestions. PII-anonymised before storage.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": true
+      },
+      {
+        "name": "response_sources",
+        "dataType": "TEXT[]",
+        "description": "Array of data sources used to generate the response (e.g., 'Database Analysis', 'User Feedback', 'Hybrid').",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      },
+      {
+        "name": "created_at",
+        "dataType": "TIMESTAMP",
+        "description": "Timestamp when the feedback was submitted by the user.",
+        "isPrimaryKey": false,
+        "isForeignKey": false,
+        "foreignKeyReference": null,
+        "isFreeText": false
+      }
+    ]
   }
 }
