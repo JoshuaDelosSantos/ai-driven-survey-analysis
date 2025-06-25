@@ -288,6 +288,7 @@ from ..core.agent import RAGAgent, AgentConfig, create_rag_agent
 from ..core.text_to_sql.sql_tool import AsyncSQLTool
 from ..core.synthesis.feedback_collector import FeedbackCollector, FeedbackData
 from ..core.synthesis.feedback_analytics import FeedbackAnalytics
+from ..data.content_processor import ContentProcessor, ProcessingConfig
 from ..utils.llm_utils import get_llm
 from ..utils.logging_utils import get_logger
 from ..config.settings import get_settings
@@ -355,6 +356,9 @@ class TerminalApp:
         """
         Initialize RAG agent or SQL tool and verify system readiness.
         
+        Automatically processes any missing embeddings to ensure the RAG system
+        is up-to-date and ready for vector search queries.
+        
         Raises:
             RuntimeError: If initialization fails
         """
@@ -374,6 +378,9 @@ class TerminalApp:
                 
                 self.agent = await create_rag_agent(agent_config)
                 logger.info("RAG agent initialized successfully")
+                
+                # Auto-process embeddings to ensure vector search is ready
+                await self._ensure_embeddings_ready()
                 
             else:
                 # Initialize legacy SQL-only tool (backward compatibility)
@@ -899,6 +906,107 @@ class TerminalApp:
 
     # ...existing code...
     
+    async def _ensure_embeddings_ready(self) -> None:
+        """
+        Ensure all evaluation records have embeddings for vector search.
+        
+        This method automatically processes any evaluation records that don't
+        have embeddings yet, ensuring the RAG system is ready for feedback
+        analysis queries.
+        """
+        try:
+            print("🔍 Checking embedding status...")
+            
+            # Create content processor for embedding operations
+            config = ProcessingConfig(
+                batch_size=25,  # Smaller batches for better UI feedback
+                enable_progress_logging=True,
+                concurrent_processing=3  # Conservative for startup
+            )
+            
+            async with ContentProcessor(config) as processor:
+                # Check what needs to be processed
+                from ..utils.db_utils import DatabaseManager
+                db_manager = DatabaseManager()
+                
+                try:
+                    pool = await db_manager.get_pool()
+                    async with pool.acquire() as conn:
+                        # Get total evaluation records with content
+                        eval_query = """
+                            SELECT COUNT(*) as total
+                            FROM evaluation 
+                            WHERE (general_feedback IS NOT NULL AND general_feedback != 'NaN')
+                               OR (did_experience_issue_detail IS NOT NULL AND did_experience_issue_detail != 'NaN')
+                               OR (course_application_other IS NOT NULL AND course_application_other != 'NaN')
+                        """
+                        eval_result = await conn.fetchrow(eval_query)
+                        total_with_content = eval_result['total']
+                        
+                        # Get count of records with embeddings
+                        embed_query = """
+                            SELECT COUNT(DISTINCT response_id) as embedded_count
+                            FROM rag_embeddings
+                        """
+                        embed_result = await conn.fetchrow(embed_query)
+                        embedded_count = embed_result['embedded_count']
+                        
+                        missing_count = total_with_content - embedded_count
+                        
+                        if missing_count == 0:
+                            print(f"✅ Embeddings up-to-date: {embedded_count}/{total_with_content} records ready for vector search")
+                            return
+                        
+                        print(f"📊 Embedding status: {embedded_count}/{total_with_content} records processed")
+                        print(f"🔄 Processing {missing_count} new records...")
+                        
+                        # Get the IDs that need processing
+                        missing_query = """
+                            SELECT e.response_id
+                            FROM evaluation e
+                            WHERE (e.general_feedback IS NOT NULL AND e.general_feedback != 'NaN')
+                               OR (e.did_experience_issue_detail IS NOT NULL AND e.did_experience_issue_detail != 'NaN')
+                               OR (e.course_application_other IS NOT NULL AND e.course_application_other != 'NaN')
+                            AND e.response_id NOT IN (
+                                SELECT DISTINCT response_id FROM rag_embeddings
+                            )
+                            ORDER BY e.response_id
+                        """
+                        
+                        missing_rows = await conn.fetch(missing_query)
+                        missing_ids = [row['response_id'] for row in missing_rows]
+                    
+                    # Process missing embeddings with progress updates
+                    if missing_ids:
+                        start_time = time.time()
+                        
+                        # Process in batches with progress feedback
+                        batch_size = config.batch_size
+                        total_batches = (len(missing_ids) + batch_size - 1) // batch_size
+                        
+                        for i in range(0, len(missing_ids), batch_size):
+                            batch_ids = missing_ids[i:i + batch_size]
+                            batch_num = (i // batch_size) + 1
+                            
+                            print(f"   Processing batch {batch_num}/{total_batches} ({len(batch_ids)} records)...")
+                            
+                            results = await processor.process_evaluation_records(batch_ids)
+                            successful = sum(1 for r in results if r.success)
+                            
+                            print(f"   ✅ Batch {batch_num} completed: {successful}/{len(batch_ids)} records processed")
+                        
+                        elapsed = time.time() - start_time
+                        print(f"🎉 Embedding processing completed in {elapsed:.1f}s")
+                        print(f"✅ RAG system ready for feedback analysis queries!")
+                    
+                finally:
+                    await db_manager.close()
+                    
+        except Exception as e:
+            logger.error(f"Error during embedding check: {e}")
+            print(f"⚠️  Embedding check failed: {e}")
+            print("🔄 RAG system will continue with existing embeddings")
+
     async def _cleanup(self) -> None:
         """Clean up resources."""
         try:
