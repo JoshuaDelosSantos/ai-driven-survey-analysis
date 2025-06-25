@@ -309,3 +309,45 @@ This answer synthesis module represents the culmination of the RAG system's inte
 
 
 **Last Updated**: 22 June 2025
+
+---
+
+## Feedback Modules Documentation
+
+### `feedback_collector.py` - User Feedback Collection System
+
+**Primary Class**: `FeedbackCollector`
+- **1-5 Scale Rating Collection**: Professional user experience with clear prompts  
+- **PII Anonymisation**: Automatic detection and masking using Australian patterns
+- **Database Integration**: Secure storage via existing `db_connector` patterns
+- **Error Resilience**: Robust error handling to prevent disruption of main functionality
+
+**Key Methods**:
+```python
+async def collect_feedback(feedback_data: FeedbackData) -> bool
+def validate_feedback_data(feedback_data: FeedbackData) -> tuple[bool, str]
+def _anonymise_text(text: Optional[str]) -> Optional[str]
+```
+
+**Supporting Classes**:
+- **`FeedbackData`**: Data structure for feedback with session/query context
+- **`collect_simple_feedback()`**: Convenience function for easy feedback collection
+
+### `feedback_analytics.py` - Feedback Analytics & Reporting
+
+**Primary Class**: `FeedbackAnalytics`
+- **On-Demand Statistics**: Calculate feedback metrics without performance impact
+- **Temporal Analysis**: Filter feedback by time periods (last N days)
+- **Professional Display**: Rich formatting for terminal and report display
+- **Privacy-Safe Analytics**: Only processes anonymised feedback content
+
+**Key Methods**:
+```python
+async def get_feedback_stats(days_back: int = 7) -> FeedbackStats
+def format_stats_for_display(stats: FeedbackStats) -> str
+async def get_low_rated_queries(days_back: int = 7, rating_threshold: int = 2) -> List[Dict]
+```
+
+**Supporting Classes**:
+- **`FeedbackStats`**: Comprehensive statistics with rating distribution and recent comments
+- **Advanced Analytics**: Rating trends, satisfaction insights, and quality metrics
