@@ -39,7 +39,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
-from src.db import db_connector
+# Use relative import for db_connector
+from ....db import db_connector
 
 logger = logging.getLogger(__name__)
 
