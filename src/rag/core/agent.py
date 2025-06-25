@@ -571,18 +571,41 @@ class RAGAgent:
                     "tools_used": state["tools_used"] + ["vector"]
                 }
             else:
-                # No results found
+                # No results found - suggest more helpful response
                 logger.info("Vector search completed but found no relevant results")
                 
-                return {
-                    **state,
-                    "vector_result": {
-                        "query": state["query"],
-                        "results": [],
-                        "message": "No relevant feedback found for this query"
-                    },
-                    "tools_used": state["tools_used"] + ["vector_empty"]
-                }
+                # Check if this might benefit from hybrid approach
+                query_lower = state["query"].lower()
+                suggests_hybrid = any(keyword in query_lower for keyword in [
+                    "feedback", "comments", "opinions", "experience", "think", "say"
+                ])
+                
+                if suggests_hybrid:
+                    # Provide more helpful message for feedback queries
+                    return {
+                        **state,
+                        "vector_result": {
+                            "query": state["query"],
+                            "results": [],
+                            "message": (
+                                "No specific feedback found matching your query. "
+                                "This might be because: (1) The similarity threshold is too strict, "
+                                "(2) Different terminology was used, or (3) Limited feedback exists on this topic. "
+                                "Try rephrasing your query or asking for general patterns."
+                            )
+                        },
+                        "tools_used": state["tools_used"] + ["vector_empty"]
+                    }
+                else:
+                    return {
+                        **state,
+                        "vector_result": {
+                            "query": state["query"],
+                            "results": [],
+                            "message": "No relevant feedback found for this query"
+                        },
+                        "tools_used": state["tools_used"] + ["vector_empty"]
+                    }
             
         except asyncio.TimeoutError:
             logger.error(f"Vector search timed out after {self.config.tool_timeout}s")
