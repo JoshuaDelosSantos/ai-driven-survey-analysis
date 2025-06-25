@@ -1,7 +1,11 @@
 """
 APS-specific patterns and weights for rule-based query classification.
 
-This module contains all the Australian Public Service domain-specific 
+T            r'\b(?:what (?:do|did|does).*think|what.*opinions)\b',
+            r'\b(?:what (?:are|were).*saying|what.*opinions)\b',
+            r'\b(?:generally say|typically say|usually say)\b',
+            r'\b(?:feedback about|comments about|opinions on|thoughts on)\b',
+            r'\b(?:what.*feedback|feedback.*provided|feedback.*given)\b',module contains all the Australian Public Service domain-specific 
 patterns and their associated weights for accurate query classification
 in the learning analytics context.
 
@@ -73,11 +77,14 @@ class APSPatterns:
         
         # Core VECTOR patterns for feedback analysis
         self.vector_patterns = [
-            # Core feedback patterns (preserved from original)
-            r'\b(?:what did.*say|what.*said)\b',
-            r'\b(?:feedback about|comments about|opinions on)\b',
+            # Core feedback patterns (enhanced to catch more variations)
+            r'\b(?:what (?:did|do|does).*say|what.*said)\b',
+            r'\b(?:what (?:do|did|does).*think|what.*thought)\b',
+            r'\b(?:what (?:are|were).*saying|what.*opinions)\b',
+            r'\b(?:generally say|typically say|usually say)\b',
+            r'\b(?:feedback about|comments about|opinions on|thoughts on)\b',
             r'\b(?:experiences with|experience of)\b',
-            r'\b(?:user feedback|participant feedback)\b',
+            r'\b(?:user feedback|participant feedback|student feedback)\b',
             r'\b(?:comments|opinions|thoughts|feelings)\b',
             r'\b(?:issues mentioned|problems reported)\b',
             r'\b(?:satisfaction|dissatisfaction)\b',
@@ -107,6 +114,16 @@ class APSPatterns:
             r'\b(?:comprehensive analysis|detailed analysis)\b',
             r'\b(?:both.*and|statistics.*feedback|numbers.*comments)\b',
             r'\b(?:quantitative.*qualitative|statistical.*sentiment)\b',
+            
+            # General feedback aggregation patterns (should be HYBRID)
+            r'\b(?:what (?:do|did|does).* generally|what.*overall|what.*in general)\b',
+            r'\b(?:generally.*(?:say|think|feel|report|mention))\b',
+            r'\b(?:overall.*(?:feedback|opinion|satisfaction|experience))\b',
+            r'\b(?:common.*(?:feedback|themes|issues|concerns))\b',
+            r'\b(?:typical.*(?:feedback|response|comment))\b',
+            r'\b(?:main.*(?:feedback|concerns|issues|themes))\b',
+            r'\b(?:summary.*(?:feedback|opinions|comments))\b',
+            r'\b(?:aggregate.*(?:feedback|sentiment|opinions))\b',
             
             # Enhanced APS-specific hybrid patterns
             r'\b(?:analyse|analyze)\b.*(?:satisfaction|effectiveness)\b.*(?:across|by|between)',
@@ -159,7 +176,9 @@ class APSPatternWeights:
             },
             "VECTOR": {
                 "high_confidence": [
-                    r'\b(?:what did.*say|feedback about)\b',
+                    r'\b(?:what (?:did|do|does).*say|feedback about)\b',
+                    r'\b(?:what (?:do|did|does).*think|what.*opinions)\b',
+                    r'\b(?:what.*feedback|feedback.*provided|feedback.*given)\b',
                     r'\b(?:comments|opinions|thoughts)\b',
                     r'\b(?:participant|delegate|attendee)\b.*(?:experience|reflection|view)',
                     r'\b(?:technical issues|platform problems|system difficulties)\b',
@@ -180,11 +199,20 @@ class APSPatternWeights:
             "HYBRID": {
                 "high_confidence": [
                     r'\b(?:analyze satisfaction|comprehensive analysis)\b',
+                    r'\b(?:what (?:do|did|does).* generally|what.*overall|what.*in general)\b',
+                    r'\b(?:generally.*(?:say|think|feel|report|mention))\b',
+                    r'\b(?:overall.*(?:feedback|opinion|satisfaction|experience))\b',
+                    r'\b(?:what.*generally.*(?:say|think|report|mention))\b',  # Extra weight for generally
                     r'\b(?:training ROI|return on investment|cost-benefit)\b.*(?:analysis|evaluation)',
                     r'\b(?:correlate|correlation)\b.*(?:satisfaction|feedback)\b.*(?:with|and)\b.*(?:completion|performance)'
                 ],
                 "medium_confidence": [
                     r'\b(?:trends in|patterns in)\b',
+                    r'\b(?:common.*(?:feedback|themes|issues|concerns))\b',
+                    r'\b(?:typical.*(?:feedback|response|comment))\b',
+                    r'\b(?:main.*(?:feedback|concerns|issues|themes))\b',
+                    r'\b(?:summary.*(?:feedback|opinions|comments))\b',
+                    r'\b(?:aggregate.*(?:feedback|sentiment|opinions))\b',
                     r'\b(?:performance impact|capability improvement|skill development)\b.*(?:measurement|assessment)',
                     r'\b(?:stakeholder satisfaction|user experience)\b.*(?:metrics|analysis)',
                     r'\b(?:demographic analysis|cohort analysis)\b.*(?:feedback|satisfaction)'
