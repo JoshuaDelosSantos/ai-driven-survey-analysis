@@ -159,6 +159,18 @@ class RAGSettings(BaseSettings):
         alias="MOCK_LLM_RESPONSES"
     )
     
+    # Feedback System Configuration
+    enable_feedback_collection: bool = Field(
+        default=True,
+        description="Enable/disable user feedback collection after responses",
+        alias="ENABLE_FEEDBACK_COLLECTION"
+    )
+    feedback_database_enabled: bool = Field(
+        default=True,
+        description="Store feedback in database (requires rag_user_feedback table)",
+        alias="FEEDBACK_DATABASE_ENABLED"  
+    )
+    
     model_config = ConfigDict(
         env_file=[
             ".env",  # Look in current directory first
