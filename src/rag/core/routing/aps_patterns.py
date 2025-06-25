@@ -178,7 +178,6 @@ class APSPatternWeights:
                 "high_confidence": [
                     r'\b(?:what (?:did|do|does).*say|feedback about)\b',
                     r'\b(?:what (?:do|did|does).*think|what.*opinions)\b',
-                    r'\b(?:what.*feedback|feedback.*provided|feedback.*given)\b',
                     r'\b(?:comments|opinions|thoughts)\b',
                     r'\b(?:participant|delegate|attendee)\b.*(?:experience|reflection|view)',
                     r'\b(?:technical issues|platform problems|system difficulties)\b',
@@ -203,6 +202,7 @@ class APSPatternWeights:
                     r'\b(?:generally.*(?:say|think|feel|report|mention))\b',
                     r'\b(?:overall.*(?:feedback|opinion|satisfaction|experience))\b',
                     r'\b(?:what.*generally.*(?:say|think|report|mention))\b',  # Extra weight for generally
+                    r'\b(?:what.*feedback.*(?:give|gave|provide|provided))\b',  # Direct "give feedback" match
                     r'\b(?:training ROI|return on investment|cost-benefit)\b.*(?:analysis|evaluation)',
                     r'\b(?:correlate|correlation)\b.*(?:satisfaction|feedback)\b.*(?:with|and)\b.*(?:completion|performance)'
                 ],
