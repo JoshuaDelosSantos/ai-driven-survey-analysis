@@ -1,7 +1,7 @@
-# AI-Enhanced Survey Analysis
+# AI-Enhanced Data Analysis
 
 ## 1. Overview
-This project implements a privacy-compliant, AI-powered survey analysis system using RAG (Retrieval-Augmented Generation) technology to analyse Australian Public Service learning evaluations and attendance data with robust governance frameworks.
+This project implements a privacy-compliant, AI-powered analysis system using RAG (Retrieval-Augmented Generation) technology to analyse Australian Public Service learning evaluations and attendance data with robust governance frameworks.
 
 **Status**: Phase 3 Complete - Production-ready hybrid RAG system with user feedback analytics, privacy-first design, and comprehensive Australian data governance compliance.
 
