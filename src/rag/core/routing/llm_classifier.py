@@ -34,11 +34,12 @@ Example Usage:
 """
 
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
 
 from .data_structures import ClassificationResult, ClassificationType
+from .aps_patterns import feedback_table_classifier
 from ...utils.llm_utils import get_llm
 from ...utils.logging_utils import get_logger
 
@@ -65,7 +66,7 @@ class LLMClassifier:
         self._setup_classification_prompt()
     
     def _setup_classification_prompt(self) -> None:
-        """Set up the LLM classification prompt template."""
+        """Set up the LLM classification prompt template with Phase 2 enhancements."""
         prompt_text = """You are an expert query router for an Australian Public Service learning analytics system. Your task is to classify user queries into one of three categories:
 
 SQL: Queries requiring statistical analysis, aggregations, or structured data retrieval.
@@ -77,20 +78,33 @@ DOMAIN CONTEXT:
 - Structured data: attendance records, user levels (1-6, Exec 1-2), agencies, course types.
 - Unstructured data: general feedback, issue details, course applications.
 
+TABLE-SPECIFIC FEEDBACK GUIDANCE (Phase 2 Enhancement):
+When classifying feedback queries, distinguish between:
+- CONTENT FEEDBACK: Course/training feedback → Use 'evaluation' table (course ratings, instructor feedback, content quality)
+- SYSTEM FEEDBACK: RAG system feedback → Use 'rag_user_feedback' table (search quality, system usability, AI responses)
+
+Examples:
+- "What did participants think about the leadership course?" → VECTOR (content feedback, evaluation table)
+- "How effective was the training delivery?" → VECTOR (content feedback, evaluation table)  
+- "What feedback did users give about search results?" → VECTOR (system feedback, rag_user_feedback table)
+- "Are there issues with the query interface?" → VECTOR (system feedback, rag_user_feedback table)
+
+CRITICAL: Never suggest joining 'rag_user_feedback' with 'learning_content' - these are separate domains.
+
 CLASSIFICATION RULES:
 SQL indicators: "how many", "count", "average", "percentage", "breakdown by", "statistics", "numbers", "total".
 VECTOR indicators: "what did people say", "feedback about", "experiences with", "opinions on", "comments", "issues mentioned".
 HYBRID indicators: "analyze satisfaction", "compare feedback across", "trends in opinions", "sentiment by agency".
 
 CONFIDENCE SCORING:
-- HIGH (0.8-1.0): Clear keyword matches, unambiguous intent
-- MEDIUM (0.5-0.79): Some indicators present, minor ambiguity
-- LOW (0.0-0.49): Unclear intent, multiple possible interpretations
+- HIGH (0.8-1.0): Clear keyword matches, unambiguous intent, obvious table selection
+- MEDIUM (0.5-0.79): Some indicators present, minor ambiguity, table choice clear
+- LOW (0.0-0.49): Unclear intent, multiple possible interpretations, table choice ambiguous
 
 RESPONSE FORMAT:
 Classification: [SQL|VECTOR|HYBRID]
 Confidence: [HIGH|MEDIUM|LOW]
-Reasoning: Brief explanation of classification decision
+Reasoning: Brief explanation of classification decision and table guidance
 
 Query: "{query}"
 
@@ -126,13 +140,13 @@ Classification:"""
     
     async def classify_query(self, query: str) -> ClassificationResult:
         """
-        Perform LLM-based classification with structured prompt.
+        Perform LLM-based classification with structured prompt and Phase 2 enhancements.
         
         Args:
             query: Query text to classify
             
         Returns:
-            ClassificationResult from LLM analysis
+            ClassificationResult from LLM analysis with feedback table guidance
             
         Raises:
             Exception: If LLM classification fails
@@ -143,10 +157,21 @@ Classification:"""
         start_time = time.time()
         
         try:
-            # Format prompt with query
-            formatted_prompt = self._classification_prompt.format(query=query)
+            # Phase 2 Enhancement: Analyze feedback table requirements
+            feedback_classification = feedback_table_classifier.classify_feedback_type(query)
+            table_guidance = feedback_table_classifier.get_table_usage_guidance(feedback_classification)
+            
+            # Enhanced prompt with table-specific context
+            enhanced_query = query
+            if feedback_classification.get('recommended_table'):
+                enhanced_query += f" [Note: This appears to be {feedback_classification['table_type']} feedback - consider {feedback_classification['recommended_table']} table]"
+            
+            # Format prompt with enhanced query
+            formatted_prompt = self._classification_prompt.format(query=enhanced_query)
             
             logger.debug(f"Sending query to LLM for classification: {query[:100]}...")
+            if feedback_classification.get('recommended_table'):
+                logger.debug(f"Feedback classification suggests: {feedback_classification['recommended_table']} table")
             
             # Get LLM response
             response = await self._llm.ainvoke(formatted_prompt)
@@ -159,8 +184,8 @@ Classification:"""
             
             logger.debug(f"LLM response received: {response_text[:200]}...")
             
-            # Parse response
-            result = self._parse_llm_response(response_text, query)
+            # Parse response with feedback context
+            result = self._parse_llm_response(response_text, query, feedback_classification)
             
             processing_time = time.time() - start_time
             result.processing_time = processing_time
@@ -177,16 +202,22 @@ Classification:"""
             logger.error(f"LLM classification failed after {processing_time:.3f}s: {e}")
             raise
     
-    def _parse_llm_response(self, response: str, original_query: str) -> ClassificationResult:
+    def _parse_llm_response(
+        self, 
+        response: str, 
+        original_query: str, 
+        feedback_classification: Optional[Dict[str, Any]] = None
+    ) -> ClassificationResult:
         """
-        Parse LLM response into structured classification result.
+        Parse LLM response into structured classification result with Phase 2 enhancements.
         
         Args:
             response: Raw LLM response text
             original_query: Original query for context
+            feedback_classification: Optional feedback table classification result
             
         Returns:
-            Parsed ClassificationResult
+            Parsed ClassificationResult with enhanced reasoning
             
         Raises:
             ValueError: If response cannot be parsed
@@ -213,17 +244,30 @@ Classification:"""
             confidence = self._validate_confidence(confidence)
             reasoning = self._validate_reasoning(reasoning, classification, confidence)
             
+            # Phase 2 Enhancement: Add feedback table guidance to reasoning
+            if feedback_classification and feedback_classification.get('recommended_table'):
+                table_guidance = f" [Table guidance: Use {feedback_classification['recommended_table']} table for {feedback_classification['table_type']} feedback]"
+                reasoning = reasoning + table_guidance
+            
             logger.debug(
                 f"Parsed LLM response: {classification} ({confidence}) - {reasoning[:100]}..."
             )
             
-            return ClassificationResult(
+            # Create enhanced result with feedback metadata
+            result = ClassificationResult(
                 classification=classification,
                 confidence=confidence,
                 reasoning=reasoning,
                 processing_time=0.0,  # Will be set by caller
                 method_used="llm_based"
             )
+            
+            # Add feedback classification metadata if available
+            if feedback_classification:
+                result.feedback_table_suggestion = feedback_classification.get('recommended_table')
+                result.feedback_confidence = feedback_classification.get('confidence', 0.0)
+            
+            return result
             
         except Exception as e:
             logger.error(f"Failed to parse LLM response: {e}")
