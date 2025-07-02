@@ -102,7 +102,7 @@ src/rag/
 │   ├── text_to_sql/        # Enhanced LangChain-based SQL generation
 │   │   ├── __init__.py
 │   │   ├── README.md       # Enhanced Text-to-SQL documentation
-│   │   ├── schema_manager.py # Enhanced dynamic schema introspection with PII protection
+│   │   ├── schema_manager.py # Enhanced dynamic schema introspection with PII protection and table usage guidance
 │   │   └── sql_tool.py     # Enhanced async SQL generation with mandatory anonymisation
 │   └── vector_search/      # Vector search and semantic retrieval ✅
 │       ├── __init__.py
