@@ -331,25 +331,25 @@ class TerminalApp:
         self.query_count = 0
         self.feedback_collected = {}
         
-        # Example queries updated for multi-modal capabilities
+        # Example queries updated for APS learning context and schema accuracy
         self.example_queries = [
-            # SQL Analysis examples
-            "How many users completed courses in each agency?",
-            "Show attendance status breakdown by user level",
-            "Which courses have the highest enrollment rates?",
-            "What are the completion statistics by content type?",
+            # SQL Analysis examples - APS-specific with accurate schema fields
+            "How many APS employees completed training by classification level?",
+            "Show attendance status breakdown by agency and user level",
+            "Which learning content has the highest completion rates by content type?",
+            "Compare completion statistics between face-to-face and virtual course delivery types",
             
-            # Vector Search examples  
-            "What feedback did users give about virtual learning?",
-            "How do users feel about the new platform features?",
-            "What are the main concerns in user comments?",
-            "Show me positive experiences with online courses",
+            # Vector Search examples - focusing on main feedback fields
+            "What general feedback did users provide about their learning experience?",
+            "What issues did users experience during their training?", 
+            "How do users describe applying course content to their APS work?",
+            "What are the main themes in user feedback about virtual learning delivery?",
             
-            # Hybrid Analysis examples
-            "Analyze satisfaction trends with supporting user feedback",
-            "Compare course completion rates with user sentiment",
-            "Show performance metrics and related user comments",
-            "Provide a comprehensive analysis of platform adoption"
+            # Hybrid Analysis examples - combining metrics with feedback insights
+            "Analyse completion rates by delivery type with supporting user feedback",
+            "Compare satisfaction across different content types with user comments",
+            "Show attendance patterns and related user experience feedback",
+            "Provide comprehensive analysis of APS learning effectiveness with supporting evidence"
         ]
     
     async def initialize(self) -> None:
