@@ -42,6 +42,22 @@ SQL query generation and execution with privacy controls:
 
 ### Privacy Controls
 
+#### Enhanced Schema Context (July 2025)
+```python
+# Enhanced table purpose guidance for accurate SQL generation
+schema_context = await schema_manager.get_schema_description()
+# Includes: Clear table usage guidance, feedback query routing, relationship mapping
+# Prevents: Incorrect table joins, semantic mismatches, empty result sets
+```
+
+**Table Usage Guidance**:
+- **`evaluation`**: User feedback about learning content and courses
+- **`rag_user_feedback`**: Feedback about RAG system performance only
+- **`attendance`**: Participation statistics and completion tracking
+- **`users`**: Demographic analysis and user categorization
+- **`learning_content`**: Content metadata and categorization
+- **`rag_embeddings`**: Internal vector search operations
+
 #### Schema-Only Processing
 ```python
 # NO personal data transmitted to LLMs
