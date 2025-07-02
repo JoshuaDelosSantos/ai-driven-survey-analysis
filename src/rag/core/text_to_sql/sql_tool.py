@@ -112,12 +112,13 @@ class AsyncSQLTool:
             logger.error(f"SQL tool initialization failed: {e}")
             raise ConnectionError(f"Failed to initialize SQL tool: {e}")
     
-    async def generate_sql(self, question: str) -> str:
+    async def generate_sql(self, question: str, classification_result: Optional[Any] = None) -> str:
         """
-        Generate SQL query from natural language question.
+        Generate SQL query from natural language question with Phase 2 enhancements.
         
         Args:
             question: Natural language question
+            classification_result: Optional classification result with feedback table guidance
             
         Returns:
             str: Generated SQL query
@@ -132,8 +133,19 @@ class AsyncSQLTool:
             # Get schema context for LLM
             schema_description = await self._schema_manager.get_schema_description()
             
-            # Create prompt for SQL generation
-            prompt = self._create_sql_generation_prompt(question, schema_description)
+            # Phase 2 Enhancement: Include feedback table guidance if available
+            feedback_guidance = ""
+            if (classification_result and 
+                hasattr(classification_result, 'feedback_table_suggestion') and 
+                classification_result.feedback_table_suggestion):
+                
+                feedback_guidance = self._create_feedback_table_guidance(
+                    classification_result.feedback_table_suggestion,
+                    getattr(classification_result, 'feedback_confidence', 0.0)
+                )
+            
+            # Create prompt for SQL generation with enhanced guidance
+            prompt = self._create_sql_generation_prompt(question, schema_description, feedback_guidance)
             
             # Generate SQL using LLM
             loop = asyncio.get_event_loop()
@@ -146,6 +158,8 @@ class AsyncSQLTool:
             sql_query = self._extract_sql_from_response(sql_response.content if hasattr(sql_response, 'content') else str(sql_response))
             
             logger.info(f"Generated SQL for question: {question[:50]}...")
+            if feedback_guidance:
+                logger.info(f"Applied feedback table guidance: {classification_result.feedback_table_suggestion}")
             logger.debug(f"Generated SQL: {sql_query}")
             
             return sql_query
@@ -299,9 +313,9 @@ class AsyncSQLTool:
                 
                 await asyncio.sleep(1)
     
-    def _create_sql_generation_prompt(self, question: str, schema: str) -> str:
-        """Create prompt for SQL generation."""
-        return f"""You are an expert SQL query generator for an Australian Public Service learning analytics database.
+    def _create_sql_generation_prompt(self, question: str, schema: str, feedback_guidance: str = "") -> str:
+        """Create prompt for SQL generation with Phase 2 feedback table guidance."""
+        base_prompt = f"""You are an expert SQL query generator for an Australian Public Service learning analytics database.
 
 Given the database schema and a natural language question, generate a valid PostgreSQL query.
 
@@ -319,7 +333,46 @@ Given the database schema and a natural language question, generate a valid Post
 - Return only the SQL query, no explanations
 - Do not include INSERT, UPDATE, DELETE, or DDL statements
 
+# CRITICAL FEEDBACK TABLE GUIDANCE (Phase 2 Enhancement)
+When handling feedback queries, distinguish between:
+- CONTENT FEEDBACK: Course/training feedback → Use 'evaluation' table (contains course ratings, satisfaction, instructor feedback)
+- SYSTEM FEEDBACK: RAG system feedback → Use 'rag_user_feedback' table (contains search quality, system usability feedback)
+
+NEVER join 'rag_user_feedback' with 'learning_content' - these are separate domains.
+For learning content feedback, use: evaluation → learning_content (via learning_content_surrogate_key)
+
+{feedback_guidance}
+
 # SQL Query:"""
+        
+        return base_prompt
+    
+    def _create_feedback_table_guidance(self, recommended_table: str, confidence: float) -> str:
+        """Create specific guidance for feedback table usage."""
+        if recommended_table == "evaluation":
+            return f"""
+SPECIFIC GUIDANCE FOR THIS QUERY (Confidence: {confidence:.2f}):
+- This appears to be CONTENT FEEDBACK about courses/training
+- Use the 'evaluation' table which contains:
+  * general_feedback: Free-text feedback about courses
+  * did_experience_issue_detail: Specific issues mentioned
+  * course_application_other: How users will apply learning
+  * Satisfaction ratings: positive_learning_experience, effective_use_of_time, relevant_to_work
+- Join with 'learning_content' via learning_content_surrogate_key for course context
+- Join with 'users' via user_id for demographic analysis if needed
+"""
+        elif recommended_table == "rag_user_feedback":
+            return f"""
+SPECIFIC GUIDANCE FOR THIS QUERY (Confidence: {confidence:.2f}):
+- This appears to be SYSTEM FEEDBACK about the RAG system itself
+- Use the 'rag_user_feedback' table which contains:
+  * Feedback about search quality and system responses
+  * System usability and technical issues
+  * AI response quality ratings
+- This table is NOT related to learning content feedback
+"""
+        else:
+            return ""
 
     def _extract_sql_from_response(self, response: str) -> str:
         """Extract SQL query from LLM response."""
