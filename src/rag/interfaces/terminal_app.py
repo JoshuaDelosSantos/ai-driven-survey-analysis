@@ -904,8 +904,80 @@ class TerminalApp:
             logger.error(f"Feedback stats display error: {e}")
             print("⚠️  Error displaying feedback statistics.")
 
-    # ...existing code...
-    
+    async def _show_help(self) -> None:
+        """Display help information about using the RAG system."""
+        print()
+        print("🆘 RAG System Help")
+        print("=" * 50)
+        print()
+        print("🎯 How to Use:")
+        print("   • Ask questions in natural language about learning data")
+        print("   • The system automatically routes your questions to the best processing method")
+        print("   • You can ask about statistics, user feedback, or request comprehensive analysis")
+        print()
+        print("🔍 Query Types:")
+        print("   📊 Statistical Analysis - Numbers, counts, percentages, distributions")
+        print("      Example: 'How many users completed courses in each agency?'")
+        print()
+        print("   💬 Feedback Analysis - User comments, experiences, sentiment")
+        print("      Example: 'What feedback did users give about virtual learning?'")
+        print()
+        print("   🔄 Hybrid Analysis - Combines statistics with qualitative insights")
+        print("      Example: 'Analyze satisfaction trends with supporting user feedback'")
+        print()
+        print("🔧 Available Commands:")
+        print("   • 'examples' - Show example questions you can ask")
+        print("   • 'help' - Show this help information")
+        if self.enable_agent:
+            print("   • 'stats' - Show session statistics (agent mode)")
+        print("   • '/feedback-stats' - Show feedback analytics from database")
+        print("   • 'quit', 'exit', or 'q' - Exit the system")
+        print("   • Ctrl+C - Force exit")
+        print()
+        print("🔒 Security & Privacy:")
+        print("   • All database access is read-only")
+        print("   • Personal information is automatically protected")
+        print("   • Australian PII detection prevents data exposure")
+        print()
+        print("💡 Tips:")
+        print("   • Be specific about what you want to know")
+        print("   • The system works best with clear, focused questions")
+        print("   • You can ask follow-up questions to explore data further")
+        print("   • Rate responses to help improve the system")
+        print()
+
+    async def _show_examples(self) -> None:
+        """Display example questions users can ask."""
+        print()
+        print("💡 Example Questions")
+        print("=" * 50)
+        
+        if self.enable_agent:
+            print()
+            print("📊 Statistical Analysis:")
+            for example in self.example_queries[:4]:
+                print(f"   • {example}")
+            
+            print()
+            print("💬 Feedback Analysis:")
+            for example in self.example_queries[4:8]:
+                print(f"   • {example}")
+                
+            print()
+            print("🔄 Hybrid Analysis:")
+            for example in self.example_queries[8:]:
+                print(f"   • {example}")
+        else:
+            print()
+            print("📝 Sample Questions:")
+            for i, example in enumerate(self.example_queries[:8], 1):
+                print(f"   {i}. {example}")
+        
+        print()
+        print("🎯 Try typing any of these questions, or ask your own!")
+        print("   The system will automatically determine the best way to answer.")
+        print()
+
     async def _ensure_embeddings_ready(self) -> None:
         """
         Ensure all evaluation records have embeddings for vector search.
