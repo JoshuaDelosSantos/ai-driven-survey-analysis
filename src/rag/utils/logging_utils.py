@@ -300,17 +300,19 @@ class RAGLogger:
         query_type: str,
         processing_time: float,
         success: bool = True,
-        error: Optional[str] = None
+        error: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Log user query processing for audit trail.
         
         Args:
             query_id: Unique query identifier
-            query_type: Type of query (sql, vector, hybrid)
+            query_type: Type of query (sql, vector, hybrid, agent)
             processing_time: Total processing time
             success: Whether processing succeeded
             error: Error message if failed
+            metadata: Optional metadata dictionary for additional context
         """
         extra = {
             'event_type': 'user_query',
@@ -319,6 +321,10 @@ class RAGLogger:
             'processing_time': processing_time,
             'success': success
         }
+        
+        # Add metadata if provided
+        if metadata:
+            extra.update(metadata)
         
         if success:
             self.info(f"User query processed successfully ({query_type})", extra)
