@@ -38,7 +38,7 @@ Example Usage:
 import re
 from typing import Dict, Any, Optional
 from .data_structures import ClassificationResult, ClassificationType
-from .aps_patterns import aps_patterns, aps_pattern_weights
+from .aps_patterns import aps_patterns, aps_pattern_weights, feedback_table_classifier
 from ...utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -70,19 +70,23 @@ class PatternMatcher:
     
     def classify_query(self, query: str) -> Optional[ClassificationResult]:
         """
-        Perform enhanced rule-based classification using weighted regex patterns.
+        Perform enhanced rule-based classification using weighted regex patterns and Phase 2 enhancements.
         
         Uses pattern weighting system to provide more accurate confidence scoring
-        based on Australian Public Service domain knowledge.
+        based on Australian Public Service domain knowledge. Includes table-specific
+        feedback classification for improved SQL generation guidance.
         
         Args:
             query: Query text to classify
             
         Returns:
-            ClassificationResult if confident match found, None otherwise
+            ClassificationResult with table guidance if confident match found, None otherwise
         """
         self.total_classifications += 1
         query_lower = query.lower()
+        
+        # Phase 2 Enhancement: Analyze feedback table requirements
+        feedback_classification = feedback_table_classifier.classify_feedback_type(query)
         
         # Calculate weighted scores for each category
         weighted_scores = {}
@@ -161,6 +165,11 @@ class PatternMatcher:
         
         reasoning = f"Enhanced rule-based: {', '.join(reasoning_parts)} pattern(s) for {classification} (score: {max_score})"
         
+        # Phase 2 Enhancement: Add feedback table guidance to reasoning
+        if feedback_classification.get('recommended_table') and classification == "VECTOR":
+            table_guidance = f" [Table guidance: Use {feedback_classification['recommended_table']} table for {feedback_classification['table_type']} feedback]"
+            reasoning = reasoning + table_guidance
+        
         # Calculate pattern match counts for confidence calibration
         pattern_match_counts = {
             "high_confidence": high_count,
@@ -174,8 +183,11 @@ class PatternMatcher:
             f"Pattern match successful: {classification} with {confidence} confidence "
             f"(score: {max_score}, patterns: {reasoning_parts})"
         )
+        if feedback_classification.get('recommended_table'):
+            logger.debug(f"Feedback classification suggests: {feedback_classification['recommended_table']} table")
         
-        return ClassificationResult(
+        # Create enhanced result with feedback metadata
+        result = ClassificationResult(
             classification=classification,
             confidence=confidence,
             reasoning=reasoning,
@@ -183,6 +195,13 @@ class PatternMatcher:
             method_used="rule_based",
             pattern_matches=pattern_match_counts
         )
+        
+        # Add feedback classification metadata if available
+        if feedback_classification and feedback_classification.get('recommended_table'):
+            result.feedback_table_suggestion = feedback_classification.get('recommended_table')
+            result.feedback_confidence = feedback_classification.get('confidence', 0.0)
+        
+        return result
     
     def get_pattern_coverage_analysis(self, queries: list) -> Dict[str, Any]:
         """
