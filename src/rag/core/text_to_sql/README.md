@@ -32,22 +32,58 @@ SQL query generation and execution with privacy controls:
 - **`AsyncSQLTool`**: LangChain-integrated SQL processing
 - **`SQLResult`**: Structured query result with execution metadata
 - **Security Features**: SQL injection prevention, dangerous keyword blocking
+- **Phase 3 Enhancement**: Query validation and auto-correction
 
 #### Key Functions
-- **`generate_sql()`**: Natural language to SQL conversion
+- **`generate_sql()`**: Natural language to SQL conversion with table guidance
 - **`execute_sql()`**: Safe query execution with result sanitisation
+- **`execute_sql_with_validation()`**: NEW - Query validation with auto-correction
 - **`process_question()`**: End-to-end question processing pipeline
+
+### `query_validator.py` (NEW - Phase 3)
+Advanced query logic validation and auto-correction:
+
+#### Core Classes
+- **`QueryLogicValidator`**: Pattern-based SQL validation and correction
+- **`ValidationIssue`**: Structured validation issue representation
+- **`ValidationResult`**: Comprehensive validation result with corrections
+
+#### Key Functions
+- **`validate_and_correct()`**: Main validation entry point with auto-correction
+- **`_fix_incorrect_table_join()`**: Corrects problematic table relationships
+- **`_fix_semantic_mismatch()`**: Fixes semantic SQL logic errors
+
+#### Validation Patterns
+- **Critical Issues**: Incorrect table joins, semantic mismatches
+- **Warning Issues**: Logical inconsistencies, potential table misuse
+- **Auto-Correction**: Automatic query fixing for critical issues
 
 ## Data Governance Features
 
 ### Privacy Controls
 
-#### Enhanced Schema Context (July 2025)
+#### Enhanced Schema Context (Phase 1 - July 2025)
 ```python
 # Enhanced table purpose guidance for accurate SQL generation
 schema_context = await schema_manager.get_schema_description()
 # Includes: Clear table usage guidance, feedback query routing, relationship mapping
 # Prevents: Incorrect table joins, semantic mismatches, empty result sets
+```
+
+#### Query Classification & Table Routing (Phase 2 - July 2025)
+```python
+# Intelligent table routing for feedback queries
+classification_result = await query_classifier.classify_enhanced(question)
+# Distinguishes: Content feedback (evaluation table) vs System feedback (rag_user_feedback table)
+# Prevents: Cross-domain table joins, semantic mismatches
+```
+
+#### Query Logic Validation (Phase 3 - July 2025)
+```python
+# Automatic query validation and correction
+validation_result = await query_validator.validate_and_correct(sql_query, question)
+# Detects: Critical logic errors, incorrect joins, semantic mismatches
+# Corrects: Table relationships, join conditions, column references
 ```
 
 **Table Usage Guidance**:
