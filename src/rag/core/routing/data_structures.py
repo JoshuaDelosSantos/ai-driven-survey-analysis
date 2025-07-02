@@ -91,6 +91,8 @@ class ClassificationResult:
         anonymized_query: PII-anonymized version of the original query
         pattern_matches: Pattern match counts by confidence level (for rule-based)
         calibration_reasoning: Reasoning for confidence calibration adjustments
+        feedback_table_suggestion: Suggested table for feedback queries (Phase 2 enhancement)
+        feedback_confidence: Confidence in feedback table classification (Phase 2 enhancement)
     """
     classification: ClassificationType
     confidence: ConfidenceLevel
@@ -100,6 +102,8 @@ class ClassificationResult:
     anonymized_query: Optional[str] = None
     pattern_matches: Optional[Dict[str, int]] = None
     calibration_reasoning: Optional[str] = None
+    feedback_table_suggestion: Optional[str] = None
+    feedback_confidence: Optional[float] = None
 
 
 class ClassificationMethod(Enum):
