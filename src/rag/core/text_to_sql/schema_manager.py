@@ -224,8 +224,8 @@ class SchemaManager:
         Returns:
             List[TableInfo]: Structured table information
         """
-        # Target tables for Phase 1 MVP
-        target_tables = ['users', 'learning_content', 'attendance']
+        # Target tables for RAG system (all tables)
+        target_tables = ['users', 'learning_content', 'attendance', 'evaluation', 'rag_embeddings', 'rag_user_feedback']
         table_info = []
         
         for table_name in target_tables:
@@ -296,22 +296,36 @@ class SchemaManager:
         schema_parts.extend([
             "IMPORTANT NOTES FOR SQL GENERATION:",
             "",
-            "1. ATTENDANCE STATUS VALUES:",
+            "1. TABLE USAGE GUIDANCE:",
+            "   - evaluation: Use for USER FEEDBACK about learning content/courses",
+            "   - rag_user_feedback: Use ONLY for feedback about this RAG system itself",
+            "   - attendance: Use for participation statistics and completion rates",
+            "   - users: Use for demographic analysis by agency and level",
+            "   - learning_content: Use for content categorization and metadata",
+            "   - rag_embeddings: Internal system table for vector search operations",
+            "",
+            "2. FEEDBACK QUERIES - CRITICAL:",
+            "   - For learning content feedback: Use evaluation table with learning_content join",
+            "   - For RAG system feedback: Use rag_user_feedback table only",
+            "   - Never join rag_user_feedback with learning_content (no logical relationship)",
+            "",
+            "3. ATTENDANCE STATUS VALUES:",
             "   - Use 'Completed' (capital C) for completed courses",
             "   - Use 'Enrolled' for active enrollments", 
             "   - Use 'Cancelled' for cancelled enrollments",
             "",
-            "2. COLUMN NAMES:",
+            "4. COLUMN NAMES:",
             "   - Use 'date_effective' (not date_start or date_end) for attendance dates",
             "   - Use 'learning_content_surrogate_key' to join with learning_content table",
             "   - Use 'status' column in attendance table for enrollment status",
+            "   - evaluation.general_feedback, .did_experience_issue_detail, .course_application_other for content feedback",
             "",
-            "3. COMMON QUERIES:",
+            "5. COMMON QUERIES:",
+            "   - Learning content feedback: evaluation e JOIN learning_content lc ON e.learning_content_surrogate_key = lc.surrogate_key",
             "   - To find completed courses: WHERE a.status = 'Completed'",
             "   - To join users and attendance: JOIN users u ON a.user_id = u.user_id",
-            "   - To join with learning content: JOIN learning_content lc ON a.learning_content_surrogate_key = lc.surrogate_key",
             "",
-            "4. PRIVACY PROTECTION:",
+            "6. PRIVACY PROTECTION:",
             "   - Never include PII in queries or results",
             "   - Aggregate data when possible (COUNT, GROUP BY)",
             "   - Free text columns may contain sensitive information",
@@ -326,7 +340,10 @@ class SchemaManager:
         descriptions = {
             'users': 'Australian Public Service staff members with their organisational level and agency affiliation',
             'learning_content': 'Available learning materials including courses, videos, and live sessions with target audience information',
-            'attendance': 'Records of user participation in learning content with completion status and dates'
+            'attendance': 'Records of user participation in learning content with completion status and dates',
+            'evaluation': 'Post-course evaluation responses from users about their learning experience and content quality',
+            'rag_embeddings': 'Vector embeddings of evaluation text for semantic search (internal system table)',
+            'rag_user_feedback': 'Feedback about this RAG system performance (NOT about learning content)'
         }
         return descriptions.get(table_name, f"Database table: {table_name}")
     
