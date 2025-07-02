@@ -254,3 +254,22 @@ asyncio.run(test_security())
 **Compliance Status**: APP Aligned  
 **Privacy Framework**: Schema-Only Processing  
 **Test Coverage**: 100% (Text-to-SQL)
+
+## Query Classification Enhancement ✅
+
+### Table-Specific Feedback Classification
+
+The text-to-SQL system now includes sophisticated feedback table classification to address the critical issue where LLM was incorrectly joining `rag_user_feedback` with `learning_content`.
+
+**Key Enhancement**: `FeedbackTableClassifier` in `aps_patterns.py`
+- Distinguishes between content feedback (evaluation table) vs system feedback (rag_user_feedback table)
+- 20+ regex patterns for content feedback detection
+- 11+ regex patterns for system feedback detection
+- Provides table recommendations with confidence scores
+
+**SQL Generation Enhancement**: 
+- Enhanced prompts with critical feedback table guidance
+- Specific instructions to NEVER join `rag_user_feedback` with `learning_content`
+- Table-specific guidance based on classification results
+
+**Impact**: Resolves the core issue where queries like "What feedback did users give about courses?" would incorrectly use `rag_user_feedback` instead of `evaluation` table.
