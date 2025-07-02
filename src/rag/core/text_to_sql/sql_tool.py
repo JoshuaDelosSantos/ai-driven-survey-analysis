@@ -31,6 +31,7 @@ from langchain_core.tools import BaseTool
 from langchain.schema import AgentAction, AgentFinish
 
 from .schema_manager import SchemaManager
+from .query_validator import QueryLogicValidator
 from ...config.settings import get_settings
 
 
@@ -39,13 +40,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass 
 class SQLResult:
-    """Result of SQL query execution."""
+    """Result of SQL query execution with Phase 3 validation metadata."""
     query: str
     result: Any
     execution_time: float
     success: bool
     error: Optional[str] = None
     row_count: Optional[int] = None
+    validation_applied: bool = False
+    original_query: Optional[str] = None
+    validation_issues: Optional[List] = None
 
 
 class AsyncSQLTool:
@@ -68,12 +72,15 @@ class AsyncSQLTool:
         self.max_retries = max_retries
         self.settings = get_settings()
         
-        # Initialie components
+        # Initialize components
         self._db: Optional[SQLDatabase] = None
         self._schema_manager: Optional[SchemaManager] = None
         self._query_tool: Optional[QuerySQLDatabaseTool] = None
         self._checker_tool: Optional[QuerySQLCheckerTool] = None
         self._info_tool: Optional[InfoSQLDatabaseTool] = None
+        
+        # Phase 3 Enhancement: Query validation
+        self._query_validator: Optional[QueryLogicValidator] = None
         
     async def initialize(self) -> None:
         """
@@ -105,6 +112,9 @@ class AsyncSQLTool:
                 None,
                 lambda: InfoSQLDatabaseTool(db=self._db, verbose=True)
             )
+            
+            # Phase 3 Enhancement: Initialize query validator
+            self._query_validator = QueryLogicValidator()
             
             logger.info("SQL tool initialized successfully")
             
@@ -427,7 +437,10 @@ SPECIFIC GUIDANCE FOR THIS QUERY (Confidence: {confidence:.2f}):
         query_upper = sql_query.upper()
         
         for keyword in dangerous_keywords:
-            if keyword in query_upper:
+            # Use word boundaries to avoid false positives (e.g., "CREATE" in "created_at")
+            import re
+            pattern = r'\b' + keyword + r'\b'
+            if re.search(pattern, query_upper):
                 logger.warning(f"Dangerous keyword '{keyword}' found in query")
                 return False
         
@@ -458,7 +471,83 @@ SPECIFIC GUIDANCE FOR THIS QUERY (Confidence: {confidence:.2f}):
         self._db = None
         
         logger.info("SQL tool resources cleaned up")
-
+    
+    async def execute_sql_with_validation(
+        self, 
+        sql_query: str, 
+        original_question: str,
+        classification_result: Optional[Any] = None
+    ) -> SQLResult:
+        """
+        Execute SQL query with Phase 3 logical validation and auto-correction.
+        
+        Args:
+            sql_query: Generated SQL query to execute
+            original_question: Original natural language question
+            classification_result: Optional classification result with table guidance
+            
+        Returns:
+            SQLResult with validation metadata and corrected query if needed
+        """
+        if not self._query_validator:
+            await self.initialize()
+        
+        start_time = time.time()
+        original_query = sql_query
+        validation_applied = False
+        validation_issues = []
+        
+        try:
+            # Phase 3 Enhancement: Validate query logic
+            validation_result = await self._query_validator.validate_and_correct(
+                sql_query, original_question, classification_result
+            )
+            
+            validation_issues = [
+                {
+                    "type": issue.issue_type,
+                    "description": issue.description,
+                    "severity": issue.severity,
+                    "suggestion": issue.suggestion
+                }
+                for issue in validation_result.issues
+            ]
+            
+            if not validation_result.valid and validation_result.should_retry:
+                logger.warning(f"Query validation failed: {validation_result.reasoning}")
+                logger.info("Attempting query auto-correction...")
+                
+                # Use corrected query
+                sql_query = validation_result.corrected_query
+                validation_applied = True
+                
+                logger.info(f"Applied validation correction")
+                logger.debug(f"Original: {original_query}")
+                logger.debug(f"Corrected: {sql_query}")
+            
+            # Execute the (possibly corrected) query
+            execution_result = await self.execute_sql(sql_query)
+            
+            # Add validation metadata to result
+            execution_result.validation_applied = validation_applied
+            execution_result.original_query = original_query if validation_applied else None
+            execution_result.validation_issues = validation_issues
+            
+            return execution_result
+            
+        except Exception as e:
+            logger.error(f"SQL execution with validation failed: {e}")
+            return SQLResult(
+                query=sql_query,
+                result=None,
+                execution_time=time.time() - start_time,
+                success=False,
+                error=str(e),
+                validation_applied=validation_applied,
+                original_query=original_query if validation_applied else None,
+                validation_issues=validation_issues
+            )
+        
 
 # LangGraph Node Wrapper (Simple single-node graph for MVP)
 class SQLToolNode:
