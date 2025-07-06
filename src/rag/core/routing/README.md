@@ -12,7 +12,8 @@ The `src/rag/core/routing` module implements **sophisticated modular query class
 
 ### Enhanced Modular Classification Architecture (Phase 3)
 
-#### Multi-Stage Classification Pipeline with Enhanced Pattern Matching
+#### Multi-Stage Classification Pipeline with Enhanced Pattern Matching & Conversational Intelligence
+- **Conversational Pattern Detection**: Advanced recognition of greetings, system inquiries, and social interactions ✅ **NEW**
 - **Advanced Pattern Matching**: Refined APS-specific pattern recognition with optimised confidence scoring ✅ Enhanced
 - **LLM-Based Analysis**: Sophisticated natural language understanding with structured prompts and feedback integration
 - **Enhanced Confidence Calibration**: Dynamic confidence adjustment based on query complexity and user feedback history ✅ Enhanced
@@ -136,6 +137,7 @@ def get_delay(attempt: int) -> float
 ### Enhanced Classification Types & Routing Logic
 
 #### Primary Classifications
+- **CONVERSATIONAL**: Queries requiring social interaction, greetings, or system information ✅ **NEW**
 - **SQL**: Queries requiring statistical analysis, aggregations, or structured data retrieval
 - **VECTOR**: Queries seeking qualitative feedback or user experiences  
 - **HYBRID**: Complex queries requiring both statistical and qualitative insights
