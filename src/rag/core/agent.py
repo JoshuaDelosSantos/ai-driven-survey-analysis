@@ -160,6 +160,7 @@ class AgentState(TypedDict):
     # Metadata
     processing_time: Optional[float]
     tools_used: List[str]
+    start_time: Optional[float]  # Add start_time tracking for conversational timing
 
 
 @dataclass
@@ -376,7 +377,8 @@ class RAGAgent:
                 "requires_clarification": False,
                 "user_feedback": None,
                 "processing_time": None,
-                "tools_used": initial_state.get("tools_used", [])
+                "tools_used": initial_state.get("tools_used", []),
+                "start_time": start_time  # Add start_time for processing tracking
             })
             
             # Process through LangGraph
@@ -1028,6 +1030,68 @@ class RAGAgent:
             )
         
         return base_message + specific_message
+    
+    async def _conversational_node(self, state: AgentState) -> AgentState:
+        """
+        Process conversational queries using the conversational handler.
+        
+        Handles greetings, system questions, off-topic queries, and other
+        conversational interactions with appropriate responses.
+        """
+        logger.info("Processing conversational query...")
+        
+        try:
+            if not self._conversational_handler:
+                raise RuntimeError("Conversational handler not initialized")
+            
+            # Use the conversational handler to process the query
+            response = self._conversational_handler.handle_conversational_query(state["query"])
+            
+            # Calculate processing time
+            start_time = state.get("start_time", 0)
+            processing_time = time.time() - start_time if start_time else 0
+            
+            # Build final response state
+            final_state = {
+                **state,
+                "final_answer": response.content,
+                "sources": ["Conversational AI"],
+                "tools_used": state["tools_used"] + ["conversational"],
+                "processing_time": processing_time,
+                "requires_clarification": False,
+                "error": None,
+                "classification": "CONVERSATIONAL",
+                "confidence": "HIGH" if response.confidence > 0.7 else "MEDIUM",
+                "conversational_pattern": response.pattern_type.value if response.pattern_type else "unknown",
+                "pattern_confidence": response.confidence
+            }
+            
+            # Add suggested queries if available
+            if response.suggested_queries:
+                final_state["suggested_queries"] = response.suggested_queries
+            
+            logger.info(f"Conversational query processed successfully with pattern: {response.pattern_type}")
+            return final_state
+            
+        except Exception as e:
+            logger.error(f"Conversational processing failed: {e}")
+            
+            # Return error state with fallback conversational response
+            return {
+                **state,
+                "final_answer": (
+                    "I apologize, but I'm having trouble with conversational processing right now. "
+                    "However, I'm still ready to help you analyse your survey and training data. "
+                    "What would you like to know about your data?"
+                ),
+                "sources": ["Error Handler"],
+                "tools_used": state["tools_used"] + ["conversational_error"],
+                "processing_time": time.time() - state.get("start_time", 0),
+                "requires_clarification": False,
+                "error": f"Conversational processing error: {str(e)}",
+                "classification": "CONVERSATIONAL",
+                "confidence": "LOW"
+            }
     
     def _route_after_classification(self, state: AgentState) -> str:
         """
