@@ -50,7 +50,7 @@ from datetime import datetime, timedelta
 
 
 # Type definitions
-ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED"]
+ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED", "CONVERSATIONAL"]
 ConfidenceLevel = Literal["HIGH", "MEDIUM", "LOW"]
 
 
@@ -98,7 +98,7 @@ class ClassificationResult:
     confidence: ConfidenceLevel
     reasoning: str
     processing_time: float
-    method_used: Literal["rule_based", "llm_based", "fallback"]
+    method_used: Literal["rule_based", "llm_based", "fallback", "conversational"]
     anonymized_query: Optional[str] = None
     pattern_matches: Optional[Dict[str, int]] = None
     calibration_reasoning: Optional[str] = None
