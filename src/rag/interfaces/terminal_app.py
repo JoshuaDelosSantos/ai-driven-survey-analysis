@@ -342,7 +342,6 @@ class TerminalApp:
             # Vector Search examples - focusing on main feedback fields
             "What general feedback did users provide about their learning experience?",
             "What issues did users experience during their training?", 
-            "How do users describe applying course content to their APS work?",
             "What are the main themes in user feedback about virtual learning delivery?",
             
             # Hybrid Analysis examples - combining metrics with feedback insights
