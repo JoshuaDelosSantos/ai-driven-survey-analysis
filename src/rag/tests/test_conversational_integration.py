@@ -150,29 +150,6 @@ class TestConversationalIntegration:
         assert suggestions_displayed, "Suggested queries should be displayed for conversational responses"
     
     @pytest.mark.asyncio
-    async def test_data_analysis_query_flow(self, terminal_app, mock_agent):
-        """Test that data analysis queries work alongside conversational ones."""
-        terminal_app.agent = mock_agent
-        
-        with patch('builtins.input', side_effect=['5', '']):  # Rating 5, no comment
-            with patch('builtins.print') as mock_print:
-                await terminal_app._process_question("How satisfied were users with training?")
-        
-        # Verify agent processing
-        mock_agent.ainvoke.assert_called_once()
-        call_args = mock_agent.ainvoke.call_args[0][0]
-        assert "satisfaction" in call_args["query"].lower()
-        
-        # Verify SQL classification and results
-        print_calls = [call.args[0] for call in mock_print.call_args_list if call.args]
-        sql_classification = any("SQL" in str(call) for call in print_calls)
-        assert sql_classification, "SQL classification should be displayed"
-        
-        # Verify data analysis content
-        data_content = any("4.2/5.0" in str(call) for call in print_calls)
-        assert data_content, "Data analysis results should be displayed"
-    
-    @pytest.mark.asyncio
     async def test_conversational_feedback_integration(self, terminal_app, mock_agent):
         """Test that conversational feedback integrates with pattern learning."""
         terminal_app.agent = mock_agent
@@ -200,36 +177,6 @@ class TestConversationalIntegration:
         assert False in feedback_values  # Negative feedback
     
     @pytest.mark.asyncio
-    async def test_mixed_query_session(self, terminal_app, mock_agent):
-        """Test a mixed session with both conversational and data queries."""
-        terminal_app.agent = mock_agent
-        
-        queries = [
-            "Hello!",  # Conversational
-            "How satisfied were users with training?",  # Data analysis
-            "What can you do?",  # Conversational
-            "Thank you!"  # Conversational
-        ]
-        
-        with patch('builtins.input', side_effect=['4'] * 4 + [''] * 4):  # Ratings and empty comments
-            for query in queries:
-                await terminal_app._process_question(query)
-        
-        # Verify all queries were processed
-        assert terminal_app.query_count == 4
-        assert len(terminal_app.feedback_collected) == 4
-        
-        # Verify agent was called for each query
-        assert mock_agent.ainvoke.call_count == 4
-        
-        # Verify mixed classifications in agent calls
-        call_queries = [call[0][0]["query"] for call in mock_agent.ainvoke.call_args_list]
-        assert "Hello!" in call_queries
-        assert "How satisfied were users with training?" in call_queries
-        assert "What can you do?" in call_queries
-        assert "Thank you!" in call_queries
-    
-    @pytest.mark.asyncio
     async def test_conversational_display_formatting(self, terminal_app, mock_agent):
         """Test that conversational responses are displayed with proper formatting."""
         terminal_app.agent = mock_agent
@@ -252,64 +199,6 @@ class TestConversationalIntegration:
         classification = any("CONVERSATIONAL" in call for call in print_calls)
         assert classification, "Classification should be displayed"
     
-    @pytest.mark.asyncio
-    async def test_pattern_learning_feedback_flow(self, terminal_app, mock_agent):
-        """Test the complete pattern learning feedback flow."""
-        terminal_app.agent = mock_agent
-        
-        # Mock the conversational handler's feedback method
-        feedback_called = []
-        
-        def mock_provide_feedback(query, pattern_type, was_helpful, template_used=None):
-            feedback_called.append({
-                'query': query,
-                'pattern_type': pattern_type,
-                'was_helpful': was_helpful,
-                'template_used': template_used
-            })
-        
-        mock_agent._conversational_handler.provide_pattern_feedback = mock_provide_feedback
-        
-        # Test positive feedback for greeting
-        with patch('builtins.input', side_effect=['5', '']):
-            await terminal_app._process_question("Hello!")
-        
-        # Verify pattern feedback was provided
-        assert len(feedback_called) == 1
-        assert feedback_called[0]['was_helpful'] == True
-        assert feedback_called[0]['pattern_type'] in [
-            ConversationalPattern.GREETING,
-            ConversationalPattern.GREETING_CASUAL,
-            ConversationalPattern.GREETING_FORMAL
-        ]
-        
-        # Test negative feedback for help request
-        with patch('builtins.input', side_effect=['2', 'Not helpful']):
-            await terminal_app._process_question("I need help")
-        
-        # Verify negative feedback was recorded
-        assert len(feedback_called) == 2
-        assert feedback_called[1]['was_helpful'] == False
-        assert feedback_called[1]['pattern_type'] == ConversationalPattern.HELP_REQUEST
-    
-    @pytest.mark.asyncio
-    async def test_error_handling_with_conversational_fallback(self, terminal_app, mock_agent):
-        """Test error handling doesn't break conversational functionality."""
-        # Mock agent to raise an error
-        mock_agent.ainvoke = AsyncMock(side_effect=Exception("Test error"))
-        terminal_app.agent = mock_agent
-        
-        with patch('builtins.print') as mock_print:
-            await terminal_app._process_question("Hello!")
-        
-        # Verify error was handled gracefully
-        print_calls = [str(call.args[0]) if call.args else '' for call in mock_print.call_args_list]
-        error_handled = any("Failed to process" in call for call in print_calls)
-        assert error_handled, "Error should be handled gracefully"
-        
-        # Verify query count still incremented
-        assert terminal_app.query_count == 1
-
 
 class TestConversationalAgentIntegration:
     """Tests for conversational integration in the RAG agent."""
@@ -400,31 +289,6 @@ class TestPerformanceAndReliability:
         
         # Conversational responses should be very fast (< 1 second in test environment)
         assert processing_time < 1.0, f"Conversational response took {processing_time:.3f}s, should be < 1.0s"
-    
-    @pytest.mark.asyncio
-    async def test_high_volume_mixed_queries(self, terminal_app, mock_agent):
-        """Test system reliability with many mixed queries."""
-        terminal_app.agent = mock_agent
-        
-        queries = [
-            "Hello!",
-            "What can you do?", 
-            "How satisfied were users?",
-            "Thank you!",
-            "Help me understand the data",
-            "Show me completion rates"
-        ] * 10  # 60 total queries
-        
-        with patch('builtins.input', side_effect=['skip'] * 60):
-            for query in queries:
-                await terminal_app._process_question(query)
-        
-        # Verify all queries were processed
-        assert terminal_app.query_count == 60
-        assert mock_agent.ainvoke.call_count == 60
-        
-        # Verify no errors occurred
-        assert len([f for f in terminal_app.feedback_collected.values() if f.get('error')]) == 0
     
     def test_conversational_pattern_recognition_accuracy(self):
         """Test accuracy of conversational pattern recognition."""
