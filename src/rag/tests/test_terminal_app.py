@@ -23,11 +23,9 @@ import sys
 import uuid
 import asyncio
 
-# Add project root and src directory to path for imports
+# Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent.parent
-src_root = project_root / "src"
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(src_root))
 
 from src.rag.interfaces.terminal_app import TerminalApp
 from src.rag.core.agent import RAGAgent, AgentConfig
@@ -974,9 +972,8 @@ Recent Comments (2):
         """Test that example queries are APS-specific and contextually appropriate."""
         app = TerminalApp(enable_agent=True)
         
-        # APS-specific terms that should appear (expanded list)
-        aps_terms = ["aps", "agency", "level", "virtual", "learning", "completion", "attendance", 
-                     "training", "content", "delivery", "classification", "feedback", "course"]
+        # APS-specific terms that should appear
+        aps_terms = ["agency", "level", "virtual", "learning", "completion", "attendance"]
         
         # Count APS-specific queries
         aps_specific_count = 0
@@ -985,8 +982,8 @@ Recent Comments (2):
             if any(term in query_lower for term in aps_terms):
                 aps_specific_count += 1
         
-        # At least 75% of queries should be APS-specific (more realistic threshold)
-        assert aps_specific_count >= len(app.example_queries) * 0.75
+        # At least 80% of queries should be APS-specific
+        assert aps_specific_count >= len(app.example_queries) * 0.8
     
     @pytest.mark.asyncio
     async def test_example_queries_categorisation(self):
@@ -1007,17 +1004,15 @@ Recent Comments (2):
         feedback_examples = app.example_queries[4:8]
         for query in feedback_examples:
             query_lower = query.lower()
-            # Should contain feedback/opinion terms (updated to match actual examples)
-            assert any(term in query_lower for term in ["feedback", "feel", "concerns", "experiences", 
-                                                       "comments", "issues", "describe", "themes"])
+            # Should contain feedback/opinion terms
+            assert any(term in query_lower for term in ["feedback", "feel", "concerns", "experiences", "comments"])
         
         # Remaining should be hybrid analysis
         hybrid_examples = app.example_queries[8:]
         for query in hybrid_examples:
             query_lower = query.lower()
-            # Should contain analysis/comprehensive terms (updated to match actual examples)
-            assert any(term in query_lower for term in ["analyse", "analysis", "comprehensive", "compare", "trends", 
-                                                       "show", "provide", "patterns", "effectiveness"])
+            # Should contain analysis/comprehensive terms
+            assert any(term in query_lower for term in ["analyse", "analysis", "comprehensive", "compare", "trends"])
     
     @pytest.mark.asyncio
     async def test_help_command_integration(self, mock_create_rag_agent, mock_settings):
@@ -1095,57 +1090,59 @@ Recent Comments (2):
     
     @pytest.mark.asyncio
     async def test_metadata_logging_integration(self, mock_create_rag_agent, mock_settings):
-        """Test that metadata logging integration works without errors."""
+        """Test that metadata is properly passed to logging system."""
         app = TerminalApp(enable_agent=True)
         
-        # Simplified test - just verify the feature works without errors
         with patch('src.rag.interfaces.terminal_app.create_rag_agent', mock_create_rag_agent), \
              patch('src.rag.interfaces.terminal_app.get_settings', return_value=mock_settings), \
-             patch.object(app, '_collect_feedback') as mock_collect_feedback:
+             patch('src.rag.utils.logging_utils.get_logger') as mock_get_logger:
             
-            # Manually set the mocked components properly
+            mock_logger = MagicMock()
+            mock_get_logger.return_value = mock_logger
+            
             app.settings = mock_settings
+            app.agent = mock_create_rag_agent
             app.feedback_collector = MagicMock()
             app.feedback_analytics = MagicMock()
             
-            # Initialize app to set up agent
-            await app.initialize()
-            
-            # Test processing a question - should not raise errors with metadata logging
+            # Test processing a question with metadata
             await app._process_question("How many users completed training?")
             
-            # Verify the process completed successfully (we can see in logs it worked)
-            assert app.query_count > 0  # Query was processed
-            assert app.agent is not None  # Agent mode is working
+            # Verify logger.log_user_query was called with metadata
+            mock_logger.log_user_query.assert_called()
+            
+            # Check that metadata parameter was included in the call
+            call_args = mock_logger.log_user_query.call_args
+            assert 'metadata' in call_args.kwargs
+            
+            # Verify metadata contains expected fields
+            metadata = call_args.kwargs['metadata']
+            assert 'classification' in metadata
+            assert 'confidence' in metadata
+            assert 'tools_used' in metadata
+            assert 'requires_clarification' in metadata
     
     @pytest.mark.asyncio
     async def test_legacy_mode_logging_backward_compatibility(self, mock_sql_tool):
         """Test that legacy SQL-only mode still works with logging."""
         app = TerminalApp(enable_agent=False)
         
-        # Mock the display methods to avoid missing method errors
         with patch('src.rag.interfaces.terminal_app.AsyncSQLTool', return_value=mock_sql_tool), \
              patch('src.rag.interfaces.terminal_app.get_llm'), \
-             patch('builtins.print'):  # Mock print to avoid display issues
+             patch('src.rag.utils.logging_utils.get_logger') as mock_get_logger:
+            
+            mock_logger = MagicMock()
+            mock_get_logger.return_value = mock_logger
             
             await app.initialize()
             
-            # Mock SQL result to avoid display method issues
-            mock_result = MagicMock()
-            mock_result.success = True
-            mock_result.result = [{"count": 10}]
-            mock_result.query = "SELECT COUNT(*) FROM users"
-            mock_result.processing_time = 0.5
-            mock_sql_tool.process_question.return_value = mock_result
-            
-            # Mock the missing display methods
-            app._display_success_result = MagicMock()
-            app._display_error_result = MagicMock()
-            
-            # Test processing a question in legacy mode - should not raise errors
+            # Test processing a question in legacy mode
             await app._process_question("How many users completed training?")
             
-            # Verify basic functionality works
-            assert app.enable_agent is False  # Legacy mode
-            assert app.sql_tool is not None  # SQL tool initialized
-            assert mock_sql_tool.process_question.called  # Question was processed
+            # Verify logger.log_user_query was called without metadata (backward compatibility)
+            mock_logger.log_user_query.assert_called()
+            
+            # Check that the call works without metadata parameter
+            call_args = mock_logger.log_user_query.call_args
+            # Should work with or without metadata parameter
+            assert call_args is not None

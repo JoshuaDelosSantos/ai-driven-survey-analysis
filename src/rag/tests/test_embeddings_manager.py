@@ -284,8 +284,7 @@ class TestVectorSearch:
         assert len(results) > 0
         assert all("similarity_score" in result for result in results)
         assert all(result["field_name"] == field_name for result in results)
-        # Check that we have at least one result from our response_id
-        assert any(result["response_id"] == response_id for result in results)
+        assert all(result["response_id"] == response_id for result in results)
         
         # Cleanup
         await embeddings_manager.delete_embeddings(response_id=response_id)

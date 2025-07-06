@@ -66,7 +66,7 @@ def test_imports():
         print("✅ SearchParameters instantiation OK")
         assert params.query == "test query", "SearchParameters query not set correctly"
         assert params.max_results == 10, "SearchParameters default max_results incorrect"
-        assert params.similarity_threshold == 0.65, "SearchParameters default similarity_threshold incorrect"
+        assert params.similarity_threshold == 0.75, "SearchParameters default similarity_threshold incorrect"
         
         # Test validation
         params.validate()  # Should not raise
