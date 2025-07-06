@@ -113,6 +113,7 @@ from .vector_search.search_result import VectorSearchResponse
 from .privacy.pii_detector import AustralianPIIDetector
 from .routing.query_classifier import QueryClassifier
 from .synthesis.answer_generator import AnswerGenerator
+from .conversational.handler import ConversationalHandler
 from ..utils.llm_utils import get_llm
 from ..utils.logging_utils import get_logger
 from ..config.settings import get_settings
@@ -122,7 +123,7 @@ logger = get_logger(__name__)
 
 
 # Type definitions for agent state management
-ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED"]
+ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED", "CONVERSATIONAL"]
 ConfidenceLevel = Literal["HIGH", "MEDIUM", "LOW"]
 
 
@@ -201,6 +202,7 @@ class RAGAgent:
         self._pii_detector: Optional[AustralianPIIDetector] = None
         self._query_classifier: Optional[QueryClassifier] = None
         self._answer_generator: Optional[AnswerGenerator] = None
+        self._conversational_handler: Optional[ConversationalHandler] = None
         
         # LangGraph workflow
         self._graph: Optional[StateGraph] = None
@@ -233,6 +235,10 @@ class RAGAgent:
             
             # Initialize tools
             await self._initialize_tools()
+            
+            # Initialize conversational handler
+            self._conversational_handler = ConversationalHandler()
+            logger.info("Conversational handler initialized successfully")
             
             # Initialize PII detection
             if self.config.pii_detection_required:
@@ -293,6 +299,7 @@ class RAGAgent:
             workflow.add_node("sql_tool", self._sql_tool_node)
             workflow.add_node("vector_search_tool", self._vector_search_tool_node)
             workflow.add_node("hybrid_processing", self._hybrid_processing_node)
+            workflow.add_node("conversational", self._conversational_node)
             workflow.add_node("synthesis", self._synthesis_node)
             workflow.add_node("clarification", self._clarification_node)
             workflow.add_node("error_handling", self._error_handling_node)
@@ -308,6 +315,7 @@ class RAGAgent:
                     "sql": "sql_tool",
                     "vector": "vector_search_tool",
                     "hybrid": "hybrid_processing",
+                    "conversational": "conversational",
                     "clarification": "clarification",
                     "error": "error_handling"
                 }
@@ -320,6 +328,7 @@ class RAGAgent:
             
             # Add final edges
             workflow.add_edge("synthesis", END)
+            workflow.add_edge("conversational", END)  # Conversational responses are complete
             workflow.add_edge("clarification", END)
             workflow.add_edge("error_handling", END)
             
@@ -1036,6 +1045,8 @@ class RAGAgent:
         # Route based on classification and confidence
         if confidence == "LOW" or classification == "CLARIFICATION_NEEDED":
             return "clarification"
+        elif classification == "CONVERSATIONAL":
+            return "conversational"
         elif classification == "SQL":
             return "sql"
         elif classification == "VECTOR":
