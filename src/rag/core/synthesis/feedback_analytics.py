@@ -16,7 +16,7 @@ Performance: Efficient queries with configurable limits.
 Privacy: Only accesses anonymised content for reporting.
 
 Example Usage:
-    from ...db import db_connector
+    from db import db_connector
     
     # Initialize analytics
     analytics = FeedbackAnalytics()
@@ -36,7 +36,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 
 # Import using absolute path from project structure
-from src.db import db_connector
+from db import db_connector
 
 logger = logging.getLogger(__name__)
 

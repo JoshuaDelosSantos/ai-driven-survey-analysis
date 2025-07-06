@@ -41,7 +41,7 @@ from typing import Optional, List
 from pathlib import Path
 
 # Import using absolute path from project structure
-from src.db import db_connector
+from db import db_connector
 
 logger = logging.getLogger(__name__)
 
