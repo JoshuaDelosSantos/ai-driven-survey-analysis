@@ -546,7 +546,7 @@ class TerminalApp:
                 else:
                     await self._display_agent_success(result, processing_time)
                     
-                    # Collect feedback for successful responses
+                    # Collect feedback for successful responses (including conversational)
                     await self._collect_feedback(query_id, result)
                 
                 # Log query with agent metadata
@@ -627,7 +627,7 @@ class TerminalApp:
             }
     
     async def _display_agent_success(self, result: Dict[str, Any], processing_time: float) -> None:
-        """Display successful RAG agent result."""
+        """Display successful RAG agent result with enhanced conversational support."""
         print("✅ Query processed successfully!")
         print()
         
@@ -640,12 +640,33 @@ class TerminalApp:
         print(f"🔧 Tools Used: {', '.join(tools_used)}")
         print()
         
-        # Display the synthesized answer
+        # Display the synthesized answer with special handling for conversational responses
         final_answer = result.get('final_answer', 'No answer generated')
-        print("📋 Analysis Result:")
-        print("-" * 50)
-        print(final_answer)
-        print("-" * 50)
+        
+        if classification == "CONVERSATIONAL":
+            # Enhanced display for conversational responses
+            print("💬 Conversational Response:")
+            print("-" * 50)
+            print(final_answer)
+            print("-" * 50)
+            
+            # Show suggested data analysis queries for conversational interactions
+            suggested_queries = [
+                "How satisfied were users with their training experience?",
+                "What feedback did users provide about virtual learning?",
+                "Show me training completion rates by agency",
+                "What are the main themes in user feedback?"
+            ]
+            
+            print("\n💡 You might also be interested in:")
+            for i, suggestion in enumerate(suggested_queries[:3], 1):
+                print(f"   {i}. {suggestion}")
+        else:
+            # Standard display for data analysis responses
+            print("📋 Analysis Result:")
+            print("-" * 50)
+            print(final_answer)
+            print("-" * 50)
         
         # Show sources if available
         sources = result.get('sources', [])
@@ -742,9 +763,10 @@ class TerminalApp:
     
     async def _collect_feedback(self, query_id: str, result: Dict[str, Any]) -> None:
         """
-        Collect detailed user feedback using the enhanced feedback system.
+        Collect detailed user feedback with enhanced conversational pattern learning integration.
         
-        Uses 1-5 scale rating with optional comments and database storage.
+        Uses 1-5 scale rating with optional comments, database storage, and
+        conversational pattern learning feedback for continuous improvement.
         """
         try:
             # Check if feedback collection is enabled
@@ -774,6 +796,46 @@ class TerminalApp:
                         
                 except ValueError:
                     print("Please enter a number between 1 and 5, or 'skip'")
+            
+            # Determine if response was helpful (4-5 considered helpful)
+            was_helpful = rating >= 4
+            
+            # If this was a conversational response, provide feedback to the conversational handler
+            if result.get('classification') == 'CONVERSATIONAL' and self.agent and self.agent._conversational_handler:
+                try:
+                    # Extract conversational pattern information from the response
+                    query_text = result.get('query', 'Unknown query')
+                    response_content = result.get('final_answer', '')
+                    
+                    # Try to determine the pattern type (this would ideally be passed from the agent)
+                    # For now, we'll do a simple classification for feedback
+                    from src.rag.core.conversational.handler import ConversationalPattern
+                    
+                    # Simple pattern detection for feedback purposes
+                    query_lower = query_text.lower()
+                    if any(word in query_lower for word in ['hello', 'hi', 'hey', 'good morning', 'good afternoon']):
+                        pattern_type = ConversationalPattern.GREETING
+                    elif any(word in query_lower for word in ['what can you do', 'capabilities', 'what are you']):
+                        pattern_type = ConversationalPattern.SYSTEM_QUESTION_CAPABILITIES
+                    elif any(word in query_lower for word in ['thank', 'thanks', 'appreciate']):
+                        pattern_type = ConversationalPattern.POLITENESS_THANKS
+                    elif any(word in query_lower for word in ['help', 'how do i']):
+                        pattern_type = ConversationalPattern.HELP_REQUEST
+                    else:
+                        pattern_type = ConversationalPattern.UNKNOWN
+                    
+                    # Provide feedback to conversational handler for pattern learning
+                    self.agent._conversational_handler.provide_pattern_feedback(
+                        query=query_text,
+                        pattern_type=pattern_type,
+                        was_helpful=was_helpful,
+                        template_used=response_content[:50]  # First 50 chars as template identifier
+                    )
+                    
+                    logger.info(f"Conversational pattern feedback provided: {pattern_type.value} = {'helpful' if was_helpful else 'not helpful'}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to provide conversational pattern feedback: {e}")
             
             # Get optional comment
             print()
