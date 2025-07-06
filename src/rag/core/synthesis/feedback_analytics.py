@@ -36,7 +36,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 
 # Import using absolute path from project structure
-from db import db_connector
+from src.db import db_connector
 
 logger = logging.getLogger(__name__)
 
