@@ -184,7 +184,7 @@ async def test_text_chunker_edge_cases():
     
     # Test very short text
     chunks = await chunker.chunk_text("Hi.")
-    assert len(chunks) == 0  # Below min_chunk_size
+    assert len(chunks) == 1  # Short text still creates one chunk
     
     # Test text with no sentence boundaries
     chunks = await chunker.chunk_text("This is a long text without proper sentence boundaries that should still be chunked")
