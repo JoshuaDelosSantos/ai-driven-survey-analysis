@@ -5,6 +5,7 @@ This directory contains the core Retrieval-Augmented Generation functionality fo
 ## Overview
 
 The core module implements the central RAG pipeline with privacy-first design:
+- **Conversational Intelligence**: Advanced pattern recognition with Australian-friendly responses ✅ **NEW**
 - **LangGraph Agent Orchestration**: Intelligent query routing and processing coordination ✅ **NEW**
 - **Text-to-SQL Translation**: LangChain-powered natural language query understanding and SQL generation
 - **Vector Search Integration**: Semantic search over user feedback with advanced metadata filtering ✅ **NEW**
@@ -24,6 +25,10 @@ core/
 ├── __init__.py                 # Core module initialisation
 ├── agent.py                   # LangGraph agent orchestrator ✅ NEW  
 ├── README.md                  # This documentation
+├── conversational/            # Conversational intelligence system ✅ NEW
+│   ├── __init__.py
+│   ├── README.md             # Conversational intelligence documentation
+│   └── handler.py            # Pattern recognition and response generation
 ├── privacy/                   # Australian PII detection and anonymisation ✅ NEW
 │   ├── __init__.py
 │   ├── README.md             # Privacy module documentation
@@ -163,7 +168,6 @@ core/
 │    ├─ Comprehensive audit logging with PII masking         │
 │    └─ Structured response formatting with privacy compliance│
 └─────────────────────────────────────────────────────────────┘
-```
         """
         Process natural language question with security validation.
         
@@ -213,139 +217,61 @@ def _is_safe_query(self, sql_query: str) -> bool:
     # Implementation complete with comprehensive validation
 ```
 
-## Enhanced Data Flow Architecture
+### Phase 3: Conversational Intelligence (Complete) ✅ **NEW**
 
-### Enhanced Processing Pipeline (Phase 2 Complete)
+#### ✅ Conversational Handler (`conversational/handler.py`)
+- **`ConversationalHandler`**: Advanced pattern recognition with Australian-friendly responses
+- **Pattern Categories**: 25+ conversation patterns including greetings, system inquiries, social interactions
+- **Response Generation**: Multi-variant Australian templates with context-aware selection
+- **Learning System**: Feedback-driven pattern recognition with continuous improvement
+- **Privacy Integration**: All conversational data processed with mandatory PII protection
 
-```
-User Query → PII Detection → Input Validation → Schema Provision → PII-Safe LLM → SQL Generation → Query Validation → Execution → Result PII Check → Response
-     ↓           ↓               ↓                ↓               ↓              ↓               ↓             ↓            ↓                 ↓
-Audit Log   AU Entity Mask  Security Check   Privacy Filter   External API   Injection Check   Read-Only   Sanitisation  AU PII Protection  User Response
-```
-
-### Enhanced Governance Checkpoints (Phase 2 Complete)
-
-1. **✅ Australian PII Detection**: Mandatory ABN, ACN, TFN, Medicare anonymisation before any processing
-2. **✅ Enhanced Input Validation**: Content filtering with comprehensive PII protection
-3. **✅ PII-Safe Schema Provision**: Privacy-filtered database structure with mandatory anonymisation
-4. **✅ Protected LLM Integration**: Anonymised-only external API usage with enhanced audit trail
-5. **✅ SQL Validation**: Multi-layer security with enhanced dangerous keyword blocking
-6. **✅ Query Execution**: Read-only enforcement with startup validation and session management
-7. **✅ Enhanced Result Processing**: Australian entity sanitisation and comprehensive validation
-8. **✅ Secure Response Delivery**: PII-protected output formatting with APP compliance
-
-## Enhanced Testing Strategy
-
-### Enhanced Test Coverage (Phase 2 Complete)
-
-#### ✅ Enhanced Security Testing (100% Complete)
-- **Australian PII Protection**: ABN, ACN, TFN, Medicare detection and anonymisation validation
-- **Injection Testing**: SQL injection attempt validation and blocking with enhanced patterns
-- **Access Control**: Read-only operation enforcement with startup validation verification
-- **Data Exposure**: Enhanced privacy leak prevention with Australian entity protection
-- **Error Handling**: Secure error messages with comprehensive Australian PII masking
-
-#### ✅ Enhanced Functional Testing (100% Complete)
-- **PII-Safe Query Translation**: Natural language to SQL with mandatory anonymisation validation
-- **Protected Schema Integration**: Database schema provision with PII protection testing
-- **Result Formatting**: Output correctness with Australian entity sanitisation validation
-- **Performance**: Response time monitoring including PII detection processing overhead
-
-#### ✅ Enhanced Compliance Testing (100% Complete)
-- **Australian Privacy Validation**: APP compliance verification with mandatory PII anonymisation
-- **Enhanced Audit Trail**: Logging completeness with Australian entity masking validation
-- **Data Governance**: Policy enforcement testing with comprehensive PII protection coverage
-- **Security Controls**: End-to-end security validation with Australian entity protection
-
-### Enhanced Test Results
-```bash
-# Run comprehensive Text-to-SQL + PII protection tests
-cd src/rag && pytest tests/test_phase1_refactoring.py::TestSchemaManager -v
-cd src/rag && pytest tests/test_phase1_refactoring.py::TestAsyncSQLTool -v
-cd src/rag && pytest tests/test_pii_detection.py -v
-
-# Enhanced Results: 39/39 automated tests + 9/9 manual tests = 48/48 passing ✅
-```
-
-## Configuration Integration
-
-### Current Dependencies on Configuration System
-- **✅ Database Access**: Read-only credentials from secure configuration (`rag_user_readonly`)
-- **✅ LLM Integration**: Multi-provider API keys and model settings (OpenAI/Anthropic/Gemini)
-- **✅ Security Policies**: Validation parameters and safety controls from configuration
-- **✅ Logging Settings**: Comprehensive audit trail configuration with PII protection
-
-### Implementation Example
+#### ✅ Australian-Friendly Response System
 ```python
-# Current implementation in text_to_sql modules
-from rag.config.settings import get_settings
+# Example conversational interactions
+GREETING_PATTERNS = [
+    "hello", "hi", "g'day", "good morning", "how are you"
+]
 
-async def initialise_text_to_sql_services():
-    """Initialise Text-to-SQL services with secure configuration."""
-    settings = get_settings()
-    
-    # Schema manager with privacy-safe database connection
-    schema_manager = SchemaManager()
-    await schema_manager.get_database()  # Uses settings.get_database_uri()
-    
-    # SQL tool with multi-provider LLM support
-    sql_tool = AsyncSQLTool()
-    # Supports OpenAI, Anthropic, and Gemini based on model name
-    
-    return schema_manager, sql_tool
+AUSTRALIAN_RESPONSES = [
+    "G'day! I'm doing well, thanks for asking. How can I help you today?",
+    "Hello! I'm here and ready to assist you with your learning analytics queries.",
+    "Good day! I'm operating perfectly and ready to help you explore the data."
+]
+
+CAPABILITY_RESPONSES = [
+    "I can help you analyse learning and development data in several ways:\n\n"
+    "📊 **Data Analysis**: Ask questions about course completions, attendance rates\n"
+    "🔍 **Data Exploration**: Browse datasets and understand available information\n"
+    "📈 **Trend Analysis**: Identify patterns in training participation\n"
+    "🎯 **Targeted Insights**: Filter data by agency, user level, or time period"
+]
 ```
 
-## Development Guidelines
+#### ✅ Intelligent Query Routing Integration
+```python
+# Conversational detection integrated with query classification
+async def classify_query(self, query: str) -> ClassificationResult:
+    """Classify query with conversational pattern detection."""
+    
+    # Check for conversational patterns first
+    conversational_result = await self.conversational_handler.detect_pattern(query)
+    
+    if conversational_result.confidence > 0.8:
+        return ClassificationResult(
+            classification_type=ClassificationType.CONVERSATIONAL,
+            confidence=conversational_result.confidence,
+            method_used="CONVERSATIONAL_PATTERN_MATCH"
+        )
+    
+    # Continue with data analysis classification
+    return await self.classify_data_query(query)
+```
 
-### Security-First Development (Implemented)
-1. **✅ Input Validation**: All user inputs validated before processing with comprehensive sanitisation
-2. **✅ Output Sanitisation**: All outputs sanitised before delivery with PII protection
-3. **✅ Access Control**: All database operations use read-only credentials (`rag_user_readonly`)
-4. **✅ Audit Logging**: All operations logged for compliance with comprehensive audit trail
-5. **✅ Error Handling**: All errors handled securely without data exposure or credential leakage
+#### ✅ Pattern Learning and Feedback Integration
+- **Feedback Collection**: User ratings (1-5 stars) improve pattern recognition
+- **Pattern Weights**: Automatic adjustment based on user feedback
+- **Usage Analytics**: Tracks pattern effectiveness and user satisfaction
+- **Privacy-First Learning**: All learning data anonymised and privacy-protected
 
-## Enhanced Development Guidelines
-
-### Enhanced Security-First Development (Phase 2 Complete)
-1. **✅ Enhanced Input Validation**: All user inputs validated with mandatory Australian PII detection
-2. **✅ Enhanced Output Sanitisation**: All outputs sanitised with comprehensive Australian entity protection
-3. **✅ Enhanced Access Control**: All database operations use read-only credentials with startup validation
-4. **✅ Enhanced Audit Logging**: All operations logged with Australian PII masking and compliance metadata
-5. **✅ Enhanced Error Handling**: All errors handled securely with comprehensive PII protection and sanitisation
-
-### Enhanced Data Governance Requirements (Phase 2 Complete)
-1. **✅ Privacy by Design**: Privacy implications with Australian PII protection considered in all development
-2. **✅ Enhanced Data Minimisation**: Schema-only processing with mandatory PII anonymisation before transmission
-3. **✅ Purpose Limitation**: All data usage aligned with stated purposes and enhanced APP compliance
-4. **✅ Enhanced Transparency**: Clear documentation including Australian entity protection workflows
-5. **✅ Enhanced Accountability**: Comprehensive audit trails with Australian PII masking implemented
-
-### Enhanced Testing Requirements (Phase 2 Complete)
-1. **✅ Enhanced Security Testing**: All features include Australian PII protection validation with comprehensive coverage
-2. **✅ Enhanced Privacy Testing**: Privacy controls with Australian entity detection validated and tested
-3. **✅ Enhanced Compliance Testing**: APP compliance with mandatory PII anonymisation ensured and verified
-4. **✅ Performance Testing**: Resource usage including PII detection processing overhead validated
-5. **✅ Integration Testing**: End-to-end workflows with Australian PII protection tested and verified
-
-## Future Enhancements
-
-### Phase 2 Continuation (Ready for Implementation)
-- **Vector Search Integration**: Hybrid RAG with PII-protected unstructured data processing
-- **Content Processor**: Unified ingestion pipeline with Australian PII anonymisation
-- **Embedding Generation**: Semantic search with mandatory privacy protection
-- **pgVector Integration**: Vector storage with anonymised content only
-
-### Advanced Security Features (Future Phases)
-- **Zero-Trust Architecture**: Enhanced access controls with Australian entity validation
-- **Differential Privacy**: Mathematical privacy guarantees for Australian Government data
-- **Enhanced Audit Systems**: Real-time PII detection monitoring and compliance reporting
-- **Federated Learning**: Distributed processing with Australian data sovereignty
-
----
-
-**Status**: Phase 1 Complete + Phase 2 Task 2.1 Complete ✅  
-**Priority**: High (Core Implementation with Australian PII Protection Complete)  
-**Security Review**: Completed and Validated with Australian Compliance  
-**Data Governance**: Fully Implemented (APP Compliant with Australian Entity Protection)  
-**Test Coverage**: 100% (35/35 tests passing)  
-**Last Updated**: 16 June 2025
+### Phase 3: LangGraph Agent Orchestration (Complete) ✅ **NEW**
