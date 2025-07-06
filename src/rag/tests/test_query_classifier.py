@@ -354,13 +354,18 @@ class TestModularQueryClassifier:
         # Simulate LLM failures to trigger circuit breaker
         classifier._llm.ainvoke.side_effect = Exception("Simulated LLM failure")
         
+        # Use a truly ambiguous query that won't match rule-based patterns
+        # This ensures the LLM is called and the circuit breaker is exercised
+        ambiguous_query = "Tell me about stuff"
+        
         # Make multiple attempts to trigger circuit breaker
         for _ in range(6):  # Exceed the failure threshold
             try:
-                result = await classifier.classify_query("What do people think about the platform?")
-                # Should fall back to rule-based or final fallback
+                result = await classifier.classify_query(ambiguous_query)
+                # Should fall back to enhanced fallback since LLM fails
                 assert result is not None
                 assert result.classification in ['VECTOR', 'CLARIFICATION_NEEDED', 'SQL', 'HYBRID']
+                assert result.method_used == 'fallback'
             except Exception:
                 pass  # Some failures expected
         
