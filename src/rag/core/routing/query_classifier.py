@@ -95,6 +95,13 @@ from .pattern_matcher import PatternMatcher
 from .aps_patterns import APSPatterns
 from .llm_classifier import LLMClassifier
 
+# Import conversational handler for conversational classification
+try:
+    from ..conversational.handler import ConversationalHandler
+except ImportError:
+    # Fallback for direct execution
+    from src.rag.core.conversational.handler import ConversationalHandler
+
 
 logger = get_logger(__name__)
 
@@ -147,12 +154,16 @@ class QueryClassifier:
         # Initialize LLM classifier
         self._llm_classifier = LLMClassifier(llm)
         
+        # Initialize conversational handler for conversational intelligence
+        self._conversational_handler = ConversationalHandler()
+        
         # Classification statistics
         self._classification_count = 0
         self._method_stats = {
             "rule_based": 0,
             "llm_based": 0,
-            "fallback": 0
+            "fallback": 0,
+            "conversational": 0
         }
     
     async def initialize(self) -> None:
@@ -249,6 +260,30 @@ class QueryClassifier:
             else:
                 processing_query = query
             
+            # Step 1.5: Check for conversational queries (data analysis first, conversational fallback)
+            is_conversational, conv_pattern, conv_confidence = self._conversational_handler.is_conversational_query(processing_query)
+            
+            if is_conversational and conv_confidence > 0.7:
+                # High confidence conversational query - handle immediately
+                processing_time = time.time() - start_time
+                self._method_stats["conversational"] += 1
+                self._fallback_metrics.classification_times.append(processing_time)
+                
+                logger.info(
+                    f"Conversational classification: {conv_pattern.value} "
+                    f"({processing_time:.3f}s, confidence: {conv_confidence:.2f}, "
+                    f"session: {session_id or 'anonymous'})"
+                )
+                
+                return ClassificationResult(
+                    classification="CONVERSATIONAL",
+                    confidence="HIGH" if conv_confidence > 0.8 else "MEDIUM",
+                    reasoning=f"Conversational query detected - {conv_pattern.value} pattern (confidence: {conv_confidence:.2f})",
+                    processing_time=processing_time,
+                    method_used="conversational",
+                    anonymized_query=anonymized_query
+                )
+            
             # Step 2: Rule-based pre-filtering (fast path) with confidence calibration
             rule_result = self._rule_based_classification(processing_query)
             if rule_result and rule_result.confidence in ["HIGH", "MEDIUM"]:
@@ -301,7 +336,29 @@ class QueryClassifier:
                     anonymized_query=anonymized_query
                 )
             
-            # Step 4: Final fallback - enhanced rule-based with low confidence
+            # Step 4: Conversational fallback - check if it might be conversational (data analysis first approach)
+            if is_conversational and conv_confidence > 0.5:
+                # Medium confidence conversational query - try as fallback
+                processing_time = time.time() - start_time
+                self._method_stats["conversational"] += 1
+                self._fallback_metrics.classification_times.append(processing_time)
+                
+                logger.info(
+                    f"Conversational fallback triggered: {conv_pattern.value} "
+                    f"({processing_time:.3f}s, confidence: {conv_confidence:.2f}, "
+                    f"session: {session_id or 'anonymous'})"
+                )
+                
+                return ClassificationResult(
+                    classification="CONVERSATIONAL",
+                    confidence="MEDIUM" if conv_confidence > 0.6 else "LOW",
+                    reasoning=f"Conversational fallback - {conv_pattern.value} pattern (confidence: {conv_confidence:.2f}). Data analysis approaches were unsuccessful.",
+                    processing_time=processing_time,
+                    method_used="conversational",
+                    anonymized_query=anonymized_query
+                )
+            
+            # Step 5: Final fallback - enhanced rule-based with low confidence
             fallback_result = self._enhanced_fallback_classification(processing_query)
             processing_time = time.time() - start_time
             self._method_stats["fallback"] += 1
