@@ -287,44 +287,6 @@ async def secure_query_example():
     # Output: Secure, formatted results with audit trail
 ```
 
-## Configuration Integration
-
-### Interface Configuration
-All interfaces integrate with the secure configuration system:
-
-```python
-# Example configuration integration
-from rag.config.settings import get_settings
-
-def initialise_interfaces():
-    """Initialise all external service interfaces with secure configuration."""
-    settings = get_settings()
-    
-    # Database interface with read-only access
-    db_interface = SecureDatabaseInterface(
-        connection_string=settings.rag_database_url,
-        timeout=settings.query_timeout_seconds,
-        audit_enabled=settings.log_sql_queries
-    )
-    
-    # LLM interface with governance controls
-    llm_interface = SecureLLMInterface(
-        api_key=settings.llm_api_key,
-        model_name=settings.llm_model_name,
-        temperature=settings.llm_temperature,
-        max_tokens=settings.llm_max_tokens
-    )
-    
-    # Monitoring interface with compliance tracking
-    monitoring_interface = ComplianceMonitoringInterface(
-        log_level=settings.log_level,
-        audit_sql=settings.log_sql_queries,
-        debug_mode=settings.debug_mode
-    )
-    
-    return InterfaceManager(db_interface, llm_interface, monitoring_interface)
-```
-
 ## Security Testing Strategy
 
 ### Planned Test Coverage
@@ -500,3 +462,132 @@ FEEDBACK_DATABASE_ENABLED=true       # Control database storage
 - **Data Minimisation**: Only necessary data is collected and stored
 - **Audit Trail**: Complete feedback collection logging for compliance
 - **Session Isolation**: Feedback data isolated by session for privacy protection
+
+## Conversational Intelligence Features
+
+### Australian-Friendly Interaction Design
+
+The terminal application includes comprehensive conversational intelligence capabilities that provide natural, Australian-friendly interactions:
+
+#### Key Features
+- **Pattern Recognition**: Automatic detection of conversational queries (greetings, system questions, social interactions)
+- **Australian Context**: Responses tailored for Australian professional environments with appropriate tone and terminology
+- **Intelligent Routing**: Seamless switching between conversational and analytical modes based on query confidence
+- **Learning System**: Pattern recognition improves based on user feedback and interaction history
+- **Privacy Protection**: All conversational data processed with mandatory PII detection and anonymisation
+
+#### Conversational Interaction Examples
+
+```
+🤖 Terminal Application - Enhanced with Conversational Intelligence
+===============================================================
+
+Your question: Hello, how are you?
+
+🤖 G'day! I'm doing well, thanks for asking. I'm here to help you explore 
+   the learning analytics data. How can I assist you today?
+
+💡 You might want to try:
+   • "What data do you have access to?"
+   • "Show me course completion rates"
+   • "Which agencies have the highest training participation?"
+
+---
+
+Your question: What can you help me with?
+
+🤖 I can help you analyse learning and development data in several ways:
+
+📊 **Data Analysis**: Ask questions about course completions, attendance rates, user performance
+🔍 **Data Exploration**: Browse available datasets and understand what information is available
+📈 **Trend Analysis**: Identify patterns in training participation and completion rates
+🎯 **Targeted Insights**: Filter data by agency, user level, course type, or time period
+
+💡 Some example questions to get you started:
+   • "How many users completed courses in each agency?"
+   • "Show attendance patterns by user level"
+   • "What are the most popular courses?"
+
+Would you like to explore any specific area?
+
+---
+
+Your question: Thanks for your help!
+
+🤖 You're very welcome! Happy to help you explore the data anytime. 
+   Feel free to ask if you need anything else - I'm here whenever you need 
+   assistance with your learning analytics.
+
+Have a great day! 🌟
+```
+
+#### Technical Implementation
+
+```python
+class TerminalApp:
+    """Terminal application with conversational intelligence integration."""
+    
+    def __init__(self):
+        """Initialize with conversational handler integration."""
+        self.conversational_handler = ConversationalHandler()
+        self.agent = RAGAgent()
+        
+    async def process_query(self, question: str) -> None:
+        """Process query with intelligent routing between conversational and analytical modes."""
+        
+        # Agent automatically routes based on confidence
+        result = await self.agent.process_query(question)
+        
+        # Display conversational responses with special formatting
+        if result.method_used == "CONVERSATIONAL":
+            self.display_conversational_response(result)
+        else:
+            self.display_analytical_response(result)
+    
+    def display_conversational_response(self, result: AgentResult):
+        """Display conversational response with Australian-friendly formatting."""
+        
+        # Special emoji and formatting for conversational responses
+        print(f"\n🤖 {result.response}")
+        
+        # Show suggested queries if available
+        if result.suggested_queries:
+            print(f"\n💡 You might want to try:")
+            for i, query in enumerate(result.suggested_queries, 1):
+                print(f"   • {query}")
+        
+        # Collect feedback for pattern learning
+        feedback = self.collect_feedback("conversational")
+        if feedback:
+            # Feedback improves pattern recognition over time
+            self.conversational_handler.record_feedback(
+                query=result.original_query,
+                pattern_type=result.pattern_type,
+                feedback=feedback
+            )
+```
+
+#### Conversational Pattern Categories
+
+1. **Greeting Patterns**: "Hello", "Hi", "G'day", "Good morning"
+2. **System Information**: "What can you do?", "How do you work?", "What data do you have?"
+3. **Social Interactions**: "Thank you", "Please", "Goodbye", "How are you?"
+4. **Meta Questions**: "Are you working?", "How fast are you?", "Can I trust you?"
+5. **Support Requests**: "I need help", "I don't understand", "Can you assist me?"
+
+#### Learning and Adaptation
+
+The conversational system learns from user interactions:
+
+- **Feedback Integration**: User ratings (1-5 stars) improve pattern recognition
+- **Usage Analytics**: Tracks which patterns are most effective
+- **Confidence Adjustment**: Pattern weights adapt based on success rates
+- **Privacy-First Learning**: All learning data anonymised and privacy-protected
+
+#### Benefits for Users
+
+1. **Natural Interaction**: Conversational queries feel like talking to a colleague
+2. **Australian Context**: Responses appropriate for Australian professional environments
+3. **Intelligent Guidance**: System suggests relevant queries based on conversation context
+4. **Seamless Experience**: Smooth transition between conversational and analytical modes
+5. **Continuous Improvement**: System gets better at understanding user needs over time
