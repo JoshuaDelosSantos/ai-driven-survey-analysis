@@ -971,16 +971,12 @@ class QueryClassifier:
                             confidence="HIGH" if routed_response.confidence > 0.8 else "MEDIUM",
                             reasoning=f"Enhanced conversational routing: {routed_response.routing_metadata.strategy_used}. "
                                      f"LLM enhancement: {routed_response.routing_metadata.llm_enhancement_used}. "
-                                     f"Pattern: {routed_response.pattern_type.value}",
+                                     f"Pattern: {routed_response.pattern_type.value}. "
+                                     f"Strategy: {routed_response.routing_metadata.strategy_used.value}, "
+                                     f"Original: {standard_result.confidence}",
                             processing_time=processing_time,
-                            method_used="conversational_router",
-                            anonymized_query=standard_result.anonymized_query,
-                            metadata={
-                                "routing_strategy": routed_response.routing_metadata.strategy_used.value,
-                                "llm_enhanced": routed_response.routing_metadata.llm_enhancement_used,
-                                "pattern_type": routed_response.pattern_type.value,
-                                "original_confidence": standard_result.confidence
-                            }
+                            method_used="conversational",
+                            anonymized_query=standard_result.anonymized_query
                         )
                 
                 except Exception as e:
@@ -1072,15 +1068,11 @@ class QueryClassifier:
                     classification=enhanced_classification["category"],
                     confidence=enhanced_classification["confidence"],
                     reasoning=f"Enhanced LLM fallback: {enhanced_classification['reasoning']}. "
-                             f"Original: {standard_result.classification}({standard_result.confidence})",
+                             f"Original: {standard_result.classification}({standard_result.confidence}). "
+                             f"Enhancement applied.",
                     processing_time=0.0,  # Will be updated by caller
-                    method_used="enhanced_llm_fallback",
-                    anonymized_query=standard_result.anonymized_query,
-                    metadata={
-                        "original_classification": standard_result.classification,
-                        "original_confidence": standard_result.confidence,
-                        "enhancement_applied": True
-                    }
+                    method_used="llm_based",
+                    anonymized_query=standard_result.anonymized_query
                 )
             
             return None
