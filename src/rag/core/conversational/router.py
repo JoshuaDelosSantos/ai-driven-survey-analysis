@@ -48,6 +48,8 @@ from datetime import datetime
 from .handler import ConversationalHandler, ConversationalPattern, ConversationalResponse
 from .pattern_classifier import ConversationalPatternClassifier, ClassificationResult
 from .llm_enhancer import ConversationalLLMEnhancer, EnhancedResponse
+from .learning_integrator import ConversationalLearningIntegrator, LearningFeedback
+from .performance_monitor import ConversationalPerformanceMonitor
 from ...utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -102,11 +104,19 @@ class ConversationalRouter:
     def __init__(self, 
                  handler: Optional[ConversationalHandler] = None,
                  pattern_classifier: Optional[ConversationalPatternClassifier] = None,
-                 llm_enhancer: Optional[ConversationalLLMEnhancer] = None):
-        """Initialize the router with existing components."""
+                 llm_enhancer: Optional[ConversationalLLMEnhancer] = None,
+                 learning_integrator: Optional[ConversationalLearningIntegrator] = None,
+                 performance_monitor: Optional[ConversationalPerformanceMonitor] = None,
+                 enable_learning: bool = True,
+                 enable_monitoring: bool = True):
+        """Initialize the router with existing and Phase 3 components."""
         self.handler = handler
         self.pattern_classifier = pattern_classifier
         self.llm_enhancer = llm_enhancer
+        self.learning_integrator = learning_integrator
+        self.performance_monitor = performance_monitor
+        self.enable_learning = enable_learning
+        self.enable_monitoring = enable_monitoring
         self.is_initialized = False
         
         # Routing thresholds (conservative approach)
@@ -134,6 +144,14 @@ class ConversationalRouter:
             if self.llm_enhancer is None:
                 self.llm_enhancer = ConversationalLLMEnhancer()
                 await self.llm_enhancer.initialize()
+                
+            # Initialize Phase 3 learning integrator
+            if self.learning_integrator is None and self.enable_learning:
+                self.learning_integrator = ConversationalLearningIntegrator(self.handler)
+                
+            # Initialize Phase 3 performance monitor
+            if self.performance_monitor is None and self.enable_monitoring:
+                self.performance_monitor = ConversationalPerformanceMonitor()
                 
             self.is_initialized = True
             logger.info("ConversationalRouter initialized successfully")
@@ -336,26 +354,105 @@ class ConversationalRouter:
         routing_decision: RoutingDecision, 
         final_confidence: float
     ) -> None:
-        """Update existing learning data with routing performance."""
+        """Update learning data and monitor performance (Phase 3 integration)."""
         try:
-            # Integration point for Phase 3 - for now, just log the decision
-            logger.info(f"Routing decision for pattern {pattern_type}: {routing_decision.strategy_used}")
+            processing_time_ms = routing_decision.processing_time * 1000
             
-            # Future Phase 3: Update pattern learning data
-            # self.handler.update_pattern_learning_with_routing_data(...)
+            # Phase 3: Create learning feedback
+            if self.learning_integrator and self.enable_learning:
+                feedback = LearningFeedback(
+                    query=query,
+                    pattern_type=pattern_type,
+                    routing_strategy=routing_decision.strategy_used,
+                    llm_used=routing_decision.llm_enhancement_used,
+                    was_helpful=True,  # Default to True, will be updated with real feedback
+                    response_time_ms=processing_time_ms,
+                    confidence_score=final_confidence
+                )
+                
+                # Update learning system
+                await self.learning_integrator.update_learning_with_feedback(feedback)
+                
+                # Get adaptive threshold for future routing
+                adaptive_threshold = await self.learning_integrator.get_adaptive_threshold(
+                    pattern_type, len(query.split())
+                )
+                
+                # Update router thresholds based on learning
+                if abs(adaptive_threshold - self.llm_enhancement_threshold) > 0.1:
+                    self.llm_enhancement_threshold = adaptive_threshold
+                    logger.info(f"Updated LLM threshold to {adaptive_threshold:.2f} based on learning")
+            
+            # Phase 3: Record performance metrics
+            if self.performance_monitor and self.enable_monitoring:
+                await self.performance_monitor.record_interaction(feedback, routing_decision)
+                
+            logger.debug(f"Learning updated for pattern {pattern_type}: "
+                        f"strategy={routing_decision.strategy_used}, "
+                        f"LLM used={routing_decision.llm_enhancement_used}")
             
         except Exception as e:
             logger.warning(f"Learning data update failed: {e}")
-    
+
+    async def provide_feedback(self, query: str, was_helpful: bool, 
+                             user_satisfaction: Optional[float] = None) -> None:
+        """
+        Provide feedback on a recent response to improve learning.
+        
+        Args:
+            query: The original query
+            was_helpful: Whether the response was helpful
+            user_satisfaction: Optional satisfaction score (0.0-1.0)
+        """
+        if not (self.learning_integrator and self.enable_learning):
+            return
+            
+        try:
+            # Find recent feedback for this query (simple matching)
+            if hasattr(self.learning_integrator, 'learning_history'):
+                recent_feedback = [f for f in self.learning_integrator.learning_history[-10:] 
+                                 if f.query == query]
+                if recent_feedback:
+                    # Update the most recent matching feedback
+                    latest_feedback = recent_feedback[-1]
+                    latest_feedback.was_helpful = was_helpful
+                    latest_feedback.user_satisfaction = user_satisfaction
+                    
+                    # Re-update learning with corrected feedback
+                    await self.learning_integrator.update_learning_with_feedback(latest_feedback)
+                    
+                    logger.info(f"Updated feedback for query: helpful={was_helpful}, "
+                               f"satisfaction={user_satisfaction}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to provide feedback: {e}")
+
+    async def get_learning_insights(self) -> Dict[str, Any]:
+        """Get learning insights and performance analytics."""
+        insights = {}
+        
+        if self.learning_integrator and self.enable_learning:
+            insights['learning'] = await self.learning_integrator.get_learning_insights()
+            
+        if self.performance_monitor and self.enable_monitoring:
+            insights['performance'] = await self.performance_monitor.get_performance_report()
+            
+        return insights
+
     async def get_routing_stats(self) -> Dict[str, Any]:
-        """Get routing statistics for monitoring and optimization."""
-        # Future Phase 3: Comprehensive routing statistics
-        return {
+        """Get comprehensive routing statistics for monitoring and optimization."""
+        stats = {
             "router_initialized": self.is_initialized,
             "components_available": {
                 "handler": self.handler is not None,
                 "pattern_classifier": self.pattern_classifier is not None,
-                "llm_enhancer": self.llm_enhancer is not None
+                "llm_enhancer": self.llm_enhancer is not None,
+                "learning_integrator": self.learning_integrator is not None,
+                "performance_monitor": self.performance_monitor is not None
+            },
+            "phase3_enabled": {
+                "learning": self.enable_learning,
+                "monitoring": self.enable_monitoring
             },
             "thresholds": {
                 "vector_enhancement": self.vector_enhancement_threshold,
@@ -363,3 +460,13 @@ class ConversationalRouter:
                 "learning_influence": self.learning_influence_threshold
             }
         }
+        
+        # Add learning summary if available
+        if self.learning_integrator and self.enable_learning:
+            stats["learning_summary"] = self.learning_integrator.get_learning_summary()
+            
+        # Add monitoring status if available  
+        if self.performance_monitor and self.enable_monitoring:
+            stats["monitoring_status"] = self.performance_monitor.get_monitoring_status()
+            
+        return stats
