@@ -114,6 +114,11 @@ from .privacy.pii_detector import AustralianPIIDetector
 from .routing.query_classifier import QueryClassifier
 from .synthesis.answer_generator import AnswerGenerator
 from .conversational.handler import ConversationalHandler
+from .conversational.router import ConversationalRouter
+from .conversational.llm_enhancer import ConversationalLLMEnhancer
+from .conversational.pattern_classifier import ConversationalPatternClassifier
+from .conversational.learning_integrator import ConversationalLearningIntegrator
+from .conversational.performance_monitor import ConversationalPerformanceMonitor
 from ..utils.llm_utils import get_llm
 from ..utils.logging_utils import get_logger
 from ..config.settings import get_settings
@@ -205,6 +210,13 @@ class RAGAgent:
         self._answer_generator: Optional[AnswerGenerator] = None
         self._conversational_handler: Optional[ConversationalHandler] = None
         
+        # Phase 1-3 Conversational Intelligence Components
+        self._conversational_router: Optional[ConversationalRouter] = None
+        self._conversational_llm_enhancer: Optional[ConversationalLLMEnhancer] = None
+        self._conversational_pattern_classifier: Optional[ConversationalPatternClassifier] = None
+        self._learning_integrator: Optional[ConversationalLearningIntegrator] = None
+        self._performance_monitor: Optional[ConversationalPerformanceMonitor] = None
+        
         # LangGraph workflow
         self._graph: Optional[StateGraph] = None
         self._compiled_graph = None
@@ -237,9 +249,8 @@ class RAGAgent:
             # Initialize tools
             await self._initialize_tools()
             
-            # Initialize conversational handler
-            self._conversational_handler = ConversationalHandler()
-            logger.info("Conversational handler initialized successfully")
+            # Initialize conversational intelligence system (Phase 1-3 integration)
+            await self._initialize_conversational_intelligence()
             
             # Initialize PII detection
             if self.config.pii_detection_required:
@@ -288,6 +299,110 @@ class RAGAgent:
         except Exception as e:
             logger.error(f"Tool initialization failed: {e}")
             raise
+    
+    async def _initialize_conversational_intelligence(self) -> None:
+        """
+        Initialize Phase 1-3 conversational intelligence components.
+        
+        This method integrates all the enhanced conversational components
+        while maintaining fallback to the legacy system for reliability.
+        """
+        try:
+            logger.info("Initializing conversational intelligence system...")
+            
+            # Initialize legacy conversational handler (fallback system)
+            self._conversational_handler = ConversationalHandler()
+            logger.info("Legacy conversational handler initialized (fallback system)")
+            
+            # Check if enhanced conversational features are enabled
+            enhanced_enabled = getattr(self.settings, 'enable_enhanced_conversational', True)
+            if not enhanced_enabled:
+                logger.info("Enhanced conversational features disabled, using legacy system only")
+                return
+            
+            # Initialize Phase 1 Components
+            try:
+                # Pattern Classifier (reuses vector infrastructure)
+                if (hasattr(self._vector_tool, '_embedder') and 
+                    self._vector_tool._embedder and 
+                    hasattr(self._vector_tool, '_embeddings_manager') and
+                    self._vector_tool._embeddings_manager and
+                    self.settings.enable_conversational_pattern_classification):
+                    
+                    self._conversational_pattern_classifier = ConversationalPatternClassifier(
+                        embedder=self._vector_tool._embedder,
+                        vector_store=self._vector_tool._embeddings_manager
+                    )
+                    logger.info("Conversational pattern classifier initialized")
+                else:
+                    logger.info("Skipping pattern classifier: vector infrastructure not ready or disabled")
+                
+                # LLM Enhancer (reuses existing LLM and PII detection)
+                if self.settings.enable_conversational_llm_enhancement:
+                    self._conversational_llm_enhancer = ConversationalLLMEnhancer(
+                        llm_manager=self._llm,
+                        pii_detector=self._pii_detector
+                    )
+                    logger.info("Conversational LLM enhancer initialized")
+                
+            except Exception as e:
+                logger.warning(f"Phase 1 component initialization partially failed: {e}")
+            
+            # Initialize Phase 2 Components (Router orchestration)
+            try:
+                if (self._conversational_handler and 
+                    self._conversational_llm_enhancer and 
+                    self._conversational_pattern_classifier):
+                    
+                    self._conversational_router = ConversationalRouter(
+                        handler=self._conversational_handler,
+                        llm_enhancer=self._conversational_llm_enhancer,
+                        pattern_classifier=self._conversational_pattern_classifier
+                    )
+                    logger.info("Conversational router initialized")
+                else:
+                    logger.warning("Cannot initialize router: missing Phase 1 components")
+                    
+            except Exception as e:
+                logger.warning(f"Phase 2 component initialization failed: {e}")
+            
+            # Initialize Phase 3 Components (Learning & Monitoring)
+            try:
+                # Learning Integrator
+                if self._conversational_handler and self.settings.enable_conversational_learning_integration:
+                    self._learning_integrator = ConversationalLearningIntegrator(
+                        conversational_handler=self._conversational_handler
+                    )
+                    logger.info("Learning integrator initialized")
+                
+                # Performance Monitor
+                if self.settings.enable_conversational_performance_monitoring:
+                    self._performance_monitor = ConversationalPerformanceMonitor()
+                    logger.info("Performance monitor initialized")
+                
+            except Exception as e:
+                logger.warning(f"Phase 3 component initialization failed: {e}")
+            
+            # Report final status
+            components_active = [
+                bool(self._conversational_pattern_classifier),
+                bool(self._conversational_llm_enhancer),
+                bool(self._conversational_router),
+                bool(self._learning_integrator),
+                bool(self._performance_monitor)
+            ]
+            active_count = sum(components_active)
+            
+            if active_count == 5:
+                logger.info("✅ All Phase 1-3 conversational intelligence components active")
+            elif active_count > 2:
+                logger.info(f"⚠️ Partial conversational intelligence: {active_count}/5 components active")
+            else:
+                logger.warning(f"❌ Enhanced conversational intelligence failed: {active_count}/5 components active, using legacy system")
+                
+        except Exception as e:
+            logger.error(f"Conversational intelligence initialization failed: {e}")
+            logger.info("Falling back to legacy conversational handler only")
     
     async def _build_graph(self) -> None:
         """Build and compile the LangGraph workflow."""
@@ -427,11 +542,20 @@ class RAGAgent:
                     "tools_used": state["tools_used"] + ["classifier_error"]
                 }
             
-            # Use the actual query classifier
-            classification_result = await self._query_classifier.classify_query(
-                query=state["query"],
-                session_id=state["session_id"]
-            )
+            # Use enhanced conversational routing if available, fallback to legacy
+            if hasattr(self._query_classifier, 'classify_with_conversational_routing'):
+                classification_result = await self._query_classifier.classify_with_conversational_routing(
+                    query=state["query"],
+                    session_id=state["session_id"]
+                )
+                logger.info("Using enhanced conversational routing for classification")
+            else:
+                # Fallback to legacy classification
+                classification_result = await self._query_classifier.classify_query(
+                    query=state["query"],
+                    session_id=state["session_id"]
+                )
+                logger.info("Using legacy classification (enhanced routing not available)")
             
             logger.info(
                 f"Query classified as {classification_result.classification} "
@@ -1044,8 +1168,28 @@ class RAGAgent:
             if not self._conversational_handler:
                 raise RuntimeError("Conversational handler not initialized")
             
-            # Use the conversational handler to process the query
-            response = self._conversational_handler.handle_conversational_query(state["query"])
+            # Use enhanced conversational router if available, otherwise fallback to legacy handler
+            if self._conversational_router:
+                # Use Phase 1-3 enhanced conversational intelligence
+                response = await self._conversational_router.route_conversational_query(state["query"])
+                logger.info("Using enhanced conversational router with Phase 1-3 components")
+                
+                # Update learning system if available
+                if self._learning_integrator and hasattr(response, 'enhancement_used'):
+                    try:
+                        await self._learning_integrator.update_learning_with_llm_feedback(
+                            query=state["query"],
+                            pattern_type=response.pattern_type,
+                            llm_used=response.enhancement_used,
+                            was_helpful=True  # Default to positive, real feedback would come from user
+                        )
+                    except Exception as learning_error:
+                        logger.warning(f"Learning update failed: {learning_error}")
+                
+            else:
+                # Fallback to legacy conversational handler
+                response = self._conversational_handler.handle_conversational_query(state["query"])
+                logger.info("Using legacy conversational handler (enhanced router not available)")
             
             # Calculate processing time
             start_time = state.get("start_time", 0)
@@ -1136,6 +1280,10 @@ class RAGAgent:
             )
         except Exception as e:
             logger.error(f"Error during agent cleanup: {e}")
+    
+    async def cleanup(self) -> None:
+        """Alias for close() method for backward compatibility."""
+        await self.close()
 
 
 # Factory function for easy agent creation
