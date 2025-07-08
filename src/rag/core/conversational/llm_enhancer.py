@@ -110,7 +110,7 @@ class ConversationalLLMEnhancer:
             # Initialize LLM manager if not provided
             if self.llm_manager is None:
                 self.llm_manager = LLMManager()
-                await self.llm_manager.initialize()
+                # LLMManager initializes itself in __init__
                 
             # Initialize PII detector if not provided
             if self.pii_detector is None:
@@ -231,8 +231,8 @@ class ConversationalLLMEnhancer:
             # Use existing LLM infrastructure
             response = await self.llm_manager.generate(
                 prompt=prompt,
-                max_tokens=200,  # Keep responses concise
-                temperature=0.3  # Conservative temperature for consistency
+                system_message="You are a helpful assistant providing concise, Australian-friendly responses.",
+                max_retries=2
             )
             
             enhanced_content = response.content.strip()
