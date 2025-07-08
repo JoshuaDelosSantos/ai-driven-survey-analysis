@@ -571,6 +571,19 @@ class RAGAgent:
                     "clarification_choice": clarification_response  # Store the choice for later use
                 }
             
+            # EARLY CHECK: Detect obviously off-topic queries before expensive processing
+            validation_result = self._validate_query_approach_combination(state["query"], 'A')
+            if not validation_result["is_valid"]:
+                logger.info(f"Off-topic query detected early: {state['query']}")
+                # Route directly to clarification for immediate redirection
+                return {
+                    **state,
+                    "classification": "CLARIFICATION_NEEDED",
+                    "confidence": "HIGH",
+                    "classification_reasoning": f"Off-topic query detected: {validation_result['reason']}",
+                    "tools_used": state["tools_used"] + ["classifier_off_topic_detected"]
+                }
+            
             # Use enhanced conversational routing if available, fallback to legacy
             if hasattr(self._query_classifier, 'classify_with_conversational_routing'):
                 classification_result = await self._query_classifier.classify_with_conversational_routing(
@@ -1035,7 +1048,48 @@ class RAGAgent:
             if clarification_response:
                 return await self._handle_clarification_response(state, clarification_response)
             
-            # Generate context-aware clarification message
+            # EARLY VALIDATION: Check if query is off-topic before offering clarification
+            # If the query is completely off-topic, redirect immediately instead of asking for clarification
+            validation_result = self._validate_query_approach_combination(query, 'A')  # Test with any approach
+            if not validation_result["is_valid"]:
+                logger.info(f"Off-topic query detected in clarification: {query}")
+                
+                # Generate redirect message for off-topic queries
+                redirect_message = (
+                    f"I understand you're asking: \"{query}\"\n\n"
+                    f"However, {validation_result['reason']}\n\n"
+                    "**Here's what I can help you with:**\n\n"
+                    "📊 **Training Statistics:**\n"
+                    "• Completion rates by agency or role level\n"
+                    "• Participation numbers and trends\n"
+                    "• Course effectiveness metrics\n"
+                    "• Learning outcome measurements\n\n"
+                    "💬 **Participant Feedback:**\n"
+                    "• Comments about course content and delivery\n"
+                    "• Satisfaction ratings and experiences\n"
+                    "• Suggestions for improvement\n"
+                    "• Technical issues or accessibility feedback\n\n"
+                    "📈 **Combined Analysis:**\n"
+                    "• Statistical trends with supporting feedback\n"
+                    "• Correlation between ratings and comments\n"
+                    "• Comprehensive program evaluations\n\n"
+                    "**Example questions you could ask:**\n"
+                    "• \"How many staff completed cybersecurity training this quarter?\"\n"
+                    "• \"What feedback did participants give about virtual learning?\"\n"
+                    "• \"Analyze satisfaction trends with supporting comments\"\n\n"
+                    "Would you like to ask about any of these topics instead?"
+                )
+                
+                return {
+                    **state,
+                    "final_answer": redirect_message,
+                    "requires_clarification": False,
+                    "tools_used": state["tools_used"] + ["clarification_redirect"],
+                    "classification": "CONVERSATIONAL",
+                    "confidence": "HIGH"
+                }
+            
+            # Generate context-aware clarification message for valid domain queries
             clarification_message = self._generate_clarification_message(
                 query, classification_reasoning
             )
