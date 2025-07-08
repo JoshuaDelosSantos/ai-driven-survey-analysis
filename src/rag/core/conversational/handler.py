@@ -104,7 +104,7 @@ class ConversationalResponse:
 
 @dataclass
 class PatternLearningData:
-    """Enhanced data structure for pattern learning and improvement."""
+    """Enhanced data structure for pattern learning and improvement with LLM integration."""
     pattern: str
     frequency: int
     success_rate: float
@@ -113,6 +113,14 @@ class PatternLearningData:
     template_effectiveness: Dict[str, float]  # Track which templates work best
     context_success: Dict[str, float]  # Success rates in different contexts
     user_satisfaction: float
+    
+    # LLM effectiveness tracking for Phase 1 integration
+    llm_routing_attempts: int = 0
+    llm_routing_successes: int = 0
+    llm_fallback_rate: float = 0.0
+    llm_confidence_threshold: float = 0.7
+    vector_confidence_boost: float = 0.0  # How much vector search improves confidence
+    edge_case_frequency: int = 0  # Track how often this pattern represents edge cases
     
     def update_success_rate(self, was_successful: bool, template_used: str = None, context: str = "general") -> None:
         """Update success rate based on feedback with enhanced tracking."""
@@ -140,6 +148,39 @@ class PatternLearningData:
         # Update overall user satisfaction
         self.user_satisfaction = (self.user_satisfaction * 0.9) + (score * 0.1)
     
+    def update_llm_effectiveness(self, llm_was_used: bool, llm_was_successful: bool = None) -> None:
+        """Update LLM routing effectiveness for learning-based LLM integration."""
+        if llm_was_used:
+            self.llm_routing_attempts += 1
+            if llm_was_successful:
+                self.llm_routing_successes += 1
+        
+        # Calculate fallback rate
+        if self.llm_routing_attempts > 0:
+            self.llm_fallback_rate = 1.0 - (self.llm_routing_successes / self.llm_routing_attempts)
+    
+    def should_use_llm(self, base_confidence: float) -> bool:
+        """Determine if LLM routing should be used based on learning data."""
+        # Use LLM for edge cases or when template confidence is low
+        if base_confidence < self.llm_confidence_threshold:
+            return True
+        
+        # Use LLM if this pattern has high edge case frequency
+        if self.edge_case_frequency > 3 and self.llm_fallback_rate < 0.3:
+            return True
+        
+        # Use LLM if it has proven effective for this pattern
+        if (self.llm_routing_attempts > 5 and 
+            self.llm_routing_successes / self.llm_routing_attempts > 0.8):
+            return True
+        
+        return False
+    
+    def update_vector_confidence_boost(self, vector_boost: float) -> None:
+        """Update how much vector search improves confidence for this pattern."""
+        # Use exponential moving average to track vector effectiveness
+        self.vector_confidence_boost = (self.vector_confidence_boost * 0.7) + (vector_boost * 0.3)
+    
     def get_best_template(self) -> Optional[str]:
         """Get the most effective template based on learning data."""
         if not self.template_effectiveness:
@@ -165,6 +206,11 @@ class ConversationalHandler:
         self.pattern_learning: Dict[str, PatternLearningData] = {}
         self.response_templates = self._initialize_response_templates()
         self.pattern_matchers = self._initialize_pattern_matchers()
+        
+        # Phase 1: Enhanced Component Integration
+        self.pattern_classifier = None  # Will be initialized lazily
+        self.llm_routing_enabled = True  # Feature flag for LLM routing
+        self.vector_boost_enabled = True  # Feature flag for vector confidence boost
         
     def _initialize_response_templates(self) -> Dict[ConversationalPattern, List[str]]:
         """Initialize response templates with Australian-friendly language and enhanced variety."""
@@ -736,20 +782,36 @@ class ConversationalHandler:
                 suggested_queries=self._get_suggested_queries()
             )
         
+        # Phase 1: Enhanced pattern recognition with vector boost
+        enhanced_confidence = confidence
+        llm_routing_recommended = False
+        
+        if self.vector_boost_enabled:
+            enhanced_confidence, llm_routing_recommended = self._enhance_pattern_confidence(
+                query, pattern_type, confidence
+            )
+        
+        # Determine if LLM routing should be used based on learning data
+        should_use_llm = self._should_use_llm_routing(query, pattern_type, enhanced_confidence)
+        
         # Get appropriate response template
         response_content = self._select_response_template(pattern_type, query)
         
-        # Record pattern usage for learning (including template used)
-        self._record_pattern_usage(query, pattern_type, response_content[:50])  # Use first 50 chars as template ID
+        # Record pattern usage for learning (including enhanced data)
+        self._record_enhanced_pattern_usage(
+            query, pattern_type, response_content[:50], enhanced_confidence, 
+            llm_routing_recommended, should_use_llm
+        )
         
         # Get suggested queries for user guidance
         suggested_queries = self._get_suggested_queries()
         
         return ConversationalResponse(
             content=response_content,
-            confidence=confidence,
+            confidence=enhanced_confidence,
             pattern_type=pattern_type,
-            suggested_queries=suggested_queries
+            suggested_queries=suggested_queries,
+            learning_feedback=f"Vector boost: {self.vector_boost_enabled}, LLM routing: {should_use_llm}"
         )
     
     def _select_response_template(self, pattern_type: ConversationalPattern, query: str) -> str:
@@ -960,7 +1022,8 @@ class ConversationalHandler:
         return f"{time_context}_{formality_context}_{length_context}"
     
     def provide_pattern_feedback(self, query: str, pattern_type: ConversationalPattern, 
-                               was_helpful: bool, template_used: str = None) -> None:
+                               was_helpful: bool, template_used: str = None, 
+                               llm_was_used: bool = False) -> None:
         """
         Provide enhanced feedback on pattern recognition for learning improvement.
         
@@ -969,43 +1032,61 @@ class ConversationalHandler:
             pattern_type: The identified pattern type
             was_helpful: Whether the response was helpful
             template_used: Which template was used for the response
+            llm_was_used: Whether LLM routing was used (Phase 1 enhancement)
         """
         pattern_key = f"{pattern_type.value}_{len(query.split())}"
         context = self._determine_query_context(query)
         
         if pattern_key in self.pattern_learning:
-            self.pattern_learning[pattern_key].update_success_rate(
-                was_helpful, template_used, context
-            )
+            pattern_data = self.pattern_learning[pattern_key]
+            
+            # Update traditional success rate
+            pattern_data.update_success_rate(was_helpful, template_used, context)
+            
+            # Update LLM effectiveness if LLM was used
+            if llm_was_used:
+                pattern_data.update_llm_effectiveness(
+                    llm_was_used=True,
+                    llm_was_successful=was_helpful
+                )
         
         logger.info(
             f"Enhanced pattern feedback recorded: {pattern_key} = "
             f"{'helpful' if was_helpful else 'not helpful'} "
-            f"(template: {template_used}, context: {context})"
+            f"(template: {template_used}, context: {context}, llm_used: {llm_was_used})"
         )
     
     def get_learning_insights(self) -> Dict[str, Any]:
-        """Get insights from the learning system for optimization."""
+        """Get insights from the learning system for optimization including LLM routing data."""
         insights = {
             "total_patterns": len(self.pattern_learning),
             "most_successful_patterns": [],
             "least_successful_patterns": [],
             "best_templates": {},
             "context_performance": {},
-            "improvement_suggestions": []
+            "improvement_suggestions": [],
+            # Phase 1: LLM routing insights
+            "llm_routing_stats": {
+                "total_attempts": 0,
+                "total_successes": 0,
+                "average_fallback_rate": 0.0,
+                "patterns_using_llm": 0
+            },
+            "vector_boost_effectiveness": {},
+            "edge_case_patterns": []
         }
         
         if not self.pattern_learning:
             return insights
         
-        # Sort patterns by success rate
+        # Traditional analysis
         sorted_patterns = sorted(
             self.pattern_learning.items(),
             key=lambda x: x[1].success_rate,
             reverse=True
         )
         
-        # Get most and least successful patterns
+        # Most and least successful patterns
         insights["most_successful_patterns"] = [
             {
                 "pattern": pattern,
@@ -1026,7 +1107,7 @@ class ConversationalHandler:
             for pattern, data in sorted_patterns[-3:] if data.frequency > 5
         ]
         
-        # Get best templates across all patterns
+        # Best templates across all patterns
         for pattern, data in self.pattern_learning.items():
             best_template = data.get_best_template()
             if best_template:
@@ -1035,7 +1116,7 @@ class ConversationalHandler:
                     "effectiveness": data.template_effectiveness[best_template]
                 }
         
-        # Analyze context performance
+        # Context performance analysis
         context_aggregates = {}
         for pattern, data in self.pattern_learning.items():
             for context, success_rate in data.context_success.items():
@@ -1049,7 +1130,43 @@ class ConversationalHandler:
                 "pattern_count": len(rates)
             }
         
-        # Generate improvement suggestions
+        # Phase 1: LLM routing analytics
+        total_llm_attempts = 0
+        total_llm_successes = 0
+        patterns_using_llm = 0
+        
+        for pattern, data in self.pattern_learning.items():
+            if data.llm_routing_attempts > 0:
+                patterns_using_llm += 1
+                total_llm_attempts += data.llm_routing_attempts
+                total_llm_successes += data.llm_routing_successes
+                
+                # Track vector boost effectiveness
+                if data.vector_confidence_boost > 0:
+                    insights["vector_boost_effectiveness"][pattern] = {
+                        "boost_amount": data.vector_confidence_boost,
+                        "success_rate": data.success_rate
+                    }
+                
+                # Track edge case patterns
+                if data.edge_case_frequency > 2:
+                    insights["edge_case_patterns"].append({
+                        "pattern": pattern,
+                        "edge_case_frequency": data.edge_case_frequency,
+                        "llm_fallback_rate": data.llm_fallback_rate,
+                        "success_rate": data.success_rate
+                    })
+        
+        insights["llm_routing_stats"]["total_attempts"] = total_llm_attempts
+        insights["llm_routing_stats"]["total_successes"] = total_llm_successes
+        insights["llm_routing_stats"]["patterns_using_llm"] = patterns_using_llm
+        
+        if total_llm_attempts > 0:
+            insights["llm_routing_stats"]["average_fallback_rate"] = (
+                total_llm_attempts - total_llm_successes
+            ) / total_llm_attempts
+        
+        # Enhanced improvement suggestions
         low_performing_patterns = [
             pattern for pattern, data in self.pattern_learning.items()
             if data.success_rate < 0.6 and data.frequency > 3
@@ -1058,6 +1175,17 @@ class ConversationalHandler:
         if low_performing_patterns:
             insights["improvement_suggestions"].append(
                 f"Consider improving responses for patterns: {', '.join(low_performing_patterns[:3])}"
+            )
+        
+        # LLM-specific suggestions
+        high_fallback_patterns = [
+            pattern for pattern, data in self.pattern_learning.items()
+            if data.llm_fallback_rate > 0.5 and data.llm_routing_attempts > 5
+        ]
+        
+        if high_fallback_patterns:
+            insights["improvement_suggestions"].append(
+                f"High LLM fallback rates for patterns: {', '.join(high_fallback_patterns[:3])}"
             )
         
         underused_contexts = [
@@ -1088,3 +1216,124 @@ class ConversationalHandler:
             }
         
         return stats
+    
+    # Phase 1: Enhanced Component Integration Methods
+    
+    async def _initialize_pattern_classifier(self):
+        """Lazy initialization of pattern classifier to avoid circular imports."""
+        if self.pattern_classifier is None:
+            try:
+                from .pattern_classifier import ConversationalPatternClassifier
+                self.pattern_classifier = ConversationalPatternClassifier()
+                await self.pattern_classifier.initialize()
+                logger.info("Pattern classifier initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize pattern classifier: {e}")
+                self.vector_boost_enabled = False
+    
+    def _enhance_pattern_confidence(self, query: str, pattern_type: ConversationalPattern, base_confidence: float) -> Tuple[float, bool]:
+        """
+        Enhance pattern confidence using vector similarity and return LLM routing recommendation.
+        
+        Args:
+            query: User query
+            pattern_type: Identified pattern type
+            base_confidence: Template-based confidence
+            
+        Returns:
+            Tuple of (enhanced_confidence, llm_routing_recommended)
+        """
+        if not self.vector_boost_enabled or self.pattern_classifier is None:
+            return base_confidence, False
+        
+        try:
+            # This would be async in real implementation, simplified for Phase 1
+            # For now, use synchronous boost based on pattern learning data
+            pattern_key = f"{pattern_type.value}_{len(query.split())}"
+            
+            if pattern_key in self.pattern_learning:
+                pattern_data = self.pattern_learning[pattern_key]
+                
+                # Apply learned vector confidence boost
+                vector_boost = pattern_data.vector_confidence_boost
+                enhanced_confidence = min(0.95, base_confidence + vector_boost)
+                
+                # Recommend LLM routing for edge cases
+                llm_routing_recommended = (
+                    pattern_data.edge_case_frequency > 2 or
+                    enhanced_confidence < 0.6 or
+                    pattern_data.llm_fallback_rate > 0.4
+                )
+                
+                return enhanced_confidence, llm_routing_recommended
+            
+            return base_confidence, False
+            
+        except Exception as e:
+            logger.warning(f"Vector confidence enhancement failed: {e}")
+            return base_confidence, False
+    
+    def _should_use_llm_routing(self, query: str, pattern_type: ConversationalPattern, confidence: float) -> bool:
+        """
+        Determine if LLM routing should be used based on learning data and pattern analysis.
+        
+        Args:
+            query: User query
+            pattern_type: Identified pattern type
+            confidence: Enhanced confidence score
+            
+        Returns:
+            Boolean indicating if LLM routing should be used
+        """
+        if not self.llm_routing_enabled:
+            return False
+        
+        pattern_key = f"{pattern_type.value}_{len(query.split())}"
+        
+        # Use learning data to make routing decision
+        if pattern_key in self.pattern_learning:
+            pattern_data = self.pattern_learning[pattern_key]
+            return pattern_data.should_use_llm(confidence)
+        
+        # Default routing logic for new patterns
+        # Use LLM for low confidence or complex queries
+        if confidence < 0.6:
+            return True
+        
+        # Use LLM for longer, potentially complex queries
+        if len(query.split()) > 10:
+            return True
+        
+        # Use LLM for unknown patterns
+        if pattern_type == ConversationalPattern.UNKNOWN:
+            return True
+        
+        return False
+    
+    def _record_enhanced_pattern_usage(self, query: str, pattern_type: ConversationalPattern, 
+                                     template_used: str, enhanced_confidence: float,
+                                     llm_routing_recommended: bool, llm_routing_used: bool) -> None:
+        """Record enhanced pattern usage including LLM routing decisions."""
+        # Record traditional pattern usage
+        self._record_pattern_usage(query, pattern_type, template_used)
+        
+        # Record LLM routing data
+        pattern_key = f"{pattern_type.value}_{len(query.split())}"
+        
+        if pattern_key in self.pattern_learning:
+            pattern_data = self.pattern_learning[pattern_key]
+            
+            # Update LLM effectiveness tracking
+            pattern_data.update_llm_effectiveness(
+                llm_was_used=llm_routing_used,
+                llm_was_successful=None  # Will be updated with feedback
+            )
+            
+            # Update vector confidence boost based on enhancement
+            original_confidence = enhanced_confidence - pattern_data.vector_confidence_boost
+            actual_boost = enhanced_confidence - original_confidence
+            pattern_data.update_vector_confidence_boost(actual_boost)
+            
+            # Track edge case frequency
+            if llm_routing_recommended:
+                pattern_data.edge_case_frequency += 1
