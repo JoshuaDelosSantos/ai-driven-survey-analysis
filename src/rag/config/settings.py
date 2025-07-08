@@ -171,6 +171,45 @@ class RAGSettings(BaseSettings):
         alias="FEEDBACK_DATABASE_ENABLED"  
     )
     
+    # Enhanced Conversational Intelligence Configuration (Phase 1-3)
+    enable_enhanced_conversational: bool = Field(
+        default=True,
+        description="Enable Phase 1-3 enhanced conversational intelligence components",
+        alias="ENABLE_ENHANCED_CONVERSATIONAL"
+    )
+    enable_conversational_llm_enhancement: bool = Field(
+        default=True,
+        description="Enable LLM enhancement for low-confidence conversational queries", 
+        alias="ENABLE_CONVERSATIONAL_LLM_ENHANCEMENT"
+    )
+    enable_conversational_pattern_classification: bool = Field(
+        default=True,
+        description="Enable vector-based conversational pattern classification",
+        alias="ENABLE_CONVERSATIONAL_PATTERN_CLASSIFICATION"
+    )
+    enable_conversational_learning_integration: bool = Field(
+        default=True,
+        description="Enable learning feedback integration for conversational routing",
+        alias="ENABLE_CONVERSATIONAL_LEARNING_INTEGRATION"
+    )
+    enable_conversational_performance_monitoring: bool = Field(
+        default=True,
+        description="Enable real-time performance monitoring for conversational system",
+        alias="ENABLE_CONVERSATIONAL_PERFORMANCE_MONITORING"
+    )
+    conversational_llm_confidence_threshold: float = Field(
+        default=0.7,
+        description="Confidence threshold below which LLM enhancement is triggered",
+        alias="CONVERSATIONAL_LLM_CONFIDENCE_THRESHOLD",
+        ge=0.0,
+        le=1.0
+    )
+    conversational_enhancement_timeout: int = Field(
+        default=5,
+        description="Timeout in seconds for conversational LLM enhancement",
+        alias="CONVERSATIONAL_ENHANCEMENT_TIMEOUT"
+    )
+    
     model_config = ConfigDict(
         env_file=[
             ".env",  # Look in current directory first
