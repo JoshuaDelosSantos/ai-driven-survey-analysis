@@ -122,6 +122,12 @@ class PatternLearningData:
     vector_confidence_boost: float = 0.0  # How much vector search improves confidence
     edge_case_frequency: int = 0  # Track how often this pattern represents edge cases
     
+    # Phase 3 learning integration fields
+    llm_usage_count: int = 0  # Total number of times LLM was used for this pattern
+    llm_effectiveness: float = 0.8  # Current LLM effectiveness score (0.0-1.0)
+    llm_avg_response_time: float = 0.0  # Average response time when using LLM (ms)
+    template_vs_llm_preference: str = "hybrid"  # Learned preference: "template", "llm", or "hybrid"
+    
     def update_success_rate(self, was_successful: bool, template_used: str = None, context: str = "general") -> None:
         """Update success rate based on feedback with enhanced tracking."""
         score = 1.0 if was_successful else 0.0
