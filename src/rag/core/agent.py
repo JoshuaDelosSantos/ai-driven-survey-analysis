@@ -120,6 +120,7 @@ from .conversational.llm_enhancer import ConversationalLLMEnhancer
 from .conversational.pattern_classifier import ConversationalPatternClassifier
 from .conversational.learning_integrator import ConversationalLearningIntegrator
 from .conversational.performance_monitor import ConversationalPerformanceMonitor
+from .agent_domain_classifier import check_domain_relevance
 from ..utils.llm_utils import get_llm
 from ..utils.logging_utils import get_logger
 from ..config.settings import get_settings
@@ -163,6 +164,7 @@ class AgentState(TypedDict):
     requires_clarification: bool
     user_feedback: Optional[str]
     clarification_choice: Optional[str]  # Store A/B/C choice for clarification responses
+    suggested_redirect: Optional[str]  # LLM-generated redirect message for off-topic queries
     
     # Metadata
     processing_time: Optional[float]
@@ -506,6 +508,8 @@ class RAGAgent:
                 "retry_count": initial_state.get("retry_count", 0),
                 "requires_clarification": False,
                 "user_feedback": None,
+                "clarification_choice": None,
+                "suggested_redirect": None,
                 "processing_time": None,
                 "tools_used": initial_state.get("tools_used", []),
                 "start_time": start_time  # Add start_time for processing tracking
@@ -571,18 +575,41 @@ class RAGAgent:
                     "clarification_choice": clarification_response  # Store the choice for later use
                 }
             
-            # EARLY CHECK: Detect obviously off-topic queries before expensive processing
-            validation_result = self._validate_query_approach_combination(state["query"], 'A')
-            if not validation_result["is_valid"]:
-                logger.info(f"Off-topic query detected early: {state['query']}")
-                # Route directly to clarification for immediate redirection
-                return {
-                    **state,
-                    "classification": "CLARIFICATION_NEEDED",
-                    "confidence": "HIGH",
-                    "classification_reasoning": f"Off-topic query detected: {validation_result['reason']}",
-                    "tools_used": state["tools_used"] + ["classifier_off_topic_detected"]
-                }
+            # EARLY CHECK: Use LLM-based domain relevance classifier before expensive processing
+            try:
+                logger.info(f"Running LLM domain classifier on query: {state['query']}")
+                domain_check = await check_domain_relevance(state["query"], self._llm)
+                logger.info(f"LLM domain classifier result: is_relevant={domain_check['is_relevant']}, confidence={domain_check['confidence']:.2f}, reason={domain_check['reason'][:100]}...")
+                
+                if not domain_check["is_relevant"] and domain_check["confidence"] > 0.7:
+                    logger.info(f"Off-topic query detected by LLM classifier: {state['query']} (confidence: {domain_check['confidence']:.2f})")
+                    # Route directly to clarification for immediate redirection with LLM-generated message
+                    return {
+                        **state,
+                        "classification": "CLARIFICATION_NEEDED",
+                        "confidence": "HIGH",
+                        "classification_reasoning": f"LLM domain classifier: {domain_check['reason']}",
+                        "tools_used": state["tools_used"] + ["classifier_llm_domain_rejected"],
+                        "suggested_redirect": domain_check.get("suggested_redirect")
+                    }
+                elif not domain_check["is_relevant"]:
+                    logger.info(f"Uncertain domain relevance (confidence: {domain_check['confidence']:.2f}), proceeding with normal classification")
+                else:
+                    logger.info(f"LLM classifier approved query as domain-relevant (confidence: {domain_check['confidence']:.2f})")
+                    
+            except Exception as e:
+                logger.warning(f"LLM domain classifier failed, falling back to keyword-based: {e}")
+                # Fallback to existing keyword-based validation
+                validation_result = self._validate_query_approach_combination(state["query"], 'A')
+                if not validation_result["is_valid"]:
+                    logger.info(f"Off-topic query detected by fallback classifier: {state['query']}")
+                    return {
+                        **state,
+                        "classification": "CLARIFICATION_NEEDED",
+                        "confidence": "HIGH",
+                        "classification_reasoning": f"Fallback domain check: {validation_result['reason']}",
+                        "tools_used": state["tools_used"] + ["classifier_fallback_domain_rejected"]
+                    }
             
             # Use enhanced conversational routing if available, fallback to legacy
             if hasattr(self._query_classifier, 'classify_with_conversational_routing'):
@@ -1050,6 +1077,21 @@ class RAGAgent:
             
             # EARLY VALIDATION: Check if query is off-topic before offering clarification
             # If the query is completely off-topic, redirect immediately instead of asking for clarification
+            suggested_redirect = state.get("suggested_redirect")
+            
+            if suggested_redirect:
+                # Use LLM-generated redirect message if available
+                logger.info(f"Using LLM-generated redirect for off-topic query: {query}")
+                return {
+                    **state,
+                    "final_answer": suggested_redirect,
+                    "requires_clarification": False,
+                    "tools_used": state["tools_used"] + ["clarification_llm_redirect"],
+                    "classification": "CONVERSATIONAL",
+                    "confidence": "HIGH"
+                }
+            
+            # Fallback to keyword-based validation if LLM redirect not available
             validation_result = self._validate_query_approach_combination(query, 'A')  # Test with any approach
             if not validation_result["is_valid"]:
                 logger.info(f"Off-topic query detected in clarification: {query}")
