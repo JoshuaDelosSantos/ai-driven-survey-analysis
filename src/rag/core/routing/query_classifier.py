@@ -894,6 +894,255 @@ class QueryClassifier:
         """
         return self._confidence_calibrator.get_calibration_stats()
     
+    async def classify_with_conversational_routing(
+        self,
+        query: str,
+        session_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        anonymize_query: bool = True
+    ) -> ClassificationResult:
+        """
+        Enhanced classification with conversational routing integration (Phase 2).
+        
+        This method integrates the new conversational router for hybrid
+        template + LLM conversational handling while preserving all existing
+        classification logic for data analysis queries.
+        
+        Classification Pipeline:
+        1. Standard query classification (existing logic preserved)
+        2. Enhanced conversational detection with routing
+        3. LLM fallback for uncertain data analysis queries
+        4. Smart routing decisions based on confidence levels
+        
+        Args:
+            query: User query to classify
+            session_id: Optional session identifier for tracking
+            context: Optional context for routing decisions
+            anonymize_query: Whether to anonymize PII before LLM processing
+            
+        Returns:
+            ClassificationResult with enhanced conversational routing
+        """
+        start_time = time.time()
+        
+        try:
+            logger.debug(f"Starting enhanced classification with conversational routing for query: {query[:100]}...")
+            
+            # Step 1: Standard classification (preserve existing logic)
+            standard_result = await self.classify_query(
+                query=query,
+                session_id=session_id,
+                anonymize_query=anonymize_query
+            )
+            
+            # Step 2: If standard classification is confident, return it
+            if standard_result.confidence in ["HIGH", "MEDIUM"] and standard_result.classification != "CONVERSATIONAL":
+                logger.debug(f"Standard classification confident: {standard_result.classification}")
+                return standard_result
+            
+            # Step 3: Enhanced conversational routing for uncertain or conversational queries
+            if standard_result.classification == "CONVERSATIONAL" or standard_result.confidence == "LOW":
+                try:
+                    # Import conversational router for Phase 2 integration
+                    from ..conversational.router import ConversationalRouter
+                    
+                    # Initialize router if needed
+                    if not hasattr(self, '_conversational_router'):
+                        self._conversational_router = ConversationalRouter()
+                        await self._conversational_router.initialize()
+                    
+                    # Route through conversational system
+                    routed_response = await self._conversational_router.route_conversational_query(
+                        query=query,
+                        context=context or {}
+                    )
+                    
+                    # If conversational routing was successful with good confidence
+                    if routed_response.confidence > 0.6:
+                        processing_time = time.time() - start_time
+                        
+                        logger.info(
+                            f"Conversational routing successful: {routed_response.routing_metadata.strategy_used} "
+                            f"(confidence: {routed_response.confidence:.2f}, session: {session_id or 'anonymous'})"
+                        )
+                        
+                        return ClassificationResult(
+                            classification="CONVERSATIONAL",
+                            confidence="HIGH" if routed_response.confidence > 0.8 else "MEDIUM",
+                            reasoning=f"Enhanced conversational routing: {routed_response.routing_metadata.strategy_used}. "
+                                     f"LLM enhancement: {routed_response.routing_metadata.llm_enhancement_used}. "
+                                     f"Pattern: {routed_response.pattern_type.value}",
+                            processing_time=processing_time,
+                            method_used="conversational_router",
+                            anonymized_query=standard_result.anonymized_query,
+                            metadata={
+                                "routing_strategy": routed_response.routing_metadata.strategy_used.value,
+                                "llm_enhanced": routed_response.routing_metadata.llm_enhancement_used,
+                                "pattern_type": routed_response.pattern_type.value,
+                                "original_confidence": standard_result.confidence
+                            }
+                        )
+                
+                except Exception as e:
+                    logger.warning(f"Conversational routing failed, falling back to standard result: {e}")
+            
+            # Step 4: LLM fallback for uncertain data analysis queries
+            if (standard_result.classification in ["SQL", "VECTOR", "HYBRID"] and 
+                standard_result.confidence == "LOW"):
+                
+                try:
+                    # Enhanced LLM classification for data analysis queries
+                    enhanced_result = await self._enhanced_llm_classification_fallback(
+                        query=query,
+                        standard_result=standard_result,
+                        session_id=session_id
+                    )
+                    
+                    if enhanced_result:
+                        logger.info(f"Enhanced LLM fallback successful: {enhanced_result.classification}")
+                        return enhanced_result
+                        
+                except Exception as e:
+                    logger.warning(f"Enhanced LLM fallback failed: {e}")
+            
+            # Step 5: Return standard result with enhanced reasoning
+            processing_time = time.time() - start_time
+            return ClassificationResult(
+                classification=standard_result.classification,
+                confidence=standard_result.confidence,
+                reasoning=f"{standard_result.reasoning} Enhanced routing attempted but preserved original classification.",
+                processing_time=processing_time,
+                method_used=f"{standard_result.method_used}_enhanced",
+                anonymized_query=standard_result.anonymized_query
+            )
+            
+        except Exception as e:
+            processing_time = time.time() - start_time
+            logger.error(f"Enhanced classification with conversational routing failed: {e}")
+            
+            # Fallback to standard classification
+            try:
+                fallback_result = await self.classify_query(query, session_id, anonymize_query)
+                fallback_result.reasoning = f"Enhanced routing failed, using standard: {fallback_result.reasoning}"
+                fallback_result.method_used = f"{fallback_result.method_used}_fallback"
+                return fallback_result
+            except Exception as fallback_error:
+                logger.error(f"Fallback classification also failed: {fallback_error}")
+                return self._create_error_result(
+                    f"Complete classification failure: {str(e)}",
+                    start_time,
+                    None
+                )
+
+    async def _enhanced_llm_classification_fallback(
+        self,
+        query: str,
+        standard_result: ClassificationResult,
+        session_id: Optional[str] = None
+    ) -> Optional[ClassificationResult]:
+        """
+        Enhanced LLM fallback for uncertain data analysis queries.
+        
+        This method provides a more sophisticated LLM classification approach
+        for queries where standard rule-based and initial LLM approaches
+        weren't confident enough.
+        
+        Args:
+            query: Query to classify
+            standard_result: Previous classification result to enhance
+            session_id: Optional session identifier
+            
+        Returns:
+            Enhanced ClassificationResult or None if enhancement failed
+        """
+        try:
+            # Enhanced prompt with more context about the uncertainty
+            enhanced_prompt = self._build_enhanced_classification_prompt(
+                query, standard_result
+            )
+            
+            # Use existing LLM infrastructure with enhanced prompt
+            response = await self._llm.ainvoke(enhanced_prompt)
+            
+            # Parse and validate enhanced response
+            enhanced_classification = self._parse_enhanced_llm_response(response.content)
+            
+            if enhanced_classification:
+                return ClassificationResult(
+                    classification=enhanced_classification["category"],
+                    confidence=enhanced_classification["confidence"],
+                    reasoning=f"Enhanced LLM fallback: {enhanced_classification['reasoning']}. "
+                             f"Original: {standard_result.classification}({standard_result.confidence})",
+                    processing_time=0.0,  # Will be updated by caller
+                    method_used="enhanced_llm_fallback",
+                    anonymized_query=standard_result.anonymized_query,
+                    metadata={
+                        "original_classification": standard_result.classification,
+                        "original_confidence": standard_result.confidence,
+                        "enhancement_applied": True
+                    }
+                )
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Enhanced LLM classification fallback failed: {e}")
+            return None
+    
+    def _build_enhanced_classification_prompt(
+        self, 
+        query: str, 
+        standard_result: ClassificationResult
+    ) -> str:
+        """Build enhanced prompt for uncertain query classification."""
+        return f"""You are an expert at classifying data analysis queries for Australian Public Service survey data. 
+
+The initial classification was uncertain:
+- Query: "{query}"
+- Initial Classification: {standard_result.classification}
+- Confidence: {standard_result.confidence}
+- Reasoning: {standard_result.reasoning}
+
+Please provide a more confident classification. Consider:
+
+1. SQL queries need statistical analysis, aggregations, counts, comparisons, or structured data filtering
+2. VECTOR queries need semantic search through text feedback, comments, or qualitative content
+3. HYBRID queries need both statistical context AND semantic content analysis
+4. CLARIFICATION_NEEDED for truly ambiguous queries requiring user clarification
+
+Response format (JSON):
+{{
+    "category": "SQL|VECTOR|HYBRID|CLARIFICATION_NEEDED",
+    "confidence": "HIGH|MEDIUM|LOW",
+    "reasoning": "Detailed explanation of classification decision"
+}}"""
+
+    def _parse_enhanced_llm_response(self, response_content: str) -> Optional[Dict[str, str]]:
+        """Parse enhanced LLM classification response."""
+        try:
+            import json
+            import re
+            
+            # Extract JSON from response
+            json_match = re.search(r'\{[^}]*\}', response_content)
+            if not json_match:
+                return None
+                
+            response_data = json.loads(json_match.group())
+            
+            # Validate required fields
+            if all(key in response_data for key in ["category", "confidence", "reasoning"]):
+                # Validate category
+                valid_categories = ["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED"]
+                if response_data["category"] in valid_categories:
+                    return response_data
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Failed to parse enhanced LLM response: {e}")
+            return None
+
     async def close(self) -> None:
         """Clean up classifier resources."""
         try:
