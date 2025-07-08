@@ -103,6 +103,7 @@ import uuid
 from typing import Dict, Any, Optional, List, Literal, Union
 from typing_extensions import TypedDict
 from dataclasses import dataclass
+import re
 
 from langgraph.graph import StateGraph, END
 from langchain_core.language_models import BaseLanguageModel
@@ -128,7 +129,7 @@ logger = get_logger(__name__)
 
 
 # Type definitions for agent state management
-ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED", "CONVERSATIONAL"]
+ClassificationType = Literal["SQL", "VECTOR", "HYBRID", "CLARIFICATION_NEEDED", "CONVERSATIONAL", "CLARIFICATION_RESPONSE"]
 ConfidenceLevel = Literal["HIGH", "MEDIUM", "LOW"]
 
 
@@ -161,6 +162,7 @@ class AgentState(TypedDict):
     retry_count: int
     requires_clarification: bool
     user_feedback: Optional[str]
+    clarification_choice: Optional[str]  # Store A/B/C choice for clarification responses
     
     # Metadata
     processing_time: Optional[float]
@@ -437,6 +439,20 @@ class RAGAgent:
                 }
             )
             
+            # Add conditional routing from clarification node
+            workflow.add_conditional_edges(
+                "clarification",
+                self._route_after_clarification,
+                {
+                    "sql": "sql_tool",
+                    "vector": "vector_search_tool", 
+                    "hybrid": "hybrid_processing",
+                    "conversational": "conversational",
+                    "end": END,
+                    "error": "error_handling"
+                }
+            )
+            
             # Add edges from tools to synthesis
             workflow.add_edge("sql_tool", "synthesis")
             workflow.add_edge("vector_search_tool", "synthesis")
@@ -445,7 +461,6 @@ class RAGAgent:
             # Add final edges
             workflow.add_edge("synthesis", END)
             workflow.add_edge("conversational", END)  # Conversational responses are complete
-            workflow.add_edge("clarification", END)
             workflow.add_edge("error_handling", END)
             
             # Compile the graph
@@ -540,6 +555,20 @@ class RAGAgent:
                     **state,
                     "error": "Query cannot be empty",
                     "tools_used": state["tools_used"] + ["classifier_error"]
+                }
+            
+            # EARLY CHECK: Detect clarification responses before normal classification
+            clarification_response = self._detect_clarification_response(state["query"])
+            if clarification_response:
+                logger.info(f"Clarification response detected: {clarification_response}")
+                # Route directly to clarification handling with special marker
+                return {
+                    **state,
+                    "classification": "CLARIFICATION_RESPONSE",
+                    "confidence": "HIGH",
+                    "classification_reasoning": f"Detected clarification response: {clarification_response}",
+                    "tools_used": state["tools_used"] + ["classifier_clarification_detected"],
+                    "clarification_choice": clarification_response  # Store the choice for later use
                 }
             
             # Use enhanced conversational routing if available, fallback to legacy
@@ -985,14 +1014,26 @@ class RAGAgent:
         Handle queries requiring clarification with interactive guidance.
         
         Provides structured clarification options based on query analysis
-        and classification reasoning.
+        and classification reasoning. Also handles user responses to clarification.
         """
         logger.info("Query requires clarification...")
         
         try:
-            # Analyze the query to provide specific clarification options
             query = state["query"]
+            classification = state.get("classification")
             classification_reasoning = state.get("classification_reasoning", "")
+            
+            # Check if this is a clarification response detected in classification
+            if classification == "CLARIFICATION_RESPONSE":
+                clarification_response = state.get("clarification_choice")
+                if clarification_response:
+                    logger.info(f"Processing clarification response: {clarification_response}")
+                    return await self._handle_clarification_response(state, clarification_response)
+            
+            # Check if this is a response to a previous clarification (fallback detection)
+            clarification_response = self._detect_clarification_response(query)
+            if clarification_response:
+                return await self._handle_clarification_response(state, clarification_response)
             
             # Generate context-aware clarification message
             clarification_message = self._generate_clarification_message(
@@ -1251,7 +1292,9 @@ class RAGAgent:
         confidence = state.get("confidence")
         
         # Route based on classification and confidence
-        if confidence == "LOW" or classification == "CLARIFICATION_NEEDED":
+        if classification == "CLARIFICATION_RESPONSE":
+            return "clarification"  # Handle clarification responses
+        elif confidence == "LOW" or classification == "CLARIFICATION_NEEDED":
             return "clarification"
         elif classification == "CONVERSATIONAL":
             return "conversational"
@@ -1265,6 +1308,53 @@ class RAGAgent:
             # Default to SQL for unrecognized classifications
             logger.warning(f"Unknown classification '{classification}', defaulting to SQL")
             return "sql"
+    
+    def _route_after_clarification(self, state: AgentState) -> str:
+        """
+        Route after clarification node based on the processing results.
+        
+        This method handles routing when:
+        1. User provided a valid clarification response (A/B/C) -> route to appropriate tool
+        2. Invalid combination detected -> end with redirect message
+        3. Error occurred -> route to error handling
+        4. Normal clarification request -> end to show clarification options
+        
+        Args:
+            state: Current agent state after clarification processing
+            
+        Returns:
+            Next node to route to
+        """
+        # Check if an error occurred
+        if state.get("error"):
+            return "error"
+        
+        # Check the tools used to determine what happened in clarification
+        tools_used = state.get("tools_used", [])
+        
+        # If clarification_redirect is in tools, this means invalid combination was detected
+        if "clarification_redirect" in tools_used:
+            return "end"  # End with redirect message
+        
+        # If clarification_resolved is in tools, this means valid response was processed
+        if "clarification_resolved" in tools_used:
+            # Route based on the updated classification
+            classification = state.get("classification")
+            if classification == "SQL":
+                return "sql"
+            elif classification == "VECTOR":
+                return "vector"
+            elif classification == "HYBRID":
+                return "hybrid"
+            elif classification == "CONVERSATIONAL":
+                return "conversational"
+            else:
+                # Fallback
+                logger.warning(f"Unknown classification after clarification: {classification}")
+                return "sql"
+        
+        # Normal clarification request or fallback - end to show options to user
+        return "end"
     
     async def close(self) -> None:
         """Clean up agent resources."""
@@ -1281,9 +1371,291 @@ class RAGAgent:
         except Exception as e:
             logger.error(f"Error during agent cleanup: {e}")
     
-    async def cleanup(self) -> None:
-        """Alias for close() method for backward compatibility."""
-        await self.close()
+    def _detect_clarification_response(self, query: str) -> Optional[str]:
+        """
+        Detect if the query is a response to a clarification request.
+        
+        Args:
+            query: User query to analyze
+            
+        Returns:
+            'A', 'B', 'C' if detected as clarification response, None otherwise
+        """
+        query_stripped = query.strip().upper()
+        
+        # Direct A/B/C responses
+        if query_stripped in ['A', 'B', 'C']:
+            return query_stripped
+        
+        # Common clarification response patterns
+        clarification_patterns = [
+            (r'^A[.,\s].*(?:STATISTICAL|SUMMARY|NUMBERS|PERCENTAGE)', 'A'),
+            (r'^B[.,\s].*(?:FEEDBACK|COMMENT|EXPERIENCE|OPINION)', 'B'),            (r'^C[.,\s].*(?:COMBINED|ANALYSIS|BOTH)', 'C'),            (r'.*(?:WANT|CHOOSE|PICK|SELECT).*A.*(?:STATISTICAL|SUMMARY)', 'A'),
+            (r'.*(?:WANT|CHOOSE|PICK|SELECT).*B.*(?:FEEDBACK|COMMENT)', 'B'),
+            (r'.*(?:WANT|CHOOSE|PICK|SELECT).*C.*(?:COMBINED|BOTH)', 'C'),
+            (r'.*(?:STATISTICAL|SUMMARY|NUMBERS|PERCENTAGE).*PLEASE', 'A'),
+            (r'.*(?:FEEDBACK|COMMENT|EXPERIENCE|OPINION).*PLEASE', 'B'),
+            (r'.*(?:COMBINED|BOTH|ANALYSIS).*PLEASE', 'C')
+        ]
+        
+        for pattern, response_type in clarification_patterns:
+            if re.search(pattern, query_stripped):
+                return response_type
+        
+        return None
+    
+    async def _handle_clarification_response(self, state: AgentState, response_type: str) -> AgentState:
+        """
+        Handle user response to clarification with intelligent validation.
+        
+        This method validates whether the original query can actually be answered
+        with the chosen approach (A/B/C) and redirects appropriately when impossible.
+        
+        Args:
+            state: Current agent state
+            response_type: 'A', 'B', or 'C' indicating user choice
+            
+        Returns:
+            Updated agent state with appropriate routing or redirection
+        """
+        try:
+            # Extract the original query (before the clarification response)
+            original_query = self._extract_original_query(state["query"])
+            
+            # Validate if the combination makes sense
+            validation_result = self._validate_query_approach_combination(original_query, response_type)
+            
+            if not validation_result["is_valid"]:
+                # Invalid combination - redirect with explanation
+                logger.info(f"Invalid clarification combination detected: {original_query} with approach {response_type}")
+                
+                redirect_message = self._generate_redirect_message(
+                    original_query, 
+                    response_type, 
+                    validation_result["reason"]
+                )
+                
+                return {
+                    **state,
+                    "final_answer": redirect_message,
+                    "requires_clarification": False,
+                    "tools_used": state["tools_used"] + ["clarification_redirect"],
+                    "classification": "CONVERSATIONAL",
+                    "confidence": "HIGH"
+                }
+            
+            # Valid combination - proceed with reclassification
+            logger.info(f"Valid clarification response: {original_query} with approach {response_type}")
+            
+            # Map response to classification
+            classification_mapping = {
+                'A': 'SQL',
+                'B': 'VECTOR', 
+                'C': 'HYBRID'
+            }
+            
+            new_classification = classification_mapping[response_type]
+            
+            # Update state to route to appropriate tool
+            return {
+                **state,
+                "query": original_query,  # Use original query for processing
+                "classification": new_classification,
+                "confidence": "MEDIUM",  # User-guided classification
+                "classification_reasoning": f"User-guided classification: chose {response_type} for {new_classification} approach",
+                "requires_clarification": False,
+                "tools_used": state["tools_used"] + ["clarification_resolved"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Clarification response handling failed: {e}")
+            
+            # Fallback to conversational handling
+            return {
+                **state,
+                "final_answer": (
+                    "I understand you're trying to clarify your request, but I'm having trouble "
+                    "processing your response. Could you please rephrase your original question "
+                    "in a way that clearly relates to the survey and training data I can access?"
+                ),
+                "requires_clarification": False,
+                "tools_used": state["tools_used"] + ["clarification_error"],
+                "classification": "CONVERSATIONAL",
+                "confidence": "LOW"
+            }
+    
+    def _extract_original_query(self, full_query: str) -> str:
+        """
+        Extract the original query from a clarification response.
+        
+        Args:
+            full_query: The full query including clarification response
+            
+        Returns:
+            The original query part
+        """
+        # Look for patterns that indicate clarification responses
+        patterns = [
+            r'^(.+?)\s*-\s*[IAi]\s+want\s+',  # "Original query - I want statistical..."
+            r'^(.+?)\s*[.,]\s*[ABCabc][.,\s]',  # "Original query. A" or "Original query, B"
+            r'^(.+?)(?:\s*-\s*)?[ABCabc](?:\s|$)',  # "Original query - A" or "Original query A"
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, full_query, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        
+        # If no pattern matches, return the full query
+        return full_query
+    
+    def _validate_query_approach_combination(self, query: str, approach: str) -> Dict[str, Any]:
+        """
+        Validate whether a query can reasonably be answered with the chosen approach.
+        
+        This method uses domain knowledge to determine if a query about topics
+        unrelated to government training/survey data can be answered with the
+        requested statistical or feedback analysis approach.
+        
+        Args:
+            query: Original user query
+            approach: 'A' (SQL), 'B' (VECTOR), or 'C' (HYBRID)
+            
+        Returns:
+            Dict with 'is_valid' boolean and 'reason' string
+        """
+        query_lower = query.lower().strip()
+        
+        # Domain-related keywords that suggest the query is about training/survey data
+        domain_keywords = [
+            # Training/Learning
+            'training', 'course', 'learning', 'education', 'development', 'workshop',
+            'certification', 'skill', 'competency', 'curriculum', 'module', 'session',
+            
+            # Survey/Feedback
+            'survey', 'feedback', 'evaluation', 'assessment', 'satisfaction', 'rating',
+            'response', 'participant', 'delegate', 'attendee', 'respondent',
+            
+            # Government/Organizational
+            'agency', 'department', 'level', 'staff', 'employee', 'personnel',
+            'government', 'public service', 'federal', 'state', 'local',
+            
+            # Metrics/Analysis
+            'completion', 'participation', 'enrollment', 'attendance', 'performance',
+            'outcome', 'result', 'effectiveness', 'impact', 'trend', 'analysis'
+        ]
+        
+        # Check if query contains any domain-relevant keywords
+        has_domain_keywords = any(keyword in query_lower for keyword in domain_keywords)
+        
+        # Obvious non-domain queries (like "pizza", "weather", etc.)
+        non_domain_patterns = [
+            r'\b(?:pizza|food|weather|movie|music|sport|game|celebrity)\b',
+            r'\b(?:do you like|what is your favorite|tell me about yourself)\b',
+            r'\b(?:personal|private|family|relationship|health|medical)\b',
+            r'\b(?:price|buy|sell|shop|store|restaurant|vacation)\b'
+        ]
+        
+        is_obviously_non_domain = any(
+            re.search(pattern, query_lower) for pattern in non_domain_patterns
+        )
+        
+        # Validation logic
+        if is_obviously_non_domain and not has_domain_keywords:
+            reason = (
+                "Your question appears to be about topics outside the scope of the "
+                "government training and survey data I have access to. I can only analyze "
+                "statistics and feedback related to training programs, course evaluations, "
+                "and learning outcomes."
+            )
+            return {"is_valid": False, "reason": reason}
+        
+        if not has_domain_keywords and len(query.split()) < 3:
+            reason = (
+                "Your question is too general and doesn't specify what training or "
+                "survey data you'd like to analyze. Please be more specific about "
+                "what aspect of the government training programs you're interested in."
+            )
+            return {"is_valid": False, "reason": reason}
+        
+        # For approach-specific validation
+        if approach == 'A':  # Statistical
+            # Check if statistical analysis makes sense
+            if 'pizza' in query_lower or 'personal preference' in query_lower:
+                reason = (
+                    "Statistical analysis isn't available for personal preferences like food choices. "
+                    "I can provide statistics about training completion rates, satisfaction scores, "
+                    "participation numbers, and other measurable training outcomes."
+                )
+                return {"is_valid": False, "reason": reason}
+                
+        elif approach == 'B':  # Feedback
+            # Check if feedback search makes sense
+            if not any(word in query_lower for word in ['feedback', 'comment', 'opinion', 'say', 'think', 'experience']):
+                if is_obviously_non_domain:
+                    reason = (
+                        "I don't have user feedback about topics outside government training programs. "
+                        "I can search for participant feedback about course content, delivery methods, "
+                        "facilitators, and learning experiences."
+                    )
+                    return {"is_valid": False, "reason": reason}
+        
+        # If we get here, the combination seems reasonable
+        return {"is_valid": True, "reason": "Valid combination"}
+    
+    def _generate_redirect_message(self, original_query: str, approach: str, reason: str) -> str:
+        """
+        Generate a helpful redirect message for invalid query-approach combinations.
+        
+        Args:
+            original_query: The original user query
+            approach: The chosen approach ('A', 'B', or 'C')
+            reason: The reason why this combination is invalid
+            
+        Returns:
+            Helpful redirect message with suggestions
+        """
+        approach_names = {
+            'A': 'statistical analysis',
+            'B': 'feedback search', 
+            'C': 'combined analysis'
+        }
+        
+        chosen_approach = approach_names.get(approach, 'analysis')
+        
+        base_message = f"I understand you'd like {chosen_approach} for: \"{original_query}\"\n\n"
+        base_message += f"However, {reason}\n\n"
+        
+        # Provide helpful suggestions
+        suggestions = [
+            "**Here's what I can help you with:**",
+            "",
+            "📊 **Training Statistics:**",
+            "• Completion rates by agency or role level",
+            "• Participation numbers and trends",
+            "• Course effectiveness metrics",
+            "• Learning outcome measurements",
+            "",
+            "💬 **Participant Feedback:**", 
+            "• Comments about course content and delivery",
+            "• Satisfaction ratings and experiences", 
+            "• Suggestions for improvement",
+            "• Technical issues or accessibility feedback",
+            "",
+            "📈 **Combined Analysis:**",
+            "• Statistical trends with supporting feedback",
+            "• Correlation between ratings and comments",
+            "• Comprehensive program evaluations",
+            "",
+            "**Example questions you could ask:**",
+            "• \"How many staff completed cybersecurity training this quarter?\"",
+            "• \"What feedback did participants give about virtual learning?\"",
+            "• \"Analyze satisfaction trends with supporting comments\"",
+            "",
+            "Would you like to ask about any of these topics instead?"
+        ]
+        
+        return base_message + "\n".join(suggestions)
 
 
 # Factory function for easy agent creation
