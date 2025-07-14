@@ -1,22 +1,22 @@
-# LLM-Driven Tool Selection Architecture Plan
-**Date:** 14 July 2025  
-**Focus:** Enhanced Query Understanding & Tool Orchestration  
-**Approach:** Minimal codebase changes, maximum intelligence gain  
-**Governance:** Australian Privacy Principles (APP) compliant
+# LLM-Driven Reasoning Architecture Plan (Revised)
+**Date:** 14 July 2025 (Revision 1.1)  
+**Focus:** Statistical Reasoning Framework with Quality Validation  
+**Approach:** Production-ready enterprise architecture with rigorous validation  
+**Governance:** Australian Privacy Principles (APP) compliant with advanced privacy assessment
 
 ---
 
 ## Executive Summary
 
-This plan implements **LLM-driven tool selection** to replace the current rule-based query classification system, addressing the fundamental issue where vector search fails for thematic analysis queries. By leveraging the LLM's natural language understanding capabilities, we transform the system from reactive pattern matching to proactive query comprehension.
+This plan implements a **statistical reasoning framework** for query understanding that addresses the fundamental challenge of handling query variance in analytical systems. By combining LLM reasoning with statistical validation, privacy assessment, and quality assurance, we transform the system from reactive pattern matching to adaptive intelligent analysis.
 
 ### Problem Analysis
 
-**Current Issue**: Vector search returns zero results for thematic analysis queries like "What are the main themes in user feedback about virtual learning delivery?" because similarity-based retrieval cannot identify common patterns across diverse feedback texts.
+**Current Issue**: The system cannot handle the variance and complexity of real-world analytical queries. Vector search fails for thematic analysis, but the deeper problem is the lack of adaptive reasoning for diverse query patterns.
 
-**Root Cause**: Rule-based classification lacks semantic understanding of query intent, routing analytical questions to inappropriate tools.
+**Root Cause**: Static classification systems cannot reason about optimal strategies for complex, ambiguous, or evolving query patterns that require multi-step analytical approaches.
 
-**Solution**: LLM-driven query understanding with intelligent tool selection and content-aware data retrieval strategies.
+**Solution**: Statistical reasoning framework with LLM-driven query understanding, rigorous sampling methodology, comprehensive quality validation, and advanced privacy protection.
 
 ---
 
@@ -51,725 +51,371 @@ Based on codebase analysis, the existing architecture provides excellent foundat
 
 ---
 
-## LLM-Driven Architecture Enhancement
+## Statistical Reasoning Architecture
 
-### Core Philosophy: Query Understanding Over Pattern Matching
+### Core Philosophy: Adaptive Query Understanding with Validation
 
-Instead of "What type of query is this?", the system will ask "What does the user want to achieve, and how can I best help them?"
+Instead of "What type of query is this?", the system asks "How should I approach this unique query with statistical rigor and quality assurance?"
 
-### 1. LLM Query Analyser (New Component)
+### 1. Enhanced LLM Query Analyser with Domain Validation
 
-**Location**: `src/rag/core/intelligence/llm_query_analyser.py`
-
-```python
-class LLMQueryAnalyser:
-    """
-    LLM-powered query understanding and tool orchestration.
-    
-    Replaces rule-based classification with intelligent query analysis
-    that understands user intent and selects optimal data retrieval strategies.
-    """
-    
-    async def analyse_query_intent(self, query: str) -> QueryAnalysis:
-        """
-        Analyse user query for intent, scope, and optimal tool selection.
-        
-        Returns:
-            QueryAnalysis containing:
-            - Primary intent (statistical, thematic, comparative, etc.)
-            - Data requirements (structured data, feedback content, both)
-            - Optimal tools (sql_tool, content_filter_tool, synthesis_tool)
-            - Confidence reasoning
-        """
-    
-    async def design_retrieval_strategy(self, analysis: QueryAnalysis) -> RetrievalStrategy:
-        """
-        Design optimal data retrieval approach based on query analysis.
-        
-        For thematic analysis:
-        - Use content filtering instead of similarity search
-        - Apply intelligent sampling for representative coverage
-        - Extract patterns using LLM analysis of filtered content
-        """
-```
-
-**Key Prompting Strategy**:
-```
-You are an expert data analyst specialising in Australian Public Service learning analytics. 
-
-QUERY: "{user_query}"
-
-AVAILABLE TOOLS & CAPABILITIES:
-1. SQL Analysis: Statistical summaries, aggregations, demographic breakdowns
-   - Tables: users, learning_content, attendance, evaluation
-   - Rich structured data about completion rates, satisfaction scores, delivery types
-
-2. Content Filtering: Intelligent sampling of feedback text with metadata filtering
-   - 50,000+ feedback entries with user context (level, agency) and sentiment scores
-   - Can filter by sentiment, user demographics, course characteristics
-   - Ideal for thematic analysis and pattern discovery
-
-3. LLM Synthesis: Pattern recognition and insight generation from filtered content
-   - Analyses filtered feedback to identify themes, trends, issues
-   - Provides evidence-based insights with representative examples
-
-TASK: Analyse the query intent and recommend the optimal approach:
-
-Intent Analysis:
-- What is the user fundamentally trying to understand?
-- Do they need statistical summaries or qualitative insights?
-- Are they looking for patterns, trends, or specific information?
-
-Tool Selection Logic:
-- STATISTICAL queries → SQL Analysis
-- THEMATIC queries → Content Filtering + LLM Synthesis  
-- COMPARATIVE queries → SQL Analysis + Content Filtering + LLM Synthesis
-- SPECIFIC queries → Content Filtering (targeted)
-
-Return your analysis as JSON:
-{
-  "intent": "thematic_analysis|statistical_summary|comparative_analysis|specific_inquiry",
-  "confidence": 0.95,
-  "reasoning": "Explanation of intent analysis",
-  "recommended_tools": ["content_filter_tool", "llm_synthesis_tool"],
-  "data_strategy": "Filter feedback by virtual delivery type, apply sentiment analysis, identify recurring themes",
-  "expected_approach": "Representative sampling → Pattern identification → Evidence synthesis"
-}
-```
-
-### 2. Intelligent Content Filter Tool (Enhanced)
-
-**Location**: `src/rag/core/tools/content_filter_tool.py`
+**Location**: `src/rag/core/intelligence/enhanced_llm_query_analyser.py`
 
 ```python
-class ContentFilterTool(BaseTool):
+class EnhancedLLMQueryAnalyser:
     """
-    Intelligent content filtering for thematic analysis and pattern discovery.
-    
-    Uses metadata-rich filtering instead of similarity search for analytical queries.
-    Provides representative sampling with demographic and sentiment distribution.
+    LLM-powered query understanding with comprehensive validation framework.
     """
     
-    async def filter_content(
-        self,
-        content_filters: Dict[str, Any],
-        sampling_strategy: str = "representative",
-        max_results: int = 100
-    ) -> FilteredContent:
+    async def analyse_query_with_validation(self, query: str) -> ValidatedQueryAnalysis:
         """
-        Filter evaluation content using intelligent sampling strategies.
+        Multi-stage query analysis with feasibility and statistical validation.
+        """
+        # Stage 1: LLM intent analysis
+        raw_analysis = await self._llm_analyse_intent(query)
         
-        Sampling Strategies:
-        - "representative": Ensures demographic and sentiment distribution
-        - "targeted": Focused on specific criteria
-        - "comprehensive": Broader coverage with quality filtering
-        """
+        # Stage 2: Domain knowledge validation
+        domain_validation = await self._validate_against_domain_constraints(raw_analysis)
         
-    async def get_thematic_sample(
-        self,
-        topic_keywords: List[str],
-        user_levels: Optional[List[str]] = None,
-        agencies: Optional[List[str]] = None,
-        sentiment_filter: Optional[Dict] = None
-    ) -> ThematicSample:
-        """
-        Intelligent sampling for thematic analysis with demographic representation.
-        """
+        # Stage 3: Data availability assessment
+        data_feasibility = await self._assess_data_feasibility(raw_analysis, domain_validation)
+        
+        # Stage 4: Statistical requirements validation
+        statistical_validity = await self._validate_statistical_requirements(raw_analysis, data_feasibility)
+        
+        return ValidatedQueryAnalysis(
+            intent=raw_analysis.intent,
+            confidence=self._calibrate_confidence(raw_analysis, domain_validation, statistical_validity),
+            validated_strategy=statistical_validity.recommended_approach,
+            feasibility_constraints=data_feasibility.constraints,
+            statistical_requirements=statistical_validity.requirements
+        )
 ```
 
-**Implementation Strategy**:
-- **Leverage existing infrastructure**: Uses `EmbeddingsManager.search_similar_with_metadata()` 
-- **Smart sampling**: Ensures representative coverage across user levels and agencies
-- **Quality filtering**: Prioritises substantive feedback over brief responses
-- **Privacy compliance**: Uses existing PII detection and anonymisation
+### 2. Statistical Sampling Framework
 
-### 3. LLM Synthesis Tool (New)
-
-**Location**: `src/rag/core/tools/llm_synthesis_tool.py`
+**Location**: `src/rag/core/statistics/sampling_manager.py`
 
 ```python
-class LLMSynthesisTool(BaseTool):
+class StatisticalSamplingManager:
     """
-    LLM-powered analysis and synthesis of filtered content.
-    
-    Identifies themes, patterns, and insights from representative feedback samples.
-    Provides evidence-based analysis with source attribution.
+    Rigorous statistical sampling with confidence estimation and validity assessment.
     """
     
-    async def identify_themes(
+    async def design_sampling_strategy(
         self, 
-        content_sample: List[Dict],
-        analysis_focus: str
-    ) -> ThematicAnalysis:
+        population_filters: Dict[str, Any], 
+        analysis_requirements: AnalysisRequirements
+    ) -> SamplingStrategy:
         """
-        Identify recurring themes and patterns in feedback content.
+        Design statistically valid sampling strategy with confidence bounds.
+        """
+        # Population assessment and sample size calculation
+        population_stats = await self._assess_population(population_filters)
+        sample_requirements = self._calculate_sample_requirements(
+            population_size=population_stats.total_size,
+            confidence_level=analysis_requirements.confidence_level,
+            margin_of_error=analysis_requirements.margin_of_error,
+            expected_effect_size=analysis_requirements.expected_effect_size
+        )
         
-        Returns structured analysis with:
-        - Key themes with frequency and sentiment
-        - Representative quotes and evidence
-        - Demographic insights (which user groups mention what)
-        - Actionable recommendations
-        """
-    
-    async def comparative_analysis(
-        self,
-        content_groups: Dict[str, List[Dict]],
-        comparison_dimension: str
-    ) -> ComparativeInsight:
-        """
-        Compare themes and patterns across different groups.
+        # Stratification strategy with feasibility check
+        stratification = self._design_stratification(
+            population_stats.demographic_distribution,
+            sample_requirements.total_sample_size
+        )
         
-        E.g., Virtual vs In-person delivery feedback analysis
-        """
+        feasibility = self._assess_sampling_feasibility(stratification, population_stats)
+        
+        if not feasibility.is_feasible:
+            return self._design_fallback_strategy(feasibility.constraints, analysis_requirements)
+        
+        return SamplingStrategy(
+            stratification=stratification,
+            sample_size=sample_requirements,
+            confidence_bounds=sample_requirements.confidence_bounds,
+            validity_constraints=feasibility.constraints
+        )
 ```
 
----
+### 3. Result Quality Validation Framework
 
-## Implementation Strategy: Minimal Change, Maximum Impact
+**Location**: `src/rag/core/validation/thematic_validator.py`
 
-### Phase 1: Enhanced Query Analysis (Week 1)
-**Impact**: 90% of routing decisions improved  
-**Effort**: 2-3 days implementation
-
-#### 1.1 LLM Query Analyser Implementation
 ```python
-# Integrate with existing QueryClassifier
-class QueryClassifier:
-    async def classify_with_llm_analysis(self, query: str) -> ClassificationResult:
-        """Enhanced classification using LLM query understanding."""
-        
-        # Step 1: LLM analysis for intent understanding
-        analysis = await self._llm_analyser.analyse_query_intent(query)
-        
-        # Step 2: Map intent to appropriate tools
-        if analysis.intent == "thematic_analysis":
-            return ClassificationResult(
-                classification="CONTENT_ANALYSIS",
-                confidence="HIGH",
-                reasoning=f"LLM Analysis: {analysis.reasoning}",
-                recommended_strategy=analysis.data_strategy
-            )
-        elif analysis.intent == "statistical_summary":
-            return ClassificationResult(
-                classification="SQL",
-                confidence="HIGH", 
-                reasoning=f"LLM Analysis: {analysis.reasoning}"
-            )
-        # ... other intent mappings
-```
-
-#### 1.2 Integration with Existing Agent
-```python
-# Enhance existing RAGAgent routing
-class RAGAgent:
-    def _route_after_classification(self, state: AgentState) -> str:
-        classification = state.get("classification")
-        
-        if classification == "CONTENT_ANALYSIS":
-            return "content_analysis"  # New node
-        elif classification == "SQL":
-            return "sql"              # Existing node
-        # ... existing routing logic
-```
-
-### Phase 2: Content Analysis Tools (Week 2)
-**Impact**: Thematic analysis queries now functional  
-**Effort**: 3-4 days implementation
-
-#### 2.1 Content Filter Tool Enhancement
-```python
-# Leverage existing EmbeddingsManager capabilities
-async def get_thematic_content(
-    self,
-    topic_context: str,
-    demographic_filters: Dict[str, Any] = None
-) -> List[Dict]:
+class ThematicAnalysisValidator:
     """
-    Get representative content sample for thematic analysis.
-    Uses existing metadata filtering with intelligent sampling.
+    Comprehensive validation of LLM-generated thematic analysis.
     """
     
-    # Use existing search_similar_with_metadata with strategic filtering
-    base_filters = {
-        "field_name": ["general_feedback", "did_experience_issue_detail"],
-        **demographic_filters
-    }
-    
-    # Apply intelligent sampling to ensure representation
-    return await self._get_representative_sample(base_filters)
-```
-
-#### 2.2 LLM Synthesis Integration
-```python
-# New synthesis tool using existing LLM infrastructure
-class LLMSynthesisTool(BaseTool):
-    async def _synthesise_themes(self, content_sample: List[Dict]) -> Dict:
-        """Analyse content sample for themes using existing LLM setup."""
+    async def validate_thematic_analysis(
+        self, 
+        themes: ThematicAnalysis, 
+        source_content: List[Dict],
+        analysis_parameters: AnalysisParameters
+    ) -> ValidationResult:
+        """
+        Multi-dimensional validation including consistency, statistical significance, and reliability.
+        """
+        # Comprehensive validation across five dimensions
+        evidence_validation = await self._validate_theme_evidence_alignment(themes, source_content)
+        consistency_validation = await self._validate_analysis_consistency(themes, source_content, analysis_parameters)
+        statistical_validation = await self._validate_statistical_significance(themes, source_content)
+        demographic_validation = await self._validate_demographic_claims(themes, source_content)
+        reliability_validation = await self._simulate_inter_coder_reliability(themes, source_content)
         
-        synthesis_prompt = self._create_theme_analysis_prompt(content_sample)
+        overall_score = self._calculate_overall_validation_score([
+            evidence_validation, consistency_validation, statistical_validation,
+            demographic_validation, reliability_validation
+        ])
         
-        # Use existing LLM infrastructure
-        response = await self._llm.ainvoke(synthesis_prompt)
-        
-        return self._parse_thematic_response(response)
-```
-
-### Phase 3: Agent Integration (Week 3)
-**Impact**: Seamless user experience with enhanced capabilities  
-**Effort**: 2-3 days integration
-
-#### 3.1 New Agent Nodes
-```python
-# Add to existing LangGraph workflow
-async def _content_analysis_node(self, state: AgentState) -> AgentState:
-    """New node for content-based thematic analysis."""
-    
-    try:
-        # Step 1: Filter content based on query analysis
-        filtered_content = await self._content_filter_tool.filter_content(
-            content_filters=state["analysis"].data_requirements,
-            sampling_strategy="representative"
-        )
-        
-        # Step 2: Synthesise themes using LLM
-        thematic_analysis = await self._synthesis_tool.identify_themes(
-            content_sample=filtered_content.samples,
-            analysis_focus=state["query"]
-        )
-        
-        return {
-            **state,
-            "content_results": filtered_content,
-            "thematic_analysis": thematic_analysis,
-            "tools_used": state["tools_used"] + ["content_filter", "llm_synthesis"]
-        }
-        
-    except Exception as e:
-        # Fallback to existing vector search
-        return await self._vector_search_node(state)
-```
-
----
-
-## Data Strategy Enhancement
-
-### Intelligent Content Sampling
-
-**Current Problem**: Vector search using cosine similarity cannot identify thematic patterns across semantically diverse feedback.
-
-**Enhanced Approach**: Metadata-driven intelligent sampling with LLM pattern recognition.
-
-#### Sampling Strategies by Query Type
-
-##### 1. Thematic Analysis Queries
-*"What are the main themes in user feedback about virtual learning?"*
-
-**Strategy**: Representative demographic sampling with content quality filtering
-```python
-sampling_config = {
-    "field_names": ["general_feedback", "did_experience_issue_detail"],
-    "delivery_type_filter": ["Virtual"],
-    "demographic_distribution": {
-        "user_levels": ["Level 4", "Level 5", "Level 6", "Exec Level 1"],
-        "agencies": "diverse_sample"  # Ensure multiple agencies
-    },
-    "content_quality": {
-        "min_length": 20,  # Substantive feedback
-        "exclude_generic": True
-    },
-    "sample_size": 50  # Representative but manageable
-}
-```
-
-##### 2. Sentiment-Focused Analysis  
-*"What negative feedback do senior staff have about course delivery?"*
-
-**Strategy**: Sentiment-based filtering with hierarchy targeting
-```python
-sampling_config = {
-    "sentiment_filter": {"negative": {"min_score": 0.6}},
-    "user_level_filter": ["Level 5", "Level 6", "Exec Level 1", "Exec Level 2"],
-    "field_names": ["general_feedback", "did_experience_issue_detail"],
-    "sample_distribution": "sentiment_stratified"
-}
-```
-
-##### 3. Comparative Analysis
-*"How does feedback differ between virtual and in-person delivery?"*
-
-**Strategy**: Stratified sampling with balanced group representation
-```python
-sampling_config = {
-    "comparison_groups": {
-        "virtual": {"course_delivery_type": "Virtual"},
-        "in_person": {"course_delivery_type": "In-person"}
-    },
-    "sample_per_group": 30,
-    "ensure_demographic_balance": True
-}
-```
-
-### LLM Thematic Analysis Prompting
-
-```python
-THEMATIC_ANALYSIS_PROMPT = """
-You are an expert learning analytics researcher analysing Australian Public Service training feedback.
-
-FEEDBACK SAMPLE: {content_sample}
-ANALYSIS FOCUS: {query_focus}
-USER CONTEXT: {demographic_info}
-
-Identify the key themes in this feedback with the following structure:
-
-THEMES IDENTIFIED:
-1. [Theme Name] (Frequency: X/Y responses)
-   - Key characteristics: [Description]
-   - Representative quote: "[Anonymised quote]"
-   - User groups mentioning: [Demographics]
-   - Sentiment: [Positive/Negative/Mixed]
-
-2. [Continue for all major themes...]
-
-INSIGHTS:
-- Most significant concerns: [Priority issues]
-- Positive patterns: [What's working well]
-- Demographic variations: [Differences by user level/agency]
-
-RECOMMENDATIONS:
-- Immediate actions: [Actionable improvements]
-- Systemic improvements: [Longer-term enhancements]
-
-Ensure all analysis is:
-- Evidence-based with specific examples
-- Demographically aware (APS levels and contexts)
-- Actionable for learning designers
-- Privacy-compliant (no personal identifiers)
-"""
-```
-
----
-
-## Technical Implementation Details
-
-### 1. Enhanced Database Utilisation
-
-**Leverage Existing Rich Metadata** (`data-dictionary.json` analysis):
-
-#### Evaluation Table Capabilities
-- **Structured feedback**: `facilitator_skills`, `guest_contribution`, `course_application`
-- **Free-text analysis**: `did_experience_issue_detail`, `course_application_other`, `general_feedback`
-- **Contextual metadata**: `course_delivery_type`, `agency`, `knowledge_level_prior`
-- **Satisfaction metrics**: `positive_learning_experience`, `effective_use_of_time`, `relevant_to_work`
-
-#### Smart Filtering Strategies
-```python
-# Example: Virtual learning effectiveness analysis
-filtering_strategy = {
-    "course_delivery_type": "Virtual",
-    "field_names": ["general_feedback", "did_experience_issue_detail"],
-    "satisfaction_threshold": {"effective_use_of_time": ">=3"},
-    "demographic_balance": {
-        "user_levels": ["Level 4", "Level 5", "Level 6"],
-        "max_per_agency": 5  # Prevent single agency dominance
-    }
-}
-```
-
-### 2. Privacy-Compliant Implementation
-
-**Leverage Existing PII Framework** (`data-governance.md` analysis):
-
-#### Multi-Layer Protection
-1. **Input sanitisation**: Use existing `AustralianPIIDetector` for query anonymisation
-2. **Content processing**: Apply existing anonymisation to filtered feedback
-3. **Output validation**: Ensure synthesis results contain no personal identifiers
-4. **Audit compliance**: Integrate with existing logging framework
-
-#### Implementation Pattern
-```python
-class ContentFilterTool:
-    async def filter_content(self, filters: Dict) -> FilteredContent:
-        # Step 1: Apply existing privacy controls
-        anonymised_filters = await self._pii_detector.anonymise_filters(filters)
-        
-        # Step 2: Use existing metadata search capabilities
-        raw_content = await self._embeddings_manager.search_similar_with_metadata(
-            metadata_filters=anonymised_filters,
-            similarity_threshold=0.0,  # Use as filter, not similarity search
-            limit=self._calculate_sample_size(filters)
-        )
-        
-        # Step 3: Apply intelligent sampling
-        representative_sample = self._ensure_representative_distribution(raw_content)
-        
-        # Step 4: Anonymise content before LLM analysis
-        anonymised_content = await self._anonymise_content_batch(representative_sample)
-        
-        return FilteredContent(
-            samples=anonymised_content,
-            demographic_distribution=self._get_distribution_stats(raw_content),
-            privacy_controls_applied=["pii_detection", "content_anonymisation"]
+        return ValidationResult(
+            overall_validity_score=overall_score,
+            component_validations={
+                "evidence_alignment": evidence_validation,
+                "consistency": consistency_validation,
+                "statistical_significance": statistical_validation,
+                "demographic_accuracy": demographic_validation,
+                "reliability": reliability_validation
+            },
+            recommendations=self._generate_improvement_recommendations(overall_score)
         )
 ```
 
-### 3. Performance Optimisation
+### 4. Advanced Privacy Architecture
 
-**Build on Existing Infrastructure** (`architectureV2.md` benchmarks):
+**Location**: `src/rag/core/privacy/advanced_privacy_manager.py`
 
-#### Response Time Targets
-- **Query analysis**: < 2 seconds (LLM classification existing benchmark)
-- **Content filtering**: < 3 seconds (leverage existing `search_similar_with_metadata`)
-- **Thematic synthesis**: < 5 seconds (LLM analysis of 50 representative samples)
-- **End-to-end thematic analysis**: < 10 seconds total
-
-#### Caching Strategy
 ```python
-# Leverage existing circuit breaker and caching patterns
-class LLMQueryAnalyser:
-    @cached_llm_response(ttl=3600)  # Cache common query types
-    async def analyse_query_intent(self, query: str) -> QueryAnalysis:
-        # Implementation using existing LLM infrastructure
-        pass
+class AdvancedPrivacyManager:
+    """
+    Comprehensive privacy protection with re-identification risk assessment.
+    """
+    
+    async def assess_re_identification_risk(
+        self, 
+        content_sample: List[Dict], 
+        demographic_filters: Dict[str, Any]
+    ) -> PrivacyRiskAssessment:
+        """
+        Multi-factor re-identification risk analysis with mitigation strategies.
+        """
+        # Comprehensive risk assessment across four dimensions
+        demo_risk = await self._assess_demographic_uniqueness_risk(demographic_filters)
+        content_risk = await self._assess_content_distinctiveness_risk(content_sample)
+        cross_ref_risk = await self._simulate_cross_reference_attacks(content_sample, demographic_filters)
+        aggregate_risk = await self._assess_aggregate_disclosure_risk(content_sample)
+        
+        overall_risk = max(demo_risk.risk_score, content_risk.risk_score, 
+                          cross_ref_risk.risk_score, aggregate_risk.risk_score)
+        
+        return PrivacyRiskAssessment(
+            overall_risk_level=overall_risk,
+            component_risks={
+                "demographic_uniqueness": demo_risk,
+                "content_distinctiveness": content_risk,
+                "cross_reference_vulnerability": cross_ref_risk,
+                "aggregate_disclosure": aggregate_risk
+            },
+            mitigation_requirements=self._generate_mitigation_requirements(overall_risk)
+        )
+    
+    async def apply_differential_privacy(
+        self, 
+        content_sample: List[Dict], 
+        privacy_budget: float
+    ) -> DifferentiallyPrivateContent:
+        """
+        Apply differential privacy mechanisms to content before synthesis.
+        """
+        # Three-stage privacy protection
+        generalized_content = await self._generalize_content(content_sample, privacy_budget * 0.4)
+        noisy_demographics = await self._inject_demographic_noise(generalized_content, privacy_budget * 0.3)
+        private_sample = await self._apply_sampling_noise(noisy_demographics, privacy_budget * 0.3)
+        
+        return DifferentiallyPrivateContent(
+            content=private_sample,
+            privacy_budget_consumed=privacy_budget,
+            privacy_guarantees=self._calculate_privacy_guarantees(privacy_budget)
+        )
+```
+
+### 5. Performance-Optimized Processing
+
+**Location**: `src/rag/core/performance/optimized_processor.py`
+
+```python
+class PerformanceOptimizedProcessor:
+    """
+    Tiered performance management with quality trade-offs.
+    """
+    
+    async def process_thematic_query_optimized(
+        self, 
+        query: str, 
+        performance_requirements: PerformanceRequirements
+    ) -> OptimizedThematicResult:
+        """
+        Adaptive processing with three performance tiers.
+        """
+        complexity = await self._assess_query_complexity(query)
+        processing_strategy = self._design_processing_strategy(
+            complexity=complexity,
+            max_processing_time=performance_requirements.max_time,
+            min_quality_threshold=performance_requirements.min_quality
+        )
+        
+        # Three-tier processing approach
+        if processing_strategy.approach == "fast_approximate":
+            return await self._fast_approximate_analysis(query, processing_strategy)  # <15s, quality >0.6
+        elif processing_strategy.approach == "balanced":
+            return await self._balanced_analysis(query, processing_strategy)  # 30-45s, quality >0.8
+        else:
+            return await self._comprehensive_analysis(query, processing_strategy)  # 45-90s, quality >0.9
 ```
 
 ---
 
-## Integration with Existing Architecture
+## Implementation Strategy: Production-Ready Approach
 
-### 1. Agent Enhancement Strategy
+### Phase 1: Statistical & Validation Foundation (Weeks 1-3)
+**Focus**: Build mathematical rigor and quality assurance frameworks
 
-**Minimal Changes to Existing Workflows**:
+#### Week 1-2: Statistical Sampling Framework
+- Implement `StatisticalSamplingManager` with confidence interval calculations
+- Develop demographic stratification logic with feasibility assessment
+- Create sample size calculations for qualitative and quantitative analysis
+- Build population assessment and constraint validation
 
-```python
-# Current routing logic (preserved)
-def _route_after_classification(self, state: AgentState) -> str:
-    classification = state.get("classification")
-    
-    # Existing routes (unchanged)
-    if classification == "SQL":
-        return "sql"
-    elif classification == "VECTOR":
-        return "vector"
-    elif classification == "HYBRID":
-        return "hybrid"
-    
-    # New routes (added)
-    elif classification == "CONTENT_ANALYSIS":
-        return "content_analysis"  # New thematic analysis path
-    elif classification == "COMPARATIVE_ANALYSIS":
-        return "comparative_analysis"  # New comparative path
-    
-    # Fallback preserved
-    else:
-        return "sql"
-```
+#### Week 3: Quality Validation Framework
+- Implement `ThematicAnalysisValidator` with multi-dimensional validation
+- Build consistency testing across multiple LLM runs
+- Develop inter-coder reliability simulation
+- Create validation scoring and recommendation algorithms
 
-### 2. Backward Compatibility
+### Phase 2: Enhanced Reasoning & Privacy (Weeks 4-6)
+**Focus**: Domain-validated reasoning with advanced privacy protection
 
-**Preserve All Existing Functionality**:
-- SQL queries continue to use existing `AsyncSQLTool`
-- Vector search queries use existing `VectorSearchTool`
-- Hybrid queries use existing synthesis approach
-- All privacy controls and audit logging preserved
+#### Week 4-5: Enhanced Query Reasoning
+- Implement `EnhancedLLMQueryAnalyser` with domain validation
+- Build feasibility assessment against data constraints
+- Integrate statistical requirements validation
+- Develop fallback strategy mechanisms for infeasible queries
 
-### 3. Configuration Integration
+#### Week 6: Advanced Privacy Architecture
+- Implement `AdvancedPrivacyManager` with re-identification risk assessment
+- Build differential privacy mechanisms for content synthesis
+- Develop privacy budget management and k-anonymity validation
+- Create privacy-aware sampling strategies
 
-**Extend Existing Settings** (`src/rag/config/settings.py`):
+### Phase 3: Performance Optimization & Integration (Weeks 7-9)
+**Focus**: Production-ready performance with quality transparency
 
-```python
-class RAGSettings:
-    # Existing settings preserved...
-    
-    # New LLM-driven tool selection settings
-    enable_llm_query_analysis: bool = True
-    llm_analysis_timeout: float = 5.0
-    content_sample_size: int = 50
-    theme_analysis_confidence_threshold: float = 0.7
-    
-    # Content filtering settings
-    representative_sampling: bool = True
-    demographic_balance_required: bool = True
-    content_quality_filtering: bool = True
-```
+#### Week 7-8: Performance-Optimized Processing
+- Implement `PerformanceOptimizedProcessor` with tiered strategies
+- Build adaptive processing based on complexity assessment
+- Develop batch processing capabilities for large samples
+- Create performance monitoring and alerting systems
 
----
+#### Week 9: System Integration
+- Integrate all components with existing RAGAgent workflow
+- Implement new routing logic with comprehensive error handling
+- Build monitoring, alerting, and configuration management
+- Create user communication for performance-quality trade-offs
 
-## Testing Strategy
+### Phase 4: Testing & Deployment (Weeks 10-12)
+**Focus**: Comprehensive validation and production deployment
 
-### 1. Query Type Validation
+#### Week 10-11: Comprehensive Testing
+- Statistical validation testing with confidence interval verification
+- Privacy compliance testing with attack simulation
+- Performance benchmarking across all three tiers
+- Edge case validation and user acceptance testing
 
-**Test Cases for Enhanced Understanding**:
-
-```python
-test_queries = [
-    # Thematic analysis (should route to content analysis)
-    ("What are the main themes in user feedback about virtual learning?", "CONTENT_ANALYSIS"),
-    ("What issues do participants mention about course delivery?", "CONTENT_ANALYSIS"),
-    ("What do senior staff say about training effectiveness?", "CONTENT_ANALYSIS"),
-    
-    # Statistical analysis (should route to SQL)
-    ("How many users completed virtual courses?", "SQL"),
-    ("What's the average satisfaction score by agency?", "SQL"),
-    ("Show completion rates by user level", "SQL"),
-    
-    # Comparative analysis (should route to hybrid)
-    ("Compare satisfaction between virtual and in-person delivery", "COMPARATIVE_ANALYSIS"),
-    ("How does feedback differ across user levels?", "COMPARATIVE_ANALYSIS"),
-]
-
-@pytest.mark.asyncio
-async def test_enhanced_query_routing():
-    analyser = LLMQueryAnalyser()
-    
-    for query, expected_classification in test_queries:
-        analysis = await analyser.analyse_query_intent(query)
-        assert analysis.recommended_classification == expected_classification
-```
-
-### 2. Content Quality Validation
-
-**Ensure Representative Sampling**:
-
-```python
-@pytest.mark.asyncio 
-async def test_thematic_content_quality():
-    """Test that thematic analysis produces meaningful, diverse results."""
-    
-    tool = ContentFilterTool()
-    
-    # Test virtual learning theme extraction
-    filtered_content = await tool.filter_content({
-        "course_delivery_type": "Virtual",
-        "field_names": ["general_feedback"]
-    })
-    
-    # Verify demographic diversity
-    agencies = {sample["metadata"]["agency"] for sample in filtered_content.samples}
-    assert len(agencies) >= 3  # Multiple agencies represented
-    
-    # Verify content quality
-    avg_length = sum(len(s["chunk_text"]) for s in filtered_content.samples) / len(filtered_content.samples)
-    assert avg_length >= 20  # Substantive feedback, not brief responses
-    
-    # Test thematic synthesis
-    synthesis_tool = LLMSynthesisTool()
-    themes = await synthesis_tool.identify_themes(
-        content_sample=filtered_content.samples,
-        analysis_focus="virtual learning delivery"
-    )
-    
-    # Verify meaningful theme identification
-    assert len(themes.primary_themes) >= 2
-    assert all(theme.evidence_count >= 2 for theme in themes.primary_themes)
-```
-
-### 3. Privacy Compliance Testing
-
-**Validate PII Protection Throughout Pipeline**:
-
-```python
-@pytest.mark.asyncio
-async def test_privacy_compliance_content_analysis():
-    """Ensure no PII leakage in content analysis pipeline."""
-    
-    # Test query anonymisation
-    original_query = "What did John Smith say about the training?"
-    analyser = LLMQueryAnalyser()
-    analysis = await analyser.analyse_query_intent(original_query)
-    
-    # Verify query was anonymised before LLM processing
-    assert "John Smith" not in analysis.processed_query
-    
-    # Test content anonymisation
-    content_tool = ContentFilterTool()
-    filtered_content = await content_tool.filter_content({"field_name": "general_feedback"})
-    
-    # Verify no PII in filtered content
-    pii_detector = AustralianPIIDetector()
-    for sample in filtered_content.samples:
-        pii_result = await pii_detector.detect_and_anonymise(sample["chunk_text"])
-        assert not pii_result.pii_detected
-```
+#### Week 12: Production Deployment
+- Staging environment deployment with monitoring
+- Gradual production rollout with feature flags
+- Performance tuning and optimization based on real usage
+- Documentation, training, and support materials
 
 ---
 
-## Rollout Plan
-
-### 1: Core Intelligence Implementation
-- LLM Query Analyser development and testing  
-- Integration with existing QueryClassifier  
-
-### 2: Content Tools Development  
-- Content Filter Tool enhancement  
-- LLM Synthesis Tool implementation  
-- Integration testing and validation  
-
-### 3: Agent Integration & Testing
-- New agent nodes implementation  
-- End-to-end integration testing  
-- Performance optimisation and caching  
-- Documentation and deployment preparation  
-
-### 4: Production Deployment
-- Staging environment deployment  
-- User acceptance testing  
-- Production deployment with monitoring  
-- Post-deployment monitoring and adjustment  
-
----
-
-## Success Metrics
+## Success Metrics (Realistic Targets)
 
 ### Technical Performance
 - **Query routing accuracy**: >95% correct intent classification
-- **Thematic analysis quality**: Meaningful themes identified for 90% of queries
-- **Response time**: <10 seconds for complex thematic analysis
-- **System reliability**: Zero PII leakage, 99.9% uptime maintained
+- **Thematic analysis quality**: Validation score >0.8 for 85% of analyses
+- **Response time tiers**: 
+  - Fast: <15s (quality >0.6)
+  - Balanced: 30-45s (quality >0.8) 
+  - Comprehensive: 45-90s (quality >0.9)
+- **Statistical validity**: Confidence intervals for all quantitative claims
+- **Privacy protection**: Zero re-identification risk above 0.1 threshold
+
+### Quality Assurance
+- **Analysis consistency**: >0.8 correlation across repeated runs
+- **Statistical significance**: All frequency claims backed by statistical tests
+- **Demographic accuracy**: >95% accuracy in demographic distribution claims
+- **Theme evidence alignment**: >0.85 evidence-theme correlation score
 
 ### User Experience
-- **Query success rate**: 95% of previously failing thematic queries now provide useful results
-- **Result relevance**: >90% user satisfaction with thematic analysis quality
-- **Insight actionability**: Recommendations are specific and implementable
-
-### Business Value
-- **Enhanced capabilities**: Thematic analysis now accessible without manual data exploration
-- **Improved decision-making**: Learning designers can identify and address systemic issues
-- **Operational efficiency**: Automated pattern recognition replaces manual analysis
+- **Query success rate**: 90% of thematic queries provide validated, actionable results
+- **Result transparency**: Users understand confidence levels and limitations
+- **Performance communication**: Clear time estimates and quality trade-offs
 
 ---
 
 ## Risk Mitigation
 
 ### Technical Risks
-1. **LLM reliability**: Implement fallback to existing rule-based classification
-2. **Performance impact**: Use caching and async processing to maintain response times
-3. **Query complexity**: Provide clear guidance for query formulation
+1. **LLM reasoning reliability**: Multi-stage validation with domain knowledge integration
+2. **Statistical validity challenges**: Formal statistical framework with confidence estimation
+3. **Performance vs. quality trade-offs**: Adaptive processing strategies with transparent user choice
 
 ### Privacy Risks
-1. **PII exposure**: Leverage existing multi-layer PII protection framework
-2. **Data governance**: Maintain all existing privacy controls and audit logging
-3. **Compliance**: Regular privacy impact assessments and security reviews
+1. **Re-identification through content analysis**: Advanced privacy assessment with differential privacy
+2. **Aggregate disclosure risks**: K-anonymity validation and privacy budget management
 
 ### Operational Risks
-1. **User adoption**: Comprehensive documentation and training materials
-2. **Maintenance complexity**: Modular design allows independent component updates
-3. **Dependency management**: Maintain backward compatibility throughout transition
+1. **Complexity management**: Modular architecture with independent component testing
+2. **User expectation management**: Clear communication of capabilities, limitations, and statistical interpretation
 
 ---
 
-## Conclusion
+# REVISION SUMMARY
 
-This LLM-driven architecture enhancement transforms the RAG system from reactive pattern matching to proactive query understanding. By leveraging the existing sophisticated infrastructure while adding intelligent query analysis and content-aware retrieval strategies, we achieve maximum capability enhancement with minimal codebase disruption.
+## Key Changes from Original Plan
 
-**Key Benefits**:
-- **Solves core problem**: Thematic analysis queries now functional and insightful
-- **Preserves existing strengths**: All current functionality maintained and enhanced
-- **Minimal risk**: Builds on proven components with comprehensive fallback mechanisms
-- **Scalable foundation**: Establishes framework for future intelligence enhancements
+### 1. **Statistical Foundation Added**
+- **Original**: Arbitrary "representative sampling"
+- **Revised**: Formal statistical methodology with confidence intervals, sample size calculations, and validity assessment
 
-**Implementation Efficiency**:
-- **~10% codebase modification**: Focused enhancements to existing components
-- **4-week delivery timeline**: Staged implementation with continuous validation
-- **Zero functionality regression**: Existing capabilities preserved throughout transition
+### 2. **Quality Validation Framework**
+- **Original**: Trust LLM output without validation
+- **Revised**: Multi-dimensional validation including consistency testing, statistical significance, and inter-coder reliability simulation
 
-This approach represents the optimal balance of innovation and pragmatism, delivering transformative capabilities while maintaining the system's robust foundation and privacy-first principles.
+### 3. **Advanced Privacy Architecture**
+- **Original**: Basic PII anonymisation
+- **Revised**: Re-identification risk assessment, differential privacy mechanisms, and privacy budget management
+
+### 4. **Realistic Performance Targets**
+- **Original**: 10-second end-to-end analysis
+- **Revised**: Tiered approach (15s/30-45s/45-90s) with transparent quality trade-offs
+
+### 5. **Implementation Timeline**
+- **Original**: 4 weeks, ~10% codebase
+- **Revised**: 10-12 weeks, ~35% codebase with proper component development and testing
+
+### 6. **Enhanced Domain Validation**
+- **Original**: Simple LLM reasoning
+- **Revised**: Multi-stage validation against domain constraints, data availability, and statistical requirements
+
+## Architectural Decisions
+
+1. **Statistical Foundation First**: Mathematical rigor before LLM reasoning
+2. **Validation-Driven Development**: Quality assurance built into every component
+3. **Privacy by Design**: Advanced privacy assessment integrated throughout
+4. **Performance Transparency**: Clear communication of time-quality trade-offs
+5. **Modular Implementation**: Independent component development for reduced risk
+
+This revision transforms the plan from an optimistic prototype to a production-ready enterprise architecture that addresses real-world implementation complexities while maintaining the core vision of reasoning-driven query understanding.
