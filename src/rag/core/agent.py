@@ -756,7 +756,8 @@ class RAGAgent:
             async def vector_with_timeout():
                 return await self._vector_tool.search(
                     query=state["query"],
-                    max_results=10  # Configurable limit
+                    max_results=10,  # Configurable limit
+                    similarity_threshold=0.45  # Explicit threshold for better recall
                 )
             
             # Execute with timeout
@@ -958,7 +959,8 @@ class RAGAgent:
             
             return await self._vector_tool.search(
                 query=state["query"],
-                max_results=10
+                max_results=10,
+                similarity_threshold=0.45  # Explicit threshold for better recall
             )
         except Exception as e:
             logger.error(f"Vector search in hybrid failed: {e}")
