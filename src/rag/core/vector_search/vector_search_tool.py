@@ -76,10 +76,18 @@ logger = get_logger(__name__)
 class SearchParameters:
     """Configuration parameters for vector search operations."""
     query: str
-    max_results: int = 10
-    similarity_threshold: float = 0.45
+    max_results: int = None  # Will be set from settings if None
+    similarity_threshold: float = None  # Will be set from settings if None
     filters: Optional[Dict[str, Any]] = None
     field_names: Optional[List[str]] = None
+    
+    def __post_init__(self):
+        """Set defaults from settings if not provided."""
+        settings = get_settings()
+        if self.max_results is None:
+            self.max_results = settings.vector_max_results
+        if self.similarity_threshold is None:
+            self.similarity_threshold = settings.vector_similarity_threshold
     
     def validate(self) -> None:
         """Validate search parameters."""
@@ -96,9 +104,17 @@ class SearchParameters:
 class VectorSearchInput(BaseModel):
     """Input schema for VectorSearchTool."""
     query: str = Field(description="Natural language query for semantic search")
-    max_results: int = Field(default=10, description="Maximum number of results to return (1-100)")
-    similarity_threshold: float = Field(default=0.45, description="Minimum similarity score (0.0-1.0)")
+    max_results: int = Field(default=None, description="Maximum number of results to return (1-100). If None, uses system default.")
+    similarity_threshold: float = Field(default=None, description="Minimum similarity score (0.0-1.0). If None, uses system default.")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters for search refinement")
+    
+    def model_post_init(self, __context) -> None:
+        """Set defaults from settings if not provided."""
+        settings = get_settings()
+        if self.max_results is None:
+            self.max_results = settings.vector_max_results
+        if self.similarity_threshold is None:
+            self.similarity_threshold = settings.vector_similarity_threshold
 
 
 class VectorSearchTool(BaseTool):
@@ -119,8 +135,8 @@ class VectorSearchTool(BaseTool):
     
     Input should be a JSON object with:
     - query: Natural language search query (required)
-    - max_results: Maximum results to return, 1-100 (default: 10)
-    - similarity_threshold: Minimum similarity score, 0.0-1.0 (default: 0.45)
+    - max_results: Maximum results to return, 1-100 (default: from system config)
+    - similarity_threshold: Minimum similarity score, 0.0-1.0 (default: from system config)
     - filters: Optional metadata filters as JSON object
     
     Example filters:
@@ -192,8 +208,8 @@ class VectorSearchTool(BaseTool):
     async def search(
         self,
         query: str,
-        max_results: int = 10,
-        similarity_threshold: float = 0.45,
+        max_results: Optional[int] = None,
+        similarity_threshold: Optional[float] = None,
         filters: Optional[Dict[str, Any]] = None,
         field_names: Optional[List[str]] = None
     ) -> VectorSearchResponse:
@@ -202,8 +218,8 @@ class VectorSearchTool(BaseTool):
         
         Args:
             query: Natural language search query
-            max_results: Maximum number of results to return
-            similarity_threshold: Minimum similarity score for results
+            max_results: Maximum number of results to return (defaults to system setting)
+            similarity_threshold: Minimum similarity score for results (defaults to system setting)
             filters: Optional metadata filters
             field_names: Specific fields to search (default: all feedback fields)
             
@@ -241,8 +257,8 @@ class VectorSearchTool(BaseTool):
             search_start = time.time()
             raw_results = await self._perform_vector_search(
                 query_embedding=query_embedding,
-                similarity_threshold=similarity_threshold,
-                max_results=max_results,
+                similarity_threshold=params.similarity_threshold,
+                max_results=params.max_results,
                 filters=filters,
                 field_names=params.field_names
             )
@@ -261,8 +277,8 @@ class VectorSearchTool(BaseTool):
                 results=processed_results,
                 total_results=len(raw_results),
                 processing_time=total_time,
-                similarity_threshold=similarity_threshold,
-                max_results=max_results,
+                similarity_threshold=params.similarity_threshold,
+                max_results=params.max_results,
                 filters_applied=filters or {},
                 embedding_time=embedding_time,
                 search_time=search_time,
@@ -483,9 +499,9 @@ class VectorSearchTool(BaseTool):
             if not self._initialized:
                 await self.initialize()
             
-            # Extract parameters from kwargs
-            max_results = kwargs.get('max_results', 10)
-            similarity_threshold = kwargs.get('similarity_threshold', 0.45)
+            # Extract parameters from kwargs (None will use system defaults)
+            max_results = kwargs.get('max_results')
+            similarity_threshold = kwargs.get('similarity_threshold')
             filters = kwargs.get('filters')
             
             # Perform search
