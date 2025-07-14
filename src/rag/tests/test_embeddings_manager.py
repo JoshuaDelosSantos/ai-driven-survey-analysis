@@ -84,6 +84,25 @@ async def embeddings_manager(rag_settings):
                 return True  # Tables exist
             elif "SELECT 1" in query:
                 return 1  # Simple connectivity test
+            elif "INSERT" in query.upper():
+                # Handle any INSERT operation for storage operations
+                if len(args) >= 6:  # response_id, field_name, chunk_text, chunk_index, embedding, model_version, metadata
+                    response_id = args[0]
+                    field_name = args[1] 
+                    chunk_text = args[2]
+                    chunk_index = args[3]
+                    metadata = args[6] if len(args) > 6 else '{}'
+                    
+                    key = f"{response_id}:{field_name}:{chunk_index}"
+                    test_data_store[key] = {
+                        "response_id": response_id,
+                        "field_name": field_name,
+                        "metadata": metadata,
+                        "chunk_text": chunk_text,
+                        "chunk_index": chunk_index,
+                        "embedding": args[4] if len(args) > 4 else "mock_embedding"
+                    }
+                return chunk_index + 1 if len(args) > 3 else 1  # Return a mock embedding_id
             return 0  # Default for COUNT queries
         
         def mock_fetchrow(query, *args):
@@ -106,6 +125,7 @@ async def embeddings_manager(rag_settings):
         def mock_execute(query, *args):
             # Handle INSERT operations by storing data
             if "INSERT INTO rag_embeddings" in query.upper():
+                print(f"DEBUG: INSERT detected with args: {args[:6]}...")  # Print first 6 args
                 if len(args) >= 6:  # response_id, field_name, chunk_text, chunk_index, embedding, metadata
                     response_id = args[0]
                     field_name = args[1] 
@@ -119,6 +139,7 @@ async def embeddings_manager(rag_settings):
                         "chunk_text": args[2] if len(args) > 2 else "Test content",
                         "chunk_index": args[3] if len(args) > 3 else 0
                     }
+                    print(f"DEBUG: Stored data with key {key}. Store now contains: {list(test_data_store.keys())}")
             return "INSERT 0 1"  # PostgreSQL INSERT result
         
         def mock_fetch(query, *args):
@@ -133,53 +154,45 @@ async def embeddings_manager(rag_settings):
                 # Mock search results - return data from our store
                 results = []
                 
-                # Extract field_name filter if present
+                # Extract field_name filter - could be direct parameter or metadata filter
                 field_filter = None
                 if len(args) >= 4 and isinstance(args[3], str):
                     field_filter = args[3]
                 
-                # Extract metadata filters
-                metadata_filters = {}
-                if len(args) >= 6:
-                    # Look for metadata filters in the args
-                    for i in range(4, len(args) - 1, 2):
-                        if i + 1 < len(args):
-                            key = args[i]
-                            value = args[i + 1]
-                            metadata_filters[key] = value
-                
-                for key, data in test_data_store.items():
-                    # Apply field filter
-                    if field_filter and data["field_name"] != field_filter:
-                        continue
-                        
-                    # Apply metadata filters
-                    import json
-                    try:
-                        metadata = json.loads(data["metadata"]) if data["metadata"] else {}
-                        skip = False
-                        for filter_key, filter_value in metadata_filters.items():
-                            if filter_key not in metadata or str(metadata[filter_key]) != str(filter_value):
-                                skip = True
+                # For advanced metadata search, look for field_name in metadata filters
+                # Pattern: metadata ->> 'field_name' = $X or field_name IN (...)
+                if "field_name" in query:
+                    # Extract field_name from query parameters
+                    for i, arg in enumerate(args):
+                        if isinstance(arg, str) and arg in ["general_feedback", "did_experience_issue_detail", "course_application_other"]:
+                            field_filter = arg
+                            break
+                        elif isinstance(arg, list) and len(arg) > 0:
+                            # Handle field_name list filters
+                            if all(isinstance(f, str) and f in ["general_feedback", "did_experience_issue_detail", "course_application_other"] for f in arg):
+                                field_filter = arg[0]  # For simplicity, use first field
                                 break
-                        if skip:
-                            continue
-                    except json.JSONDecodeError:
+                
+                # Search through our test data store
+                for key, data in test_data_store.items():
+                    # Check field name filter
+                    if field_filter and data.get("field_name") != field_filter:
                         continue
                     
+                    # For basic test, return a mock similarity result with all required fields
                     results.append({
-                        "embedding_id": 1,
+                        "embedding_id": data["chunk_index"] + 1,  # Mock embedding_id
                         "response_id": data["response_id"],
                         "field_name": data["field_name"], 
                         "chunk_text": data["chunk_text"],
                         "chunk_index": data["chunk_index"],
                         "model_version": "sentence-transformers-all-MiniLM-L6-v2-v1",
-                        "metadata": data["metadata"],
+                        "metadata": data.get("metadata", "{}"),
                         "created_at": "2025-07-14",
-                        "similarity_score": 0.85
+                        "similarity_score": 0.85  # Mock high similarity
                     })
                 
-                return results
+                return results[:5]  # Return up to 5 results
             elif "GROUP BY field_name" in query or "GROUP BY model_version" in query:
                 # Mock breakdown queries
                 return []
