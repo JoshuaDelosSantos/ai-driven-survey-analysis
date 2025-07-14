@@ -102,7 +102,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         return self._dimension
     
     def get_model_version(self) -> str:
-        return f"openai-{self.model_name}-v1"
+        return f"openai-{self.model_name}-v2"
 
 
 class SentenceTransformerProvider(EmbeddingProvider):
@@ -112,32 +112,67 @@ class SentenceTransformerProvider(EmbeddingProvider):
         self.model_name = model_name
         self.model = None
         self._dimension = None
+        self._model_loaded = False
         
     async def _load_model(self):
         """Load the sentence transformer model."""
-        if self.model is None:
+        if not self._model_loaded:
             logger.info(f"Loading sentence transformer model: {self.model_name}")
-            # Run in thread pool to avoid blocking async event loop
-            loop = asyncio.get_event_loop()
-            self.model = await loop.run_in_executor(
-                None, SentenceTransformer, self.model_name
-            )
-            self._dimension = self.model.get_sentence_embedding_dimension()
-            logger.info(f"Model loaded with dimension: {self._dimension}")
+            try:
+                # Run in thread pool to avoid blocking async event loop
+                loop = asyncio.get_event_loop()
+                
+                # Load model with proper error handling for meta tensors
+                def _load_transformer_model():
+                    import torch
+                    # Set device to CPU to avoid meta tensor issues
+                    device = 'cpu'
+                    model = SentenceTransformer(self.model_name, device=device)
+                    
+                    # Ensure model is properly loaded and moved to CPU
+                    model.eval()
+                    if hasattr(model, 'to'):
+                        model = model.to(device)
+                    
+                    return model
+                
+                self.model = await loop.run_in_executor(None, _load_transformer_model)
+                self._dimension = self.model.get_sentence_embedding_dimension()
+                self._model_loaded = True
+                logger.info(f"Model loaded with dimension: {self._dimension}")
+                
+            except Exception as e:
+                logger.error(f"Failed to load sentence transformer model: {e}")
+                self._model_loaded = False
+                raise
     
     async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using sentence transformers."""
         await self._load_model()
         
         try:
-            # Run embedding generation in thread pool
+            # Run embedding generation in thread pool with error handling
             loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None, self.model.encode, texts
-            )
+            
+            def _generate_embeddings():
+                import torch
+                with torch.no_grad():  # Disable gradient computation
+                    embeddings = self.model.encode(
+                        texts, 
+                        convert_to_tensor=False,  # Return numpy array instead of tensor
+                        normalize_embeddings=True,  # Normalize for better similarity search
+                        device='cpu'  # Ensure CPU usage
+                    )
+                    return embeddings
+            
+            embeddings = await loop.run_in_executor(None, _generate_embeddings)
             return embeddings.tolist()
+            
         except Exception as e:
             logger.error(f"Sentence transformer embedding generation failed: {e}")
+            # Reset model on failure to force reload
+            self._model_loaded = False
+            self.model = None
             raise
     
     def get_dimension(self) -> int:
@@ -146,7 +181,7 @@ class SentenceTransformerProvider(EmbeddingProvider):
         return self._dimension
     
     def get_model_version(self) -> str:
-        return f"sentence-transformers-{self.model_name}-v1"
+        return f"sentence-transformers-{self.model_name}-v2"
 
 
 class EmbeddingsManager:
