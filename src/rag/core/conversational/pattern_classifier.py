@@ -90,18 +90,30 @@ class ConversationalPatternClassifier:
     using semantic similarity and existing vector infrastructure.
     """
     
-    def __init__(self):
-        """Initialize the pattern classifier."""
-        self.embedder: Optional[Embedder] = None
+    def __init__(self, embedder: Optional[Embedder] = None, vector_store = None):
+        """Initialize the pattern classifier.
+        
+        Args:
+            embedder: Optional existing embedder instance to reuse
+            vector_store: Optional vector store (currently unused, for future compatibility)
+        """
+        self.embedder: Optional[Embedder] = embedder
         self.pattern_vectors: Dict[ConversationalPattern, PatternVector] = {}
         self.is_initialized = False
         
     async def initialize(self) -> None:
         """Initialize the classifier with embedder and pattern vectors."""
         try:
-            # Initialize embedder using existing infrastructure
-            self.embedder = Embedder()
-            await self.embedder.initialize()
+            # Initialize embedder using existing infrastructure or create new one
+            if self.embedder is None:
+                self.embedder = Embedder()
+                await self.embedder.initialize()
+                logger.info("Created new embedder for ConversationalPatternClassifier")
+            else:
+                # Verify existing embedder is initialized
+                if not hasattr(self.embedder, '_model') or self.embedder._model is None:
+                    await self.embedder.initialize()
+                logger.info("Reusing existing embedder for ConversationalPatternClassifier")
             
             # Initialize pattern vectors with representative examples
             await self._initialize_pattern_vectors()
