@@ -188,7 +188,7 @@ class ProcessingConfig:
     enable_sentiment_analysis: bool = True
     
     # Storage configuration
-    embedding_model_version: str = "text-embedding-ada-002-v1"
+    embedding_model_version: Optional[str] = None  # Auto-detected from current provider
     include_metadata: bool = True
     store_original_text: bool = False  # Security: don't store original PII-containing text
     
