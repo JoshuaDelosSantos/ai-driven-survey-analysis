@@ -106,6 +106,35 @@ class RAGSettings(BaseSettings):
         alias="CHUNK_OVERLAP"
     )
     
+    # Vector Search Configuration
+    vector_similarity_threshold: float = Field(
+        default=0.30,
+        description="Default similarity threshold for vector search (0.0-1.0). Based on debug analysis showing max scores around 0.309 for survey data.",
+        alias="VECTOR_SIMILARITY_THRESHOLD",
+        ge=0.0,
+        le=1.0
+    )
+    vector_max_results: int = Field(
+        default=10,
+        description="Default maximum number of results for vector search",
+        alias="VECTOR_MAX_RESULTS",
+        gt=0
+    )
+    vector_strict_threshold: float = Field(
+        default=0.45,
+        description="Higher threshold for strict/precise vector searches",
+        alias="VECTOR_STRICT_THRESHOLD",
+        ge=0.0,
+        le=1.0
+    )
+    vector_relaxed_threshold: float = Field(
+        default=0.20,
+        description="Lower threshold for relaxed/broad vector searches",
+        alias="VECTOR_RELAXED_THRESHOLD",
+        ge=0.0,
+        le=1.0
+    )
+    
     # Query Processing Configuration
     max_query_results: int = Field(
         default=100, 
