@@ -78,11 +78,119 @@ async def embeddings_manager(rag_settings):
         # Make acquire() return our custom context manager
         mock_db_pool.acquire = lambda: MockAcquireContext()
         
-        # Mock the database queries
-        mock_connection.fetchval.return_value = True  # Table exists
-        mock_connection.fetch.return_value = []
-        mock_connection.fetchrow.return_value = None
-        mock_connection.execute.return_value = "DELETE 1"  # PostgreSQL execute result format
+        # Mock the database queries with more specific responses
+        def mock_fetchval(query, *args):
+            if "EXISTS" in query.upper():
+                return True  # Tables exist
+            elif "SELECT 1" in query:
+                return 1  # Simple connectivity test
+            return 0  # Default for COUNT queries
+        
+        def mock_fetchrow(query, *args):
+            if "information_schema.columns" in query and "embedding" in query:
+                # Mock vector column info
+                return {"column_name": "embedding", "data_type": "USER-DEFINED", "udt_name": "vector"}
+            elif "COUNT(*)" in query.upper() and "rag_embeddings" in query:
+                # Mock statistics query
+                return {
+                    "total_embeddings": 0,
+                    "unique_responses": 0, 
+                    "unique_fields": 0,
+                    "unique_models": 0
+                }
+            return None
+        
+        # Create a simple in-memory store for test data
+        test_data_store = {}
+        
+        def mock_execute(query, *args):
+            # Handle INSERT operations by storing data
+            if "INSERT INTO rag_embeddings" in query.upper():
+                if len(args) >= 6:  # response_id, field_name, chunk_text, chunk_index, embedding, metadata
+                    response_id = args[0]
+                    field_name = args[1] 
+                    metadata = args[5] if len(args) > 5 else '{}'
+                    
+                    key = f"{response_id}:{field_name}"
+                    test_data_store[key] = {
+                        "response_id": response_id,
+                        "field_name": field_name,
+                        "metadata": metadata,
+                        "chunk_text": args[2] if len(args) > 2 else "Test content",
+                        "chunk_index": args[3] if len(args) > 3 else 0
+                    }
+            return "INSERT 0 1"  # PostgreSQL INSERT result
+        
+        def mock_fetch(query, *args):
+            if "information_schema.columns" in query and "evaluation" in query:
+                # Mock evaluation table columns
+                return [
+                    {"column_name": "did_experience_issue_detail"},
+                    {"column_name": "course_application_other"}, 
+                    {"column_name": "general_feedback"}
+                ]
+            elif "embedding <-> " in query or "ORDER BY similarity" in query:
+                # Mock search results - return data from our store
+                results = []
+                
+                # Extract field_name filter if present
+                field_filter = None
+                if len(args) >= 4 and isinstance(args[3], str):
+                    field_filter = args[3]
+                
+                # Extract metadata filters
+                metadata_filters = {}
+                if len(args) >= 6:
+                    # Look for metadata filters in the args
+                    for i in range(4, len(args) - 1, 2):
+                        if i + 1 < len(args):
+                            key = args[i]
+                            value = args[i + 1]
+                            metadata_filters[key] = value
+                
+                for key, data in test_data_store.items():
+                    # Apply field filter
+                    if field_filter and data["field_name"] != field_filter:
+                        continue
+                        
+                    # Apply metadata filters
+                    import json
+                    try:
+                        metadata = json.loads(data["metadata"]) if data["metadata"] else {}
+                        skip = False
+                        for filter_key, filter_value in metadata_filters.items():
+                            if filter_key not in metadata or str(metadata[filter_key]) != str(filter_value):
+                                skip = True
+                                break
+                        if skip:
+                            continue
+                    except json.JSONDecodeError:
+                        continue
+                    
+                    results.append({
+                        "embedding_id": 1,
+                        "response_id": data["response_id"],
+                        "field_name": data["field_name"], 
+                        "chunk_text": data["chunk_text"],
+                        "chunk_index": data["chunk_index"],
+                        "model_version": "sentence-transformers-all-MiniLM-L6-v2-v1",
+                        "metadata": data["metadata"],
+                        "created_at": "2025-07-14",
+                        "similarity_score": 0.85
+                    })
+                
+                return results
+            elif "GROUP BY field_name" in query or "GROUP BY model_version" in query:
+                # Mock breakdown queries
+                return []
+            return []
+        
+        mock_connection.execute.side_effect = mock_execute
+        
+        mock_connection.fetchval.side_effect = mock_fetchval
+        mock_connection.fetchrow.side_effect = mock_fetchrow
+        mock_connection.fetch.side_effect = mock_fetch
+        # mock_connection.execute.side_effect is set above in mock_fetch definition
         
         # Mock transaction context manager
         class MockTransactionContext:
