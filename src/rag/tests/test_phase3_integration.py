@@ -4,10 +4,15 @@ End-to-end integration tests for the complete RAG system.
 Focus on essential core integration scenarios only.
 """
 
+import sys
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any
+
+# Mock the db module before any imports that depend on it
+sys.modules['db'] = MagicMock()
+sys.modules['db.db_connector'] = MagicMock()
 
 from src.rag.core.agent import RAGAgent
 from src.rag.interfaces.terminal_app import TerminalApp

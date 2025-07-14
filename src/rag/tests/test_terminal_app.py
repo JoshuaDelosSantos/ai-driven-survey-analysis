@@ -27,6 +27,10 @@ import asyncio
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# Mock the db module before any imports that depend on it
+sys.modules['db'] = MagicMock()
+sys.modules['db.db_connector'] = MagicMock()
+
 from src.rag.interfaces.terminal_app import TerminalApp
 from src.rag.core.agent import RAGAgent, AgentConfig
 from src.rag.core.synthesis.feedback_collector import FeedbackCollector, FeedbackData

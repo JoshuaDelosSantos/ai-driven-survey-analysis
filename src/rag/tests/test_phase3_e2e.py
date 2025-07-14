@@ -15,6 +15,10 @@ from unittest.mock import AsyncMock, MagicMock
 project_root = Path(__file__).parents[3]
 sys.path.insert(0, str(project_root))
 
+# Mock the db module before any imports that depend on it
+sys.modules['db'] = MagicMock()
+sys.modules['db.db_connector'] = MagicMock()
+
 @pytest.mark.asyncio
 async def test_feedback_collection_workflow():
     """Test the complete feedback collection workflow."""

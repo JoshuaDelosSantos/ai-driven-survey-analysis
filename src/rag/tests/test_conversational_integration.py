@@ -21,6 +21,10 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
+# Mock the db module before any imports that depend on it
+sys.modules['db'] = Mock()
+sys.modules['db.db_connector'] = Mock()
+
 from src.rag.interfaces.terminal_app import TerminalApp
 from src.rag.core.agent import RAGAgent, AgentConfig, create_rag_agent
 from src.rag.core.conversational.handler import ConversationalHandler, ConversationalPattern

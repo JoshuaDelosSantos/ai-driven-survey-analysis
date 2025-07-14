@@ -26,6 +26,10 @@ from typing import Dict, Any, List
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# Mock the db module before any imports that depend on it
+sys.modules['db'] = MagicMock()
+sys.modules['db.db_connector'] = MagicMock()
+
 # Load .env file if it exists for real configuration values
 env_file = project_root / '.env'
 if env_file.exists():
