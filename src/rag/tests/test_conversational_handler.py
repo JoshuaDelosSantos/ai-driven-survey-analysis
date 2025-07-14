@@ -228,9 +228,11 @@ class TestConversationalHandler:
         """Test intelligent template selection based on context."""
         # Test time-aware selection
         with patch('src.rag.core.conversational.handler.datetime') as mock_datetime:
-            # Mock morning time (9 AM)
-            mock_datetime.now.return_value = datetime(2025, 7, 6, 9, 0, 0)
-            mock_datetime.now().hour = 9
+            # Mock morning time (9 AM) - properly mock the datetime class
+            morning_time = datetime(2025, 7, 6, 9, 0, 0)
+            mock_datetime.now.return_value = morning_time
+            # Also mock the datetime class itself for any direct datetime usage
+            mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
             
             response = self.handler.handle_conversational_query("Good morning")
             assert "morning" in response.content.lower() or "good" in response.content.lower()
