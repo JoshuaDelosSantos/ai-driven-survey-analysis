@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test suite for Answer G    @pytest_asyncio.fixture
     async def pii_detector(self):
