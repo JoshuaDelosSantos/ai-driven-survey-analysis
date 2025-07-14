@@ -1140,6 +1140,39 @@ class TerminalApp:
             print(f"⚠️  Embedding check failed: {e}")
             print("🔄 RAG system will continue with existing embeddings")
 
+    async def _display_success_result(self, result, processing_time: float) -> None:
+        """Display successful SQL query result (legacy mode)."""
+        print("✅ Query processed successfully")
+        print()
+        
+        if hasattr(result, 'data') and result.data:
+            # Display tabular data
+            print("📊 Results:")
+            print("-" * 50)
+            for row in result.data:
+                print(row)
+            print("-" * 50)
+        elif hasattr(result, 'response') and result.response:
+            # Display text response
+            print("💡 Response:")
+            print("-" * 30)
+            print(result.response)
+            print("-" * 30)
+        
+        print(f"⏱️  Processing time: {processing_time:.3f}s")
+        print()
+
+    async def _display_error_result(self, result, processing_time: float) -> None:
+        """Display SQL query error result (legacy mode)."""
+        print("❌ Query processing failed")
+        print()
+        
+        error_message = getattr(result, 'error', 'Unknown error occurred')
+        print(f"Error Details: {error_message}")
+        
+        print(f"⏱️  Processing time: {processing_time:.3f}s")
+        print()
+
     async def _cleanup(self) -> None:
         """Clean up resources."""
         try:
