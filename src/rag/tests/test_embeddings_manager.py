@@ -18,7 +18,7 @@ import pytest_asyncio
 import logging
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # Setup path for imports
 import sys
@@ -54,11 +54,49 @@ def rag_settings():
 
 @pytest_asyncio.fixture
 async def embeddings_manager(rag_settings):
-    """Create and initialise an EmbeddingsManager instance."""
-    manager = EmbeddingsManager(rag_settings)
-    await manager.initialize()
-    yield manager
-    await manager.close()
+    """Create and initialise an EmbeddingsManager instance with mocked database."""
+    with patch('src.rag.data.embeddings_manager.asyncpg.create_pool') as mock_create_pool:
+        # Mock the database pool
+        mock_db_pool = AsyncMock()
+        
+        # Make create_pool return an awaitable that resolves to the pool
+        async def mock_pool_creator(*args, **kwargs):
+            return mock_db_pool
+        
+        mock_create_pool.side_effect = mock_pool_creator
+        
+        # Mock database operations - setup the connection context manager properly
+        mock_connection = AsyncMock()
+        
+        # Create a proper async context manager for acquire()
+        class MockAcquireContext:
+            async def __aenter__(self):
+                return mock_connection
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+        
+        # Make acquire() return our custom context manager
+        mock_db_pool.acquire = lambda: MockAcquireContext()
+        
+        # Mock the database queries
+        mock_connection.fetchval.return_value = True  # Table exists
+        mock_connection.fetch.return_value = []
+        mock_connection.fetchrow.return_value = None
+        mock_connection.execute.return_value = "DELETE 1"  # PostgreSQL execute result format
+        
+        # Mock transaction context manager
+        class MockTransactionContext:
+            async def __aenter__(self):
+                return None
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+        
+        mock_connection.transaction = lambda: MockTransactionContext()
+        
+        manager = EmbeddingsManager(rag_settings)
+        await manager.initialize()
+        yield manager
+        # Skip close() as we're using mocked connections
 
 
 @pytest.fixture
