@@ -108,9 +108,13 @@ Instrumentation TODO: Add per-stage timestamps by wrapping internal agent node m
 ```
 frontend/
 	package.json
+	vite.config.ts
 	src/
 		main.tsx
 		App.tsx
+		context/
+			ChatContext.tsx
+			ConfigContext.tsx
 		components/
 			ChatContainer.tsx
 			MessageList.tsx
@@ -124,21 +128,74 @@ frontend/
 			PrivacyBanner.tsx
 		hooks/
 			useChat.ts
+			useConfig.ts
+			useRetry.ts
 		types/
 			api.ts
+			app.ts
+		utils/
+			sanitize.ts
+			validation.ts
 ```
 
 Key Types (api.ts):
+```typescript
+export interface ChatResponse { 
+  query_id: string; 
+  route: 'SQL'|'VECTOR'|'HYBRID'; 
+  confidence: 'HIGH'|'MEDIUM'|'LOW'; 
+  answer: string; 
+  evidence: Evidence; 
+  timings_ms: Record<string, number>; 
+  role: string; 
+  correlation_id: string; 
+  anonymised: boolean; 
+  error?: string; 
+}
+
+export interface Evidence { 
+  sql?: { 
+    query: string; 
+    rows: any[][]; 
+    row_count: number; 
+    truncated: boolean 
+  } | null; 
+  vectors: { 
+    text: string; 
+    score: number; 
+    sentiment?: string; 
+    agency?: string 
+  }[] 
+}
 ```
-export interface ChatResponse { query_id: string; route: 'SQL'|'VECTOR'|'HYBRID'; confidence: 'HIGH'|'MEDIUM'|'LOW'; answer: string; evidence: Evidence; timings_ms: Record<string, number>; role: string; correlation_id: string; anonymised: boolean; error?: string; }
-export interface Evidence { sql?: { query: string; rows: any[][]; row_count: number; truncated: boolean } | null; vectors: { text: string; score: number; sentiment?: string; agency?: string }[] }
+
+**State Management Architecture**:
+```typescript
+// Context + Reducer for predictable state updates
+interface ChatState {
+  messages: Message[];
+  currentSession: string;
+  isLoading: boolean;
+  error: ChatError | null;
+}
+
+type ChatAction = 
+  | { type: 'SEND_MESSAGE'; payload: string }
+  | { type: 'RECEIVE_MESSAGE'; payload: ChatResponse }
+  | { type: 'SET_ERROR'; payload: ChatError }
+  | { type: 'CLEAR_ERROR' };
+
+const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
+  // Immutable state updates with type safety
+};
 ```
 
 Hook `useChat` responsibilities:
 1. Maintain `messages` array `{ id, role: 'user'|'assistant', content, route?, confidence?, evidence?, status }`.
-2. `send(query)` pushes pending user + assistant placeholder then POST fetch.
+2. `send(query)` pushes pending user + assistant placeholder then POST fetch with retry logic.
 3. On response: update assistant message fields; handle error path (status = error).
 4. SSE upgrade later: if `Accept: text/event-stream` chosen, process events (meta/token/evidence/done) updating same message object.
+5. **Error Recovery**: Exponential backoff retry with circuit breaker pattern.
 
 ---
 ## 8. Answer Rendering Template (Client)
@@ -241,30 +298,42 @@ Handoff Payload: counts (rows returned, vectors length), anonymisation flag stat
 ### Phase P2 – UI Foundations
 Objectives:
 - Implement `ChatContainer`, `MessageList`, `Composer`, `RouteBadge`.
-- `useChat.send` handles pending state and error state.
+- `useChat.send` handles pending state and error state with retry logic.
 - Basic theming + accessibility roles (landmark regions).
+- **State Management**: Implement Context + Reducer pattern for scalable state updates.
+- **Performance**: Add React.memo for expensive components, code splitting for evidence panels.
 File Touchpoints:
 - `frontend/src/components/*.tsx`, `frontend/src/hooks/useChat.ts`.
+- `frontend/src/context/ChatContext.tsx` (new state management).
+- `frontend/src/utils/validation.ts` (input sanitization helpers).
 Minimal Inputs:
 - Sections 7–9 + P1 summary.
 Exit Criteria:
 - Single query lifecycle visible, correlation ID & timing shown.
-- Error from backend (inject manually) renders distinct styling.
-Handoff Payload: component registry list + prop signatures.
+- Error from backend (inject manually) renders distinct styling with retry option.
+- State updates are predictable and testable via reducer pattern.
+- Components are properly memoized to prevent unnecessary re-renders.
+Handoff Payload: component registry list + prop signatures + state management patterns.
 
 ### Phase P3 – Evidence & Feedback
 Objectives:
 - Add `EvidencePanel` with collapsible SQL (table) + vector snippet list.
 - Role gating test: simulate `exec_view` vs `analyst_full` header.
 - Implement `FeedbackBar` posting to `/api/feedback` & optimistic UI.
+- **Component Optimization**: Implement lazy loading for evidence components and memoization.
+- **Error Handling**: Add comprehensive error boundary with categorized error display.
 File Touchpoints:
 - `frontend/src/components/EvidencePanel.tsx`, `FeedbackBar.tsx`
+- `frontend/src/components/ErrorBoundary.tsx` (new global error handling)
 - Backend feedback handler (persist or stub).
 Minimal Inputs:
 - Sections 5,8,9 + P2 summary.
 Exit Criteria:
 - Truncation flags surface; feedback stored & returns 200.
-Handoff Payload: evidence shape sample, feedback success ratio.
+- Evidence panels load lazily and render efficiently for large datasets.
+- Error boundary catches and displays user-friendly error messages.
+- Optimistic UI updates provide immediate feedback for user actions.
+Handoff Payload: evidence shape sample, feedback success ratio, error handling patterns.
 
 ### Phase P4 – Observability & Quality
 Objectives:
@@ -300,14 +369,21 @@ Objectives:
 - Implement SSE variant at `/api/chat/stream` emitting events `meta`, `token`, `evidence`, `done`.
 - Client SSE consumption path updating existing message (feature flag `ENABLE_SSE`).
 - Load test 20 concurrent hybrid queries; record p95.
-- Optional micro-optimisations (lazy evidence send).
+- **Performance Optimization**: Virtual scrolling for long conversations, component memoization.
+- **Monitoring**: Add frontend performance metrics (FCP, LCP, TTI).
+- **Configuration**: Environment-aware feature flags and configuration validation.
 File Touchpoints:
 - `src/rag/api/endpoints/chat_stream.py`, frontend SSE handling in `useChat.ts`.
+- `frontend/src/hooks/useConfig.ts` (configuration management).
+- `frontend/src/utils/performance.ts` (performance monitoring helpers).
 Minimal Inputs:
 - Sections 7,8 + P5 summary.
 Exit Criteria:
 - SSE path functional; fallback still works; latency SLOs met.
-Handoff Payload: measured p95s & streaming enable flag state.
+- Virtual scrolling handles 1000+ messages without performance degradation.
+- Configuration is type-safe and validated at startup.
+- Frontend performance metrics are captured and reportable.
+Handoff Payload: measured p95s & streaming enable flag state, performance benchmarks.
 
 LLM Usage Guidance:
 - When implementing a phase: load Sections 0–5 (global contracts) + the specific phase block + previous phase handoff payload summary ONLY.
