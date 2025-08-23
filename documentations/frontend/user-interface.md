@@ -39,17 +39,35 @@ Response Path: Streaming events (meta → tokens → evidence → done) OR singl
 
 ---
 ## 3. Component Model (Client)
-| Component | Responsibility |
-|-----------|---------------|
-| ChatContainer | Layout, scroll, holds message list |
-| MessageList / Message | Renders user & assistant messages, states (pending/streaming/done/error) |
-| Composer | Multiline input + send; handles debounce + submit |
-| RouteBadge | Displays route (SQL / VECTOR / HYBRID) + confidence band |
-| EvidencePanel | Collapsible SQL table + vector snippets (analyst role) |
-| FeedbackBar | 1–5 stars + optional comment modal (post-answer) |
-| ErrorToast | Ephemeral error notifications |
-| FooterMeta | Correlation ID + latency + anonymised flag |
-| PrivacyBanner | APP compliance notice |
+| Component | Responsibility | State Management |
+|-----------|---------------|------------------|
+| ChatContainer | Layout, scroll, holds message list | Context provider for chat state |
+| MessageList / Message | Renders user & assistant messages, states (pending/streaming/done/error) | Memoized rendering for performance |
+| Composer | Multiline input + send; handles debounce + submit | Local form state with validation |
+| RouteBadge | Displays route (SQL / VECTOR / HYBRID) + confidence band | Props-based, memoized |
+| EvidencePanel | Collapsible SQL table + vector snippets (analyst role) | Lazy-loaded with code splitting |
+| FeedbackBar | 1–5 stars + optional comment modal (post-answer) | Optimistic updates with retry |
+| ErrorToast | Ephemeral error notifications | Global error boundary integration |
+| FooterMeta | Correlation ID + latency + anonymised flag | Props-based metadata display |
+| PrivacyBanner | APP compliance notice | Static component |
+
+### State Architecture
+```typescript
+// Context + Reducer pattern for scalable state management
+interface ChatState {
+  messages: Message[];
+  currentSession: string;
+  isLoading: boolean;
+  error: ChatError | null;
+}
+
+// Environment-aware configuration
+interface AppConfig {
+  apiUrl: string;
+  enableSSE: boolean;
+  maxRetries: number;
+}
+```
 
 ---
 ## 4. Backend Endpoints
@@ -89,7 +107,31 @@ Future extension: `evidence.disclaimers`, `evidence.metrics`.
 
 ---
 ## 6. State & Data Handling
-Minimal in-memory array of messages. Each assistant message life cycle: pending → streaming → done (or error). No persistent storage MVP. Context passed to backend limited to last N (default 3) anonymised user+assistant pairs.
+**State Management Strategy**: Context + Reducer pattern for maintainable state updates and predictable data flow.
+
+```typescript
+// Chat state with optimistic updates
+const ChatStateProvider: React.FC = ({ children }) => {
+  const [state, dispatch] = useReducer(chatReducer, initialState);
+  
+  const sendMessage = useCallback(async (query: string) => {
+    // Optimistic update + error recovery
+  }, []);
+  
+  return (
+    <ChatContext.Provider value={{ state, sendMessage }}>
+      {children}
+    </ChatContext.Provider>
+  );
+};
+```
+
+**Session Management**: Minimal in-memory array of messages. Each assistant message life cycle: pending → streaming → done (or error). No persistent storage MVP. Context passed to backend limited to last N (default 3) anonymised user+assistant pairs.
+
+**Performance Optimizations**: 
+- Memoized components for evidence panels
+- Virtual scrolling for long conversations (future)
+- Code splitting for non-critical components
 
 ---
 ## 7. Streaming Strategy
@@ -113,17 +155,27 @@ data: {"final":true}
 
 ---
 ## 8. Security & Privacy (MVP)
-| Control | Implementation |
-|---------|---------------|
-| Authentication | Reverse proxy OIDC (Azure AD) injecting `X-User-Role`, `X-User-Id` |
-| Authorisation | Backend enforces role gating for evidence sizes |
-| PII Protection | Server anonymises prior to classification; rejects if failure |
-| Logging | Store anonymised_query_hash, route, confidence, timings, NO raw text |
-| Rate Limiting | Simple Redis token bucket (10 req / 60s / user) |
-| CSP | `default-src 'self'`; disallow inline scripts |
-| Transport | HTTPS only; HSTS enabled |
-| Error Sanitisation | Mask internal traces; user-facing code categories |
-| Session | Ephemeral; context trimmed to last N; no localStorage PII |
+| Control | Implementation | Frontend Considerations |
+|---------|---------------|------------------------|
+| Authentication | Reverse proxy OIDC (Azure AD) injecting `X-User-Role`, `X-User-Id` | Token validation on route changes |
+| Authorisation | Backend enforces role gating for evidence sizes | UI adapts based on user role |
+| PII Protection | Server anonymises prior to classification; rejects if failure | Client-side input sanitization (defense in depth) |
+| Logging | Store anonymised_query_hash, route, confidence, timings, NO raw text | Frontend error tracking with sanitized data |
+| Rate Limiting | Simple Redis token bucket (10 req / 60s / user) | UI feedback for rate limit status |
+| CSP | `default-src 'self'`; disallow inline scripts | Strict CSP with nonce-based inline styles |
+| Transport | HTTPS only; HSTS enabled | Secure cookie handling |
+| Error Sanitisation | Mask internal traces; user-facing code categories | Global error boundary with safe error display |
+| Session | Ephemeral; context trimmed to last N; no localStorage PII | Session storage for non-PII UI state only |
+
+**Configuration Management**:
+```typescript
+// Type-safe environment configuration
+const config = {
+  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  enableSSE: import.meta.env.VITE_ENABLE_SSE === 'true',
+  maxRetries: parseInt(import.meta.env.VITE_MAX_RETRIES || '3')
+};
+```
 
 ---
 ## 9. Non-Functional Targets
