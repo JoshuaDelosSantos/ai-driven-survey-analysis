@@ -211,8 +211,48 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Prepare for code splitting in later phases
+          vendor: ['react', 'react-dom']
+        }
+      }
+    }
+  },
+  define: {
+    // Type-safe environment variables
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version)
   }
 })
+```
+
+### File 18: `frontend/src/utils/config.ts` (New)
+**Purpose**: Type-safe configuration management for future phases
+```typescript
+interface AppConfig {
+  apiUrl: string;
+  enableSSE: boolean;
+  maxRetries: number;
+  version: string;
+}
+
+export const config: AppConfig = {
+  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  enableSSE: import.meta.env.VITE_ENABLE_SSE === 'true',
+  maxRetries: parseInt(import.meta.env.VITE_MAX_RETRIES || '3'),
+  version: __APP_VERSION__ || 'dev'
+};
+
+// Configuration validation for production readiness
+export const validateConfig = (): void => {
+  if (!config.apiUrl) {
+    throw new Error('API URL is required');
+  }
+  // Additional validation as needed
+};
 ```
 
 ### File 9: `frontend/src/types/api.ts`
@@ -276,14 +316,30 @@ export interface ErrorResponse {
 ```
 
 ### File 10: `frontend/src/hooks/useChat.ts`
-**Purpose**: Chat state management hook
+**Purpose**: Chat state management hook with error recovery
 **Key state**: `messages` array with `{ id, role: 'user' | 'assistant', content, status?, route?, confidence?, evidence?, error? }`
 **Key function**: `send(query: string)` that:
 1. Adds user message to state
 2. Adds pending assistant message
-3. POSTs to `/api/chat`
+3. POSTs to `/api/chat` with retry logic
 4. Updates assistant message with response or error state
-**Error handling**: Catch fetch errors and network issues
+**Error handling**: Catch fetch errors and network issues with exponential backoff
+**Future consideration**: Prepare structure for Context + Reducer pattern in P2
+
+```typescript
+// Basic hook structure (P0) with forward compatibility
+export const useChat = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const send = useCallback(async (query: string) => {
+    // Implementation with retry logic
+    // Structure anticipates future reducer pattern
+  }, []);
+  
+  return { messages, send, isLoading };
+};
+```
 
 ### File 11: `frontend/src/components/RouteBadge.tsx`
 **Purpose**: Display route + confidence with color coding
@@ -326,11 +382,17 @@ export interface ErrorResponse {
 
 3. **Error Handling Foundation**: Stubs include proper error response schemas and HTTP status codes to establish patterns for real implementation.
 
-4. **Environment Configuration**: CORS and API URLs use environment variables to support different deployment contexts.
+4. **Environment Configuration**: CORS and API URLs use environment variables to support different deployment contexts. Configuration validation prepares for production deployment.
 
 5. **Database Connection Strategy**: Health check includes optional DB test but doesn't fail if database unavailable - enables testing without full infrastructure.
 
 6. **Schema Sync Validation**: Include contract verification to prevent TypeScript/Python drift.
+
+7. **Forward Compatibility**: Component and hook structures anticipate future architectural patterns:
+   - State management hooks prepare for Context + Reducer pattern
+   - Configuration utilities support feature flags and environment-aware deployment
+   - Error handling patterns support comprehensive error boundaries
+   - Build configuration prepares for code splitting and optimization
 
 ---
 ## Development Workflow
@@ -352,6 +414,9 @@ export interface ErrorResponse {
 - [ ] Manual query → answer flow works end-to-end
 - [ ] Health check includes database connectivity test (passes even if DB unavailable)
 - [ ] Schema validation test confirms TypeScript interfaces match Pydantic models
+- [ ] Configuration validation works and environment variables are properly typed
+- [ ] Component structure supports future state management patterns
+- [ ] Build configuration supports code splitting and optimization for later phases
 
 ---
 ## Handoff Payload for Phase P1
@@ -363,6 +428,8 @@ After completing P0, provide:
 - Integration readiness: confirmation that `src/rag/core/*` modules can be imported from `src/api/` without conflicts
 - Error handling patterns: documented error response schemas and HTTP status code usage
 - Environment configuration: validated CORS and proxy setup for development and production contexts
+- **Architecture foundations**: documented component structure and state management approach for P2 integration
+- **Configuration patterns**: validated environment variable handling and type safety approaches
 
 ---
 ## Questions Needing Clarification
